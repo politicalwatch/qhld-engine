@@ -29,9 +29,9 @@ class GenerateStats(object):
                 'subtopics': list()
                 }
         pipeline = [
-            {'$match': {'topics': {'$exists': True, '$not': {'$size': 0}}}},
-            {'$unwind': '$topics'},
-            {'$group': {'_id': '$topics', 'initiatives': {'$sum': 1}}},
+            {'$match': {'tagged': {'$exists': True, '$not': {'$size': 0}}}},
+            {'$unwind': '$tagged'},
+            {'$group': {'_id': '$tagged', 'initiatives': {'$sum': 1}}},
             {'$sort': {'initiatives': -1}}
             ]
         result = Initiative.objects().aggregate(*pipeline)
@@ -39,7 +39,7 @@ class GenerateStats(object):
             self.stats['overall']['topics'].append(item)
         for subtopic in self.subtopics:
             pipeline = [
-                {'$match': {'tags.subtopic': subtopic}},
+                {'$match': {'tagged.tags.subtopic': subtopic}},
                 {'$group': {'_id': subtopic, 'initiatives': {'$sum': 1}}}
                 ]
             result = Initiative.objects().aggregate(*pipeline)
@@ -51,7 +51,7 @@ class GenerateStats(object):
         self.stats['deputiesByTopics'] = list()
         for topic in self.topics:
             pipeline = [
-                    {'$match': {'topics': topic['name']}}, {'$unwind': '$author_deputies'},
+                    {'$match': {'tagged.topics': topic['name']}}, {'$unwind': '$author_deputies'},
                     {'$group': {'_id': '$author_deputies', 'initiatives': {'$sum': 1}}}, {'$sort': {'initiatives': -1}},
                     {'$limit': 10}
                     ]
@@ -66,7 +66,7 @@ class GenerateStats(object):
         self.stats['parliamentarygroupsByTopics'] = list()
         for topic in self.topics:
             pipeline = [
-                    {'$match': {'topics': topic['name']}}, {'$unwind': '$author_parliamentarygroups'},
+                    {'$match': {'tagged.topics': topic['name']}}, {'$unwind': '$author_parliamentarygroups'},
                     {'$group': {'_id': '$author_parliamentarygroups', 'initiatives': {'$sum': 1}}}, {'$sort': {'initiatives': -1}}
                     ]
             result = list(Initiative.objects().aggregate(*pipeline))
@@ -80,7 +80,7 @@ class GenerateStats(object):
         self.stats['placesByTopics'] = list()
         for topic in self.topics:
             pipeline = [
-                    {'$match': {'topics': topic['name'], 'place': {'$not': {'$eq': ""}, '$exists': True}}},
+                    {'$match': {'tagged.topics': topic['name'], 'place': {'$not': {'$eq': ""}, '$exists': True}}},
                     {'$group': {'_id': '$place', 'initiatives': {'$sum': 1}}}, {'$sort': {'initiatives': -1}},
                     {'$limit': 5}
                     ]
@@ -95,7 +95,7 @@ class GenerateStats(object):
         self.stats['deputiesBySubtopics'] = list()
         for subtopic in self.subtopics:
             pipeline = [
-                    {'$match': { 'tags.subtopic': subtopic } }, {'$unwind': '$author_deputies'},
+                    {'$match': { 'tagged.tags.subtopic': subtopic } }, {'$unwind': '$author_deputies'},
                     {'$group': {'_id': '$author_deputies', 'initiatives': {'$sum': 1}}}, {'$sort': {'initiatives': -1}},
                     {'$limit': 10}
                     ]
@@ -110,7 +110,7 @@ class GenerateStats(object):
         self.stats['parliamentarygroupsBySubtopics'] = list()
         for subtopic in self.subtopics:
             pipeline = [
-                    {'$match': { 'tags.subtopic': subtopic } }, {'$unwind': '$author_parliamentarygroups'},
+                    {'$match': { 'tagged.tags.subtopic': subtopic } }, {'$unwind': '$author_parliamentarygroups'},
                     {'$group': {'_id': '$author_parliamentarygroups', 'initiatives': {'$sum': 1}}}, {'$sort': {'initiatives': -1}}
                     ]
             result = list(Initiative.objects().aggregate(*pipeline))
@@ -124,7 +124,7 @@ class GenerateStats(object):
         self.stats['placesBySubtopics'] = list()
         for subtopic in self.subtopics:
             pipeline = [
-                    {'$match': { 'tags.subtopic': subtopic, 'place': {'$not': {'$eq': ""}, '$exists': True}}},
+                    {'$match': { 'tagged.tags.subtopic': subtopic, 'place': {'$not': {'$eq': ""}, '$exists': True}}},
                     {'$group': {'_id': '$place', 'initiatives': {'$sum': 1}}}, {'$sort': {'initiatives': -1}},
                     {'$limit': 5}
                     ]
