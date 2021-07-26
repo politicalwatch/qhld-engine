@@ -77,7 +77,6 @@ class TagInitiatives:
                 for tag in result['tags']:
                     initiative.add_tag(tag['knowledgebase'], tag['topic'], tag['subtopic'], tag['tag'], tag['times'])
 
-                # TODO continue here. This is not working.
                 initiative.remove_single_occurences()
                 initiative.save()
                 if initiative.has_tags() and USE_ALERTS and send_alerts:
