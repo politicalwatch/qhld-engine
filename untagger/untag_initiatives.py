@@ -18,3 +18,7 @@ class UntagInitiatives:
     def by_tag(self, tag):
         print('Untagging tag "' + tag + '"')
         Initiatives.get_all().update(pull_tagged__tags__tag=tag)
+
+    def by_reference(self, reference):
+        print('Untagging initiative "' + reference + '"')
+        Initiatives.by_reference(reference).update(unset__tagged=1)

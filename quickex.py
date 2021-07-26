@@ -47,6 +47,7 @@ def tag(args):
         'new-topic': command.new_topic,
         'modify-regex': modify_regex,
         'rename-tag': command.rename,
+        'reference': command.by_reference,
         'default': command.run
     }
     run_command(subcommands, args)
@@ -61,6 +62,7 @@ def untag(args):
         'kb': command.by_kb,
         'topic': command.by_topic,
         'tag': command.by_tag,
+        'reference': command.by_reference,
         'default': command.untag_all
     }
     run_command(subcommands, args)

@@ -107,6 +107,11 @@ class TagInitiatives:
         initiatives = list(Initiatives.get_all())
         self.tag_initiatives(initiatives, tags, True, False)
 
+    def by_reference(self, reference):
+        tags = codecs.encode(pickle.dumps(Tags.get_all()), "base64").decode()
+        initiatives = list(Initiatives.by_reference(reference))
+        self.tag_initiatives(initiatives, tags, True, False)
+
     def rename(self, old_tag, new_tag):
         initiatives = Initiatives.by_tag(old_tag)
         for initiative in initiatives:

@@ -68,3 +68,4 @@ Available Commands
 - `python quickex.py untagger kb [KNOWLEDGE_BASE]`: Removes tags from the specified knowledge base from all initiatives.
 - `python quickex.py untagger topic "[TOPIC]"`: Removes all tags from the specified topic from all initiatives.
 - `python quickex.py untagger tag "[TAG]"`: Removes the specified tag from all the initiatives.
+- `python quickex.py untagger reference "[REFERENCE]"`: Removes all the tags from the specified initiative.
