@@ -1,13 +1,14 @@
 from tipi_data.models.stats import Stats
-from tipi_data.models.topic import Topic
-from tipi_data.models.initiative import Initiative
+from tipi_data.repositories.topics import Topics
+from tipi_data.repositories.initiatives import Initiatives
 
 
 class GenerateStats(object):
 
     def __init__(self):
-        self.topics = Topic.objects()
+        self.topics = Topics.get_all()
         self.subtopics = self.topics.distinct('tags.subtopic')
+        self.knowledgebases = list(Topics.get_kbs())
         self.stats = Stats()
 
     def generate(self):
@@ -23,116 +24,156 @@ class GenerateStats(object):
 
     def overall(self):
         self.stats['overall'] = {
-                'initiatives': Initiative.objects.count(),
-                'allinitiatives': Initiative.all.count(),
-                'topics': list(),
-                'subtopics': list()
+                'allinitiatives': Initiatives.get_all().count(),
+                'topics': {},
+                'subtopics': {},
                 }
+        for kb in self.knowledgebases:
+            self.stats['overall'][kb] = Initiatives.by_kb(kb).count()
+            self.stats['overall']['topics'][kb] = list()
+            self.stats['overall']['subtopics'][kb] = list()
+
         pipeline = [
             {'$match': {'tagged': {'$exists': True, '$not': {'$size': 0}}}},
             {'$unwind': '$tagged'},
             {'$group': {'_id': '$tagged', 'initiatives': {'$sum': 1}}},
             {'$sort': {'initiatives': -1}}
             ]
-        result = Initiative.objects().aggregate(*pipeline)
-        for item in result:
-            self.stats['overall']['topics'].append(item)
+        for kb in self.knowledgebases:
+            print(kb)
+            results = list(Initiatives.by_kb(kb))
+            print(results)
+            results = Initiatives.by_kb(kb).aggregate(*pipeline)
+            print(results)
+            for item in results:
+                self.stats['overall']['topics'][kb].append(item)
+
         for subtopic in self.subtopics:
             pipeline = [
                 {'$match': {'tagged.tags.subtopic': subtopic}},
                 {'$group': {'_id': subtopic, 'initiatives': {'$sum': 1}}}
                 ]
-            result = Initiative.objects().aggregate(*pipeline)
-            if result._has_next():
-                self.stats['overall']['subtopics'].append(result.next())
-        self.stats['overall']['subtopics'].sort(key=lambda x: x['initiatives'], reverse=True)
+            for kb in self.knowledgebases:
+                results = Initiatives.by_kb(kb).aggregate(*pipeline)
+                while results._has_next():
+                    self.stats['overall']['subtopics'][kb].append(results.next())
+
+        for kb in self.knowledgebases:
+            self.stats['overall']['subtopics'][kb].sort(key=lambda x: x['initiatives'], reverse=True)
 
     def deputies_by_topics(self):
-        self.stats['deputiesByTopics'] = list()
+        self.stats['deputiesByTopics'] = {}
+        for kb in self.knowledgebases:
+            self.stats['deputiesByTopics'][kb] = list()
+
         for topic in self.topics:
             pipeline = [
                     {'$match': {'tagged.topics': topic['name']}}, {'$unwind': '$author_deputies'},
                     {'$group': {'_id': '$author_deputies', 'initiatives': {'$sum': 1}}}, {'$sort': {'initiatives': -1}},
                     {'$limit': 10}
                     ]
-            result = list(Initiative.objects().aggregate(*pipeline))
-            if len(result) > 0:
-                self.stats['deputiesByTopics'].append({
-                    '_id': topic['name'],
-                    'deputies': result
+            for kb in self.knowledgebases:
+                results = Initiatives.by_kb(kb).aggregate(*pipeline)
+                if len(list(results)) > 0:
+                    self.stats['deputiesByTopics'][kb].append({
+                        '_id': topic['name'],
+                        'deputies': results
                     })
 
     def parliamentarygroups_by_topics(self):
-        self.stats['parliamentarygroupsByTopics'] = list()
+        self.stats['parliamentarygroupsByTopics'] = {}
+        for kb in self.knowledgebases:
+            self.stats['parliamentarygroupsByTopics'][kb] = list()
+
         for topic in self.topics:
             pipeline = [
                     {'$match': {'tagged.topics': topic['name']}}, {'$unwind': '$author_parliamentarygroups'},
                     {'$group': {'_id': '$author_parliamentarygroups', 'initiatives': {'$sum': 1}}}, {'$sort': {'initiatives': -1}}
                     ]
-            result = list(Initiative.objects().aggregate(*pipeline))
-            if len(result) > 0:
-                self.stats['parliamentarygroupsByTopics'].append({
-                    '_id': topic['name'],
-                    'parliamentarygroups': result
+            for kb in self.knowledgebases:
+                results = Initiatives.by_kb(kb).aggregate(*pipeline)
+                if len(list(results)) > 0:
+                    self.stats['parliamentarygroupsByTopics'][kb].append({
+                        '_id': topic['name'],
+                        'parliamentarygroups': results
                     })
 
     def places_by_topics(self):
-        self.stats['placesByTopics'] = list()
+        self.stats['placesByTopics'] = {}
+        for kb in self.knowledgebases:
+            self.stats['placesByTopics'][kb] = list()
+
         for topic in self.topics:
             pipeline = [
                     {'$match': {'tagged.topics': topic['name'], 'place': {'$not': {'$eq': ""}, '$exists': True}}},
                     {'$group': {'_id': '$place', 'initiatives': {'$sum': 1}}}, {'$sort': {'initiatives': -1}},
                     {'$limit': 5}
                     ]
-            result = list(Initiative.objects().aggregate(*pipeline))
-            if len(result) > 0:
-                self.stats['placesByTopics'].append({
-                    '_id': topic['name'],
-                    'places': result
+            for kb in self.knowledgebases:
+                results = Initiatives.by_kb(kb).aggregate(*pipeline)
+
+                if len(list(results)) > 0:
+                    self.stats['placesByTopics'][kb].append({
+                        '_id': topic['name'],
+                        'places': results
                     })
 
     def deputies_by_subtopics(self):
-        self.stats['deputiesBySubtopics'] = list()
+        self.stats['deputiesBySubtopics'] = {}
+        for kb in self.knowledgebases:
+            self.stats['deputiesBySubtopics'][kb] = list()
+
         for subtopic in self.subtopics:
             pipeline = [
                     {'$match': { 'tagged.tags.subtopic': subtopic } }, {'$unwind': '$author_deputies'},
                     {'$group': {'_id': '$author_deputies', 'initiatives': {'$sum': 1}}}, {'$sort': {'initiatives': -1}},
                     {'$limit': 10}
                     ]
-            result = list(Initiative.objects().aggregate(*pipeline))
-            if len(result) > 0:
-                self.stats['deputiesBySubtopics'].append({
-                    '_id': subtopic,
-                    'deputies': result
+
+            for kb in self.knowledgebases:
+                results = Initiatives.by_kb(kb).aggregate(*pipeline)
+                if len(list(results)) > 0:
+                    self.stats['deputiesBySubtopics'][kb].append({
+                        '_id': subtopic,
+                        'deputies': results
                     })
 
     def parliamentarygroups_by_subtopics(self):
-        self.stats['parliamentarygroupsBySubtopics'] = list()
+        self.stats['parliamentarygroupsBySubtopics'] = {}
+        for kb in self.knowledgebases:
+            self.stats['parliamentarygroupsBySubtopics'][kb] = list()
+
         for subtopic in self.subtopics:
             pipeline = [
                     {'$match': { 'tagged.tags.subtopic': subtopic } }, {'$unwind': '$author_parliamentarygroups'},
                     {'$group': {'_id': '$author_parliamentarygroups', 'initiatives': {'$sum': 1}}}, {'$sort': {'initiatives': -1}}
                     ]
-            result = list(Initiative.objects().aggregate(*pipeline))
-            if len(result) > 0:
-                self.stats['parliamentarygroupsBySubtopics'].append({
-                    '_id': subtopic,
-                    'parliamentarygroups': result
+            for kb in self.knowledgebases:
+                results = Initiatives.by_kb(kb).aggregate(*pipeline)
+                if len(list(results)) > 0:
+                    self.stats['parliamentarygroupsBySubtopics'][kb].append({
+                        '_id': subtopic,
+                        'parliamentarygroups': results
                     })
 
     def places_by_subtopics(self):
-        self.stats['placesBySubtopics'] = list()
+        self.stats['placesBySubtopics'] = {}
+        for kb in self.knowledgebases:
+            self.stats['placesBySubtopics'][kb] = list()
+
         for subtopic in self.subtopics:
             pipeline = [
                     {'$match': { 'tagged.tags.subtopic': subtopic, 'place': {'$not': {'$eq': ""}, '$exists': True}}},
                     {'$group': {'_id': '$place', 'initiatives': {'$sum': 1}}}, {'$sort': {'initiatives': -1}},
                     {'$limit': 5}
                     ]
-            result = list(Initiative.objects().aggregate(*pipeline))
-            if len(result) > 0:
-                self.stats['placesBySubtopics'].append({
-                    '_id': subtopic,
-                    'places': result
+
+            for kb in self.knowledgebases:
+                results = Initiatives.by_kb(kb).aggregate(*pipeline)
+                if len(list(results)) > 0:
+                    self.stats['placesBySubtopics'][kb].append({
+                        '_id': subtopic,
+                        'places': results
                     })
 
 

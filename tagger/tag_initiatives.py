@@ -110,7 +110,7 @@ class TagInitiatives:
     def by_reference(self, reference):
         tags = codecs.encode(pickle.dumps(Tags.get_all()), "base64").decode()
         initiatives = list(Initiatives.by_reference(reference))
-        self.tag_initiatives(initiatives, tags, True, False)
+        self.tag_initiatives(initiatives, tags, False, False)
 
     def rename(self, old_tag, new_tag):
         initiatives = Initiatives.by_tag(old_tag)
