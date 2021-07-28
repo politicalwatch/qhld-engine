@@ -40,11 +40,7 @@ class GenerateStats(object):
             {'$sort': {'initiatives': -1}}
             ]
         for kb in self.knowledgebases:
-            print(kb)
-            results = list(Initiatives.by_kb(kb))
-            print(results)
             results = Initiatives.by_kb(kb).aggregate(*pipeline)
-            print(results)
             for item in results:
                 self.stats['overall']['topics'][kb].append(item)
 
@@ -55,8 +51,8 @@ class GenerateStats(object):
                 ]
             for kb in self.knowledgebases:
                 results = Initiatives.by_kb(kb).aggregate(*pipeline)
-                while results._has_next():
-                    self.stats['overall']['subtopics'][kb].append(results.next())
+                for item in results:
+                    self.stats['overall']['subtopics'][kb].append(item)
 
         for kb in self.knowledgebases:
             self.stats['overall']['subtopics'][kb].sort(key=lambda x: x['initiatives'], reverse=True)
@@ -73,8 +69,8 @@ class GenerateStats(object):
                     {'$limit': 10}
                     ]
             for kb in self.knowledgebases:
-                results = Initiatives.by_kb(kb).aggregate(*pipeline)
-                if len(list(results)) > 0:
+                results = list(Initiatives.by_kb(kb).aggregate(*pipeline))
+                if len(results) > 0:
                     self.stats['deputiesByTopics'][kb].append({
                         '_id': topic['name'],
                         'deputies': results
@@ -91,8 +87,8 @@ class GenerateStats(object):
                     {'$group': {'_id': '$author_parliamentarygroups', 'initiatives': {'$sum': 1}}}, {'$sort': {'initiatives': -1}}
                     ]
             for kb in self.knowledgebases:
-                results = Initiatives.by_kb(kb).aggregate(*pipeline)
-                if len(list(results)) > 0:
+                results = list(Initiatives.by_kb(kb).aggregate(*pipeline))
+                if len(results) > 0:
                     self.stats['parliamentarygroupsByTopics'][kb].append({
                         '_id': topic['name'],
                         'parliamentarygroups': results
@@ -110,9 +106,9 @@ class GenerateStats(object):
                     {'$limit': 5}
                     ]
             for kb in self.knowledgebases:
-                results = Initiatives.by_kb(kb).aggregate(*pipeline)
+                results = list(Initiatives.by_kb(kb).aggregate(*pipeline))
 
-                if len(list(results)) > 0:
+                if len(results) > 0:
                     self.stats['placesByTopics'][kb].append({
                         '_id': topic['name'],
                         'places': results
@@ -131,8 +127,8 @@ class GenerateStats(object):
                     ]
 
             for kb in self.knowledgebases:
-                results = Initiatives.by_kb(kb).aggregate(*pipeline)
-                if len(list(results)) > 0:
+                results = list(Initiatives.by_kb(kb).aggregate(*pipeline))
+                if len(results) > 0:
                     self.stats['deputiesBySubtopics'][kb].append({
                         '_id': subtopic,
                         'deputies': results
@@ -149,8 +145,8 @@ class GenerateStats(object):
                     {'$group': {'_id': '$author_parliamentarygroups', 'initiatives': {'$sum': 1}}}, {'$sort': {'initiatives': -1}}
                     ]
             for kb in self.knowledgebases:
-                results = Initiatives.by_kb(kb).aggregate(*pipeline)
-                if len(list(results)) > 0:
+                results = list(Initiatives.by_kb(kb).aggregate(*pipeline))
+                if len(results) > 0:
                     self.stats['parliamentarygroupsBySubtopics'][kb].append({
                         '_id': subtopic,
                         'parliamentarygroups': results
@@ -169,8 +165,8 @@ class GenerateStats(object):
                     ]
 
             for kb in self.knowledgebases:
-                results = Initiatives.by_kb(kb).aggregate(*pipeline)
-                if len(list(results)) > 0:
+                results = list(Initiatives.by_kb(kb).aggregate(*pipeline))
+                if len(results) > 0:
                     self.stats['placesBySubtopics'][kb].append({
                         '_id': subtopic,
                         'places': results
