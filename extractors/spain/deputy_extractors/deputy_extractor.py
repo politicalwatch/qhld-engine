@@ -1,8 +1,12 @@
 import re
+from urllib.parse import urlparse, parse_qs
+import datetime
+
 from lxml.html import document_fromstring
+
 from tipi_data.models.deputy import Deputy
 from tipi_data.utils import generate_id
-from urllib.parse import urlparse, parse_qs
+
 
 class DeputyExtractor():
     BASE_URL = 'https://www.congreso.es'
@@ -64,6 +68,9 @@ class DeputyExtractor():
         if mail != '':
             self.deputy['email'] = mail
 
+    def parse_date(self, date_str):
+        return datetime.datetime.strptime(date_str, "%d/%m/%Y")
+
     def clean_str(self, string):
         return re.sub(r'\s+', ' ', string).strip()
 
@@ -77,9 +84,9 @@ class DeputyExtractor():
         date_elements = self.get_by_css('.f-alta')
         end_date = self.clean_str(date_elements[1].text_content()).replace("Causó baja el ", "")[:10]
 
-        self.deputy['start_date'] = self.clean_str(date_elements[0].text_content()).replace("Condición plena: ", "")[:10]
+        self.deputy['start_date'] = self.parse_date(self.clean_str(date_elements[0].text_content()).replace("Condición plena: ", "")[:10])
         if end_date != '':
-            self.deputy['end_date'] = end_date
+            self.deputy['end_date'] = self.parse_date(end_date)
         self.deputy['active'] = end_date == ''
 
     def extract_social_media(self):
@@ -119,7 +126,7 @@ class DeputyExtractor():
         birthday_paragraph = self.clean_str(self.get_by_xpath("//h3[normalize-space(text()) = 'Ficha personal']/following-sibling::p[1]")[0].text)
         birthday = birthday_paragraph.replace("Nacido el ", "").replace("Nacida el ", "")[:10]
         if birthday != '':
-            self.deputy['birthdate'] = birthday
+            self.deputy['birthdate'] = self.parse_date(birthday)
 
         legislatures_paragraph = self.clean_str(self.get_by_xpath("//h3[normalize-space(text()) = 'Ficha personal']/following-sibling::p[2]")[0].text)
         self.deputy['legislatures'] = legislatures_paragraph.replace("Diputada", "").replace("Diputado", "").replace(" de la ", "").replace(" Legislaturas", "").replace("y ", "").split(", ")
