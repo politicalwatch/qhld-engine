@@ -65,7 +65,7 @@ class DeputyExtractor():
             self.deputy['email'] = mail
 
     def clean_str(self, string):
-        return re.sub('\s+', ' ', string).strip()
+        return re.sub(r'\s+', ' ', string).strip()
 
     def get_public_positions(self):
         positions = []
