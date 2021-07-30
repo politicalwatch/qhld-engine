@@ -75,9 +75,9 @@ class DeputyExtractor():
 
     def extract_dates(self):
         date_elements = self.get_by_css('.f-alta')
-        end_date = self.clean_str(date_elements[1].text_content()).replace("Causó baja el ", "")[:28]
+        end_date = self.clean_str(date_elements[1].text_content()).replace("Causó baja el ", "")[:10]
 
-        self.deputy['start_date'] = self.clean_str(date_elements[0].text_content()).replace("Condición plena: ", "")[:28]
+        self.deputy['start_date'] = self.clean_str(date_elements[0].text_content()).replace("Condición plena: ", "")[:10]
         if end_date != '':
             self.deputy['end_date'] = end_date
         self.deputy['active'] = end_date == ''
@@ -117,7 +117,7 @@ class DeputyExtractor():
 
     def extract_from_text(self):
         birthday_paragraph = self.clean_str(self.get_by_xpath("//h3[normalize-space(text()) = 'Ficha personal']/following-sibling::p[1]")[0].text)
-        birthday = birthday_paragraph.replace("Nacido el ", "").replace("Nacida el ", "")[:29]
+        birthday = birthday_paragraph.replace("Nacido el ", "").replace("Nacida el ", "")[:10]
         if birthday != '':
             self.deputy['birthdate'] = birthday
 
