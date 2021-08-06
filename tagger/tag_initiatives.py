@@ -75,7 +75,7 @@ class TagInitiatives:
                     result = self.__merge_results(title_result, body_result)
 
                 for tag in result['tags']:
-                    initiative.add_tag(tag['knowledgebase'], tag['topic'], tag['subtopic'], tag['tag'], tag['times'])
+                    initiative.add_tag(tag['knowledgebase'], tag['public'], tag['topic'], tag['subtopic'], tag['tag'], tag['times'])
 
                 initiative.remove_single_occurences()
                 initiative.save()
