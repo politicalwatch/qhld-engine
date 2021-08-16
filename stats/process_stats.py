@@ -1,6 +1,7 @@
 from tipi_data.models.stats import Stats
-from tipi_data.repositories.topics import Topics
 from tipi_data.repositories.initiatives import Initiatives
+from tipi_data.repositories.knowledgebases import KnowledgeBases
+from tipi_data.repositories.topics import Topics
 
 
 class GenerateStats(object):
@@ -8,7 +9,7 @@ class GenerateStats(object):
     def __init__(self):
         self.topics = Topics.get_all()
         self.subtopics = self.topics.distinct('tags.subtopic')
-        self.knowledgebases = list(Topics.get_kbs())
+        self.knowledgebases = list(KnowledgeBases.get_all())
         self.stats = Stats()
 
     def generate(self):
@@ -42,7 +43,8 @@ class GenerateStats(object):
         for kb in self.knowledgebases:
             results = Initiatives.by_kb(kb).aggregate(*pipeline)
             for item in results:
-                self.stats['overall']['topics'][kb].append(item)
+                if item['_id']['knowledgebase'] == kb:
+                    self.stats['overall']['topics'][kb].append(item['_id'])
 
         for subtopic in self.subtopics:
             pipeline = [
