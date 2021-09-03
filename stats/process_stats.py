@@ -7,8 +7,8 @@ from tipi_data.repositories.topics import Topics
 class GenerateStats(object):
 
     def __init__(self):
-        self.topics = Topics.get_all()
-        self.subtopics = self.topics.distinct('tags.subtopic')
+        self.topics = Topics.get_all_sorted()
+        self.subtopics = Topics.get_subtopics()
         self.knowledgebases = list(KnowledgeBases.get_all())
         self.stats = Stats()
 
@@ -34,29 +34,26 @@ class GenerateStats(object):
             self.stats['overall']['topics'][kb] = list()
             self.stats['overall']['subtopics'][kb] = list()
 
-        pipeline = [
-            {'$match': {'tagged': {'$exists': True, '$not': {'$size': 0}}}},
-            {'$unwind': '$tagged'},
-            {'$group': {'_id': '$tagged', 'initiatives': {'$sum': 1}}},
-            {'$sort': {'initiatives': -1}}
-            ]
-        for kb in self.knowledgebases:
-            results = Initiatives.by_kb(kb).aggregate(*pipeline)
-            for item in results:
-                if item['_id']['knowledgebase'] == kb:
-                    self.stats['overall']['topics'][kb].append(item['_id'])
-
-        for subtopic in self.subtopics:
-            pipeline = [
-                {'$match': {'tagged.tags.subtopic': subtopic}},
-                {'$group': {'_id': subtopic, 'initiatives': {'$sum': 1}}}
+            topics = Topics.by_kb(kb)
+            for topic in topics:
+                pipeline = [
+                    {'$match': {'tagged.tags.topics': topic.name}},
+                    {'$group': {'_id': topic.name, 'initiatives': {'$sum': 1}}}
                 ]
-            for kb in self.knowledgebases:
+                results = Initiatives.by_kb(kb).aggregate(*pipeline)
+                for item in results:
+                    if item['_id']['knowledgebase'] == kb:
+                        self.stats['overall']['topics'][kb].append(item['_id'])
+
+            subtopics = Topics.by_kb(kb).distinct('tags.subtopic')
+            for subtopic in subtopics:
+                pipeline = [
+                    {'$match': {'tagged.tags.subtopic': subtopic}},
+                    {'$group': {'_id': subtopic, 'initiatives': {'$sum': 1}}}
+                    ]
                 results = Initiatives.by_kb(kb).aggregate(*pipeline)
                 for item in results:
                     self.stats['overall']['subtopics'][kb].append(item)
-
-        for kb in self.knowledgebases:
             self.stats['overall']['subtopics'][kb].sort(key=lambda x: x['initiatives'], reverse=True)
 
     def deputies_by_topics(self):
