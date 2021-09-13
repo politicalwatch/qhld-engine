@@ -40,13 +40,12 @@ class GenerateStats(object):
 
             for topic in self.topics[kb]:
                 pipeline = [
-                    {'$match': {'tagged.tags.topics': topic.name}},
+                    {'$match': {'tagged.tags.topic': topic.name}},
                     {'$group': {'_id': topic.name, 'initiatives': {'$sum': 1}}}
                 ]
                 results = Initiatives.by_kb(kb).aggregate(*pipeline)
                 for item in results:
-                    if item['_id']['knowledgebase'] == kb:
-                        self.stats['overall']['topics'][kb].append(item['_id'])
+                    self.stats['overall']['topics'][kb].append(item)
 
             for subtopic in self.subtopics[kb]:
                 pipeline = [

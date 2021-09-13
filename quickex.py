@@ -13,15 +13,15 @@ def print_help():
     print('Example: python quickex.py stats')
 
 def run_command(commands, arguments):
-    if len(args) > 2:
-        if args[2] in commands:
-            args_amount = len(args)
+    if len(arguments) > 2:
+        if arguments[2] in commands:
+            args_amount = len(arguments)
             if args_amount == 4:
-                return commands[args[2]](args[3])
+                return commands[arguments[2]](arguments[3])
             if args_amount == 5:
-                return commands[args[2]](args[3], args[4])
+                return commands[arguments[2]](arguments[3], arguments[4])
             else:
-                return commands[args[2]]()
+                return commands[arguments[2]]()
         else:
             print('quickex: invalid TASK')
             return
