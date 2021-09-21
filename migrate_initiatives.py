@@ -49,15 +49,23 @@ def merge_initiatives():
 
             for field in fields:
                 set_field(field, new_initiative, initiative)
-                add_tags(kb, new_initiative, initiative)
+
+            add_tags(kb, new_initiative, initiative)
 
             initiative.save()
 
+loaded_initiatives = {}
 def get_initiative(reference):
+    if reference in loaded_initiatives:
+        return loaded_initiatives[reference]
+
     try:
-        return Initiative.all.get(reference=reference)
+        initiative= Initiative.all.get(reference=reference)
     except Exception:
-        return Initiative(reference=reference)
+        initiative = Initiative(reference=reference)
+
+    loaded_initiatives[reference] = initiative
+    return initiative
 
 def set_field(field, origin, destination):
     exist_on_origin = field in origin
