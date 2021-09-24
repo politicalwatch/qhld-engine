@@ -45,7 +45,7 @@ def merge_initiatives():
         initiatives = db_collection.objects()
 
         for new_initiative in initiatives:
-            initiative = get_initiative(new_initiative['reference'])
+            initiative = get_initiative(new_initiative['id'])
 
             for field in fields:
                 set_field(field, new_initiative, initiative)
@@ -55,21 +55,21 @@ def merge_initiatives():
             initiative.save()
 
 loaded_initiatives = {}
-def get_initiative(reference):
-    if reference in loaded_initiatives:
-        return loaded_initiatives[reference]
+def get_initiative(id):
+    if id in loaded_initiatives:
+        return loaded_initiatives[id]
 
     try:
-        initiative= Initiative.all.get(reference=reference)
+        initiative= Initiative.all.get(id=id)
     except Exception:
-        initiative = Initiative(reference=reference)
+        initiative = Initiative(id=id)
 
-    loaded_initiatives[reference] = initiative
+    loaded_initiatives[id] = initiative
     return initiative
 
 def set_field(field, origin, destination):
     exist_on_origin = field in origin
-    empty_on_destination = field not in destination or destination[field] == None
+    empty_on_destination = field not in destination or destination[field] == None or not destination[field]
     if exist_on_origin and empty_on_destination:
         destination[field] = origin[field]
 
