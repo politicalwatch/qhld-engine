@@ -160,10 +160,17 @@ class InitiativeExtractor:
                         if self.__is_deputy(deputy_name):
                             self.initiative['author_deputies'].append(deputy_name)
                     else:
-                        parliamentarygroup_name = item.text_content() \
-                            if self.parliamentarygroup_sufix not in item.text_content() \
-                            else re.sub(self.parliamentarygroup_sufix, '', item.text_content())
-                        self.initiative['author_parliamentarygroups'].append(parliamentarygroup_name)
+                        if self.__is_deputy(item.text_content()):
+                            self.initiative['author_deputies'].append(item.text_content())
+                            parliamentarygroup_name = self.__get_parliamentarygroup_name(
+                                    self.__get_parliamentarygroup_from_deputy(item.text_content()))
+                            if parliamentarygroup_name:
+                                self.initiative['author_parliamentarygroups'].append(parliamentarygroup_name)
+                        else:
+                            parliamentarygroup_name = item.text_content() \
+                                if self.parliamentarygroup_sufix not in item.text_content() \
+                                else re.sub(self.parliamentarygroup_sufix, '', item.text_content())
+                            self.initiative['author_parliamentarygroups'].append(parliamentarygroup_name)
         self.initiative['author_parliamentarygroups'] = list(set(self.initiative['author_parliamentarygroups']))
 
     def get_place(self):
@@ -205,6 +212,12 @@ class InitiativeExtractor:
             if deputy.name == name:
                 return True
         return False
+
+    def __get_parliamentarygroup_from_deputy(self, name):
+        for deputy in self.deputies:
+            if deputy.name == name:
+                return deputy['parliamentarygroup']
+        return None
 
     def __is_parliamentarygroup(self, name):
         for parliamentarygroup in self.parliamentarygroups:
