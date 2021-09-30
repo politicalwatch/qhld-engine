@@ -81,4 +81,23 @@ def add_tags(kb, origin, destination):
     for tag in origin['tags']:
         destination.add_tag(kb, True, tag['topic'], tag['subtopic'], tag['tag'], tag['times'])
 
+def __get_value(f, o):
+    try:
+        return o[f]
+    except KeyError:
+        return None
+
+def merge_and_delete_answers():
+    answers = Initiative.objects(initiative_type_alt='Respuesta')
+    for answer in answers:
+        print("Processing {}".format(answer['reference']))
+        question = Initiative.objects(reference=answer['reference'], initiative_type_alt__ne='Respuesta').first()
+        question['extra']['answer'] = dict()
+        question['extra']['answer']['content'] = answer['content']
+        question['extra']['answer']['tagged'] = [a.serialize() for a in answer['tagged']]
+        question.save()
+        answer.delete()
+
+
 merge_initiatives()
+merge_and_delete_answers()
