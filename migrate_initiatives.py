@@ -21,6 +21,7 @@ collections = [
 
 fields = [
     'id',
+    'reference',
     'title',
     'initiative_type',
     'initiative_type_alt',

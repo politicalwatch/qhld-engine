@@ -5,6 +5,8 @@ from tagger.tag_initiatives import TagInitiatives
 from untagger.untag_initiatives import UntagInitiatives
 from alerts.send_alerts import SendAlerts
 from stats.process_stats import GenerateStats
+from tipi_data.repositories.initiatives import Initiatives
+from tipi_data.models.alert import create_alert
 
 
 def print_help():
@@ -29,6 +31,13 @@ def run_command(commands, arguments):
 
 def send_alerts(args):
     SendAlerts()
+
+def generate_alert(arguments):
+    reference = arguments[2]
+    initiative = Initiatives.by_reference(reference)
+    create_alert(initiative[0])
+    print('Alerts created')
+
 
 def modify_regex(tag):
     tagger = TagInitiatives()
@@ -96,6 +105,7 @@ def extract(args):
 
 commands = {
     'alerts': send_alerts,
+    'generate-alert': generate_alert,
     'tagger': tag,
     'untagger': untag,
     'stats': stats,
