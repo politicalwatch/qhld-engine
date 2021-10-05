@@ -5,7 +5,7 @@ import codecs
 import tipi_tasks
 from tipi_data.repositories.tags import Tags
 from tipi_data.repositories.initiatives import Initiatives
-from tipi_data.repositories.alerts import Alerts
+from tipi_data.repositories.alerts import InitiativeAlerts
 from tipi_data.models.initiative import Tag
 from tipi_data.models.alert import create_alert
 
@@ -85,7 +85,7 @@ class TagInitiatives:
                 log.error(f"Error tagging {initiative['id']}: {e}")
 
     def run(self):
-        Alerts.get_all().delete()
+        InitiativeAlerts.get_all().delete()
         tags = codecs.encode(pickle.dumps(Tags.get_all()), "base64").decode()
         initiatives = list(Initiatives.get_all_untagged())
         self.tag_initiatives(initiatives, tags)
