@@ -1,4 +1,4 @@
-Scrapy==1.5.1
+Scrapy==1.8.1
 cryptography==2.8
 fuzzywuzzy==0.17.0
 git+https://github.com/politicalwatch/tipi-tasks.git
