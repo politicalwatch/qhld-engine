@@ -141,7 +141,9 @@ class InitiativeExtractor:
             else:
                 regex_short_parliamentarygroup = r' \(.+\)'
                 regex_more_deputies = r' y [0-9]+ Diputados'
-                has_short_parliamentarygroup = re.search(regex_short_parliamentarygroup, item.text_content())
+                _short_parliamentarygroup = re.search(regex_short_parliamentarygroup, item.text_content())
+                has_short_parliamentarygroup = _short_parliamentarygroup \
+                    and self.__is_short_parliamentarygroup(_short_parliamentarygroup.group().strip()[1:-1])
                 if has_short_parliamentarygroup:
                     deputy_name = re.sub(regex_short_parliamentarygroup, '', item.text_content())
                     if re.search(regex_more_deputies, deputy_name):
@@ -222,6 +224,12 @@ class InitiativeExtractor:
     def __is_parliamentarygroup(self, name):
         for parliamentarygroup in self.parliamentarygroups:
             if parliamentarygroup.name == name:
+                return True
+        return False
+
+    def __is_short_parliamentarygroup(self, shortname):
+        for parliamentarygroup in self.parliamentarygroups:
+            if parliamentarygroup.shortname == shortname:
                 return True
         return False
 
