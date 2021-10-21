@@ -1,10 +1,11 @@
 import requests
+from logger import get_logger
 
 from concurrent.futures import as_completed
 from requests_futures.sessions import FuturesSession
 from .deputy_extractors.deputy_extractor import DeputyExtractor
 
-from logger import get_logger
+from tipi_data.models.parliamentarygroup import ParliamentaryGroup
 
 
 log = get_logger(__name__)
@@ -17,6 +18,7 @@ class MembersExtractor:
         self.total = 0
         self.LEGISLATURE = 14
         self.references = []
+        self.parliamentarygroups = ParliamentaryGroup.objects()
 
     def extract(self):
         query_params = {
@@ -71,4 +73,4 @@ class MembersExtractor:
         for future in as_completed(future_requests):
             response = future.result()
             if response.ok:
-                DeputyExtractor(response).extract()
+                DeputyExtractor(response, self.parliamentarygroups).extract()

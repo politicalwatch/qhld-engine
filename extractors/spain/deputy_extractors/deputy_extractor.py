@@ -1,18 +1,23 @@
 import re
 from datetime import datetime
-from urllib.parse import urlparse, parse_qs
+from logger import get_logger
 
 from lxml.html import document_fromstring
+from thefuzz import process
 
 from tipi_data.models.deputy import Deputy
-
 from tipi_data.utils import generate_slug
+
+
+log = get_logger(__name__)
+
 
 class DeputyExtractor():
     BASE_URL = 'https://www.congreso.es'
 
-    def __init__(self, response):
+    def __init__(self, response, parliamentarygroups):
         self.response = response
+        self.groups = list(map(lambda x: x['shortname'], parliamentarygroups))
         self.node_tree = document_fromstring(response.text)
         self.deputy = Deputy()
 
@@ -49,7 +54,6 @@ class DeputyExtractor():
             return ''
         return self.clean_str(item[0].text)
 
-
     def get_by_css(self, selector):
         return self.node_tree.cssselect(selector)
 
@@ -57,11 +61,16 @@ class DeputyExtractor():
         return self.node_tree.xpath(xpath)
 
     def get_abbr_group(self):
-        abbr_group_regex = '\(([^)]+)'
+        abbr_group_regex = r'\(([^)]+)'
         group = self.get_text_by_css('.grupo-dip a')
         if not group:
             return ''
-        return re.search(abbr_group_regex, group).group(1).strip()
+        group = re.search(abbr_group_regex, group).group(1).strip()
+        valid_group = process.extractOne(group, self.groups)
+        if not valid_group:
+            return ''
+        return valid_group[0]
+
 
     def extract_mail(self):
         mail = self.get_text_by_css('.email-dip a')

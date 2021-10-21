@@ -1,6 +1,5 @@
 Scrapy==1.5.1
 cryptography==2.8
-fuzzywuzzy==0.17.0
 git+https://github.com/politicalwatch/tipi-tasks.git
 git+https://github.com/politicalwatch/tipi-data.git
 ipdb==0.12.3
@@ -15,3 +14,4 @@ python-Levenshtein==0.12.0
 beautifulsoup4==4.8.0
 pdf2image==1.14.0
 pytesseract==0.3.7
+thefuzz==0.19.0
