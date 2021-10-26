@@ -91,7 +91,7 @@ def add_tags(kb, origin, destination):
         return
 
     for tag in origin['tags']:
-        destination.add_tag(kb, True, tag['topic'], tag['subtopic'], tag['tag'], tag['times'])
+        destination.add_tag(kb, tag['topic'], tag['subtopic'], tag['tag'], tag['times'])
 
 def __get_value(f, o):
     try:
