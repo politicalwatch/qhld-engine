@@ -12,6 +12,7 @@ from tipi_data.models.deputy import Deputy
 from tipi_data.models.parliamentarygroup import ParliamentaryGroup
 from tipi_data.models.place import Place
 from tipi_data.models.initiative import Initiative
+from tipi_data.repositories.initiatives import Initiatives
 
 from extractors.config import ID_LEGISLATURA
 from .initiative_types import INITIATIVE_TYPES
@@ -112,7 +113,7 @@ class InitiativesExtractor:
 
     def extract_references_from_type(self, type_code):
         self.sync_totals()
-        initiatives = Initiative.all.filter(initiative_type=type_code).order_by('reference').only('reference', 'status')
+        initiatives = Initiatives.get_all().filter(initiative_type=type_code).order_by('reference').only('reference', 'status')
 
         last_references = {}
         totals = {}
@@ -158,7 +159,7 @@ class InitiativesExtractor:
 
     def extract_references(self):
         self.sync_totals()
-        initiatives = Initiative.all.order_by('reference').only('reference', 'status')
+        initiatives = Initiatives.get_all().order_by('reference').only('reference', 'status')
 
         last_references = {}
         totals = {}
