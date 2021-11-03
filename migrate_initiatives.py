@@ -176,7 +176,7 @@ def get_alert(email):
 
 def execute_merge():
     merge_initiatives()
-    merge_and_delete_answers()
+    #merge_and_delete_answers()
     merge_alerts()
 
 execute_merge()
