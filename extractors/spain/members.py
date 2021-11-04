@@ -66,6 +66,8 @@ class MembersExtractor:
                 'mostrarAgenda': 'false'
             }
             session = FuturesSession()
+            # This header value prevents parsed dates on raw HTML content
+            session.headers.update({"Accept-Language": 'es-ES'})
             future_requests.append(session.get(
                 self.BASE_URL,
                 params=query_params

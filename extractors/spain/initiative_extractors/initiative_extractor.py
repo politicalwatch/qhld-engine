@@ -92,9 +92,12 @@ class InitiativeExtractor:
             self.initiative['initiative_type_alt'] = self.soup.select('.titular-seccion')[1].text[:-1]
             self.initiative['place'] = self.get_place()
             self.populate_authors()
-            self.initiative['created'] = self.__parse_date(re.search(
-                self.date_regex,
-                self.soup.select_one('.f-present').text.split(',')[0].strip()).group())
+            try:
+                self.initiative['created'] = self.__parse_date(re.search(
+                    self.date_regex,
+                    self.soup.select_one('.f-present').text.split(',')[0].strip()).group())
+            except Exception as e:
+                log.error(f"Error extracting the creation date at {self.url}")
             self.initiative['updated'] = self.get_last_date()
             self.initiative['history'] = self.get_history()
             self.initiative['status'] = self.get_status()
@@ -128,43 +131,56 @@ class InitiativeExtractor:
             return None
 
     def populate_authors(self):
-        self.initiative['author_deputies'] = []
-        self.initiative['author_parliamentarygroups'] = []
-        self.initiative['author_others'] = []
-        xpath = "//section[@id='portlet_iniciativas']//div[@class=' portlet-content-container']//h3[contains(text(),'Autor')]/following-sibling::ul[1]/li"
-        authors_list = self.node_tree.xpath(xpath)
+        try:
+            self.initiative['author_deputies'] = []
+            self.initiative['author_parliamentarygroups'] = []
+            self.initiative['author_others'] = []
+            xpath = "//section[@id='portlet_iniciativas']//div[@class=' portlet-content-container']//h3[contains(text(),'Autor')]/following-sibling::ul[1]/li"
+            authors_list = self.node_tree.xpath(xpath)
 
-        for item in authors_list:
-            a_tags = item.cssselect('a')
-            if len(a_tags) == 0:
-                self.initiative['author_others'].append(item.text_content())
-            else:
-                regex_short_parliamentarygroup = r' \(.+\)'
-                regex_more_deputies = r' y [0-9]+ Diputados'
-                has_short_parliamentarygroup = re.search(regex_short_parliamentarygroup, item.text_content())
-                if has_short_parliamentarygroup:
-                    deputy_name = re.sub(regex_short_parliamentarygroup, '', item.text_content())
-                    if re.search(regex_more_deputies, deputy_name):
-                        deputy_name = re.sub(regex_more_deputies, '', deputy_name)
-                        self.initiative['author_others'].append(item.text_content())
-                    if self.__is_deputy(deputy_name):
-                        self.initiative['author_deputies'].append(deputy_name)
-                        parliamentarygroup_name = self.__get_parliamentarygroup_name(
-                                has_short_parliamentarygroup.group()[2:][:-1])
-                        if parliamentarygroup_name:
-                            self.initiative['author_parliamentarygroups'].append(parliamentarygroup_name)
+            for item in authors_list:
+                a_tags = item.cssselect('a')
+                if len(a_tags) == 0:
+                    self.initiative['author_others'].append(item.text_content())
                 else:
-                    if re.search(regex_more_deputies, item.text_content()):
-                        deputy_name = re.sub(regex_more_deputies, '', item.text_content())
-                        self.initiative['author_others'].append(item.text_content())
+                    regex_short_parliamentarygroup = r' \(.+\)'
+                    regex_more_deputies = r' y [0-9]+ Diputados'
+                    _short_parliamentarygroup = re.search(regex_short_parliamentarygroup, item.text_content())
+                    has_short_parliamentarygroup = _short_parliamentarygroup \
+                        and self.__is_short_parliamentarygroup(_short_parliamentarygroup.group().strip()[1:-1])
+                    if has_short_parliamentarygroup:
+                        deputy_name = re.sub(regex_short_parliamentarygroup, '', item.text_content())
+                        if re.search(regex_more_deputies, deputy_name):
+                            deputy_name = re.sub(regex_more_deputies, '', deputy_name)
+                            self.initiative['author_others'].append(item.text_content())
                         if self.__is_deputy(deputy_name):
                             self.initiative['author_deputies'].append(deputy_name)
+                            parliamentarygroup_name = self.__get_parliamentarygroup_name(
+                                    has_short_parliamentarygroup.group()[2:][:-1])
+                            if parliamentarygroup_name:
+                                self.initiative['author_parliamentarygroups'].append(parliamentarygroup_name)
                     else:
-                        parliamentarygroup_name = item.text_content() \
-                            if self.parliamentarygroup_sufix not in item.text_content() \
-                            else re.sub(self.parliamentarygroup_sufix, '', item.text_content())
-                        self.initiative['author_parliamentarygroups'].append(parliamentarygroup_name)
-        self.initiative['author_parliamentarygroups'] = list(set(self.initiative['author_parliamentarygroups']))
+                        if re.search(regex_more_deputies, item.text_content()):
+                            deputy_name = re.sub(regex_more_deputies, '', item.text_content())
+                            self.initiative['author_others'].append(item.text_content())
+                            if self.__is_deputy(deputy_name):
+                                self.initiative['author_deputies'].append(deputy_name)
+                        else:
+                            if self.__is_deputy(item.text_content()):
+                                self.initiative['author_deputies'].append(item.text_content())
+                                parliamentarygroup_name = self.__get_parliamentarygroup_name(
+                                        self.__get_parliamentarygroup_from_deputy(item.text_content()))
+                                if parliamentarygroup_name:
+                                    self.initiative['author_parliamentarygroups'].append(parliamentarygroup_name)
+                            else:
+                                parliamentarygroup_name = item.text_content() \
+                                    if self.parliamentarygroup_sufix not in item.text_content() \
+                                    else re.sub(self.parliamentarygroup_sufix, '', item.text_content())
+                                self.initiative['author_parliamentarygroups'].append(parliamentarygroup_name)
+            self.initiative['author_parliamentarygroups'] = list(set(self.initiative['author_parliamentarygroups']))
+        except Exception:
+            log.error(f"Error extracting parliamentary groups at {self.url}")
+            self.initiative['author_parliamentarygroups'] = list()
 
     def get_place(self):
         try:
@@ -206,9 +222,21 @@ class InitiativeExtractor:
                 return True
         return False
 
+    def __get_parliamentarygroup_from_deputy(self, name):
+        for deputy in self.deputies:
+            if deputy.name == name:
+                return deputy['parliamentarygroup']
+        return None
+
     def __is_parliamentarygroup(self, name):
         for parliamentarygroup in self.parliamentarygroups:
             if parliamentarygroup.name == name:
+                return True
+        return False
+
+    def __is_short_parliamentarygroup(self, shortname):
+        for parliamentarygroup in self.parliamentarygroups:
+            if parliamentarygroup.shortname == shortname:
                 return True
         return False
 
