@@ -54,6 +54,7 @@ def merge_initiatives():
     for source in sources:
         collection = source['initiatives']
         kb = source['knowledgebase']
+        print('Merging initiatives from knowledgebase ' + kb)
 
         initiatives = collection.objects()
 
@@ -73,7 +74,7 @@ def get_initiative(id):
         return loaded_initiatives[id]
 
     try:
-        initiative= Initiative.all.get(id=id)
+        initiative = Initiative.all.get(id=id)
     except Exception:
         initiative = Initiative(id=id)
 
@@ -87,6 +88,7 @@ def set_field(field, origin, destination):
         destination[field] = origin[field]
 
 def add_tags(kb, origin, destination):
+    destination.init_tagged_kb(kb)
     if 'tags' not in origin:
         return
 
