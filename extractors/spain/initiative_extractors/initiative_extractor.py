@@ -156,7 +156,7 @@ class InitiativeExtractor:
                         if self.__is_deputy(deputy_name):
                             self.initiative['author_deputies'].append(deputy_name)
                             parliamentarygroup_name = self.__get_parliamentarygroup_name(
-                                    has_short_parliamentarygroup.group()[2:][:-1])
+                                    _short_parliamentarygroup.group()[2:][:-1])
                             if parliamentarygroup_name:
                                 self.initiative['author_parliamentarygroups'].append(parliamentarygroup_name)
                     else:
