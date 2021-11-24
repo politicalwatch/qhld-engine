@@ -30,7 +30,7 @@ class InitiativeExtractor:
         self.soup = BeautifulSoup(response.text, 'lxml')
         self.date_regex = r'[0-9]{2}/[0-9]{2}/[0-9]{4}'
         try:
-            self.initiative = Initiative.all.get(
+            self.initiative = Initiative.objects.get(
                     reference=self.get_reference(),
                     initiative_type_alt__ne='Respuesta'
                     )
