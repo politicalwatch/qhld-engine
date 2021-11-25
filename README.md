@@ -42,7 +42,7 @@ Available Commands
 - `python quickex.py extractor all-references`: Calculates all the references.
 - `python quickex.py extractor all-votes`: Extracts all the votes.
 - `python quickex.py extractor all-interventions`: Extracts all the video interventions
-- `python quickex.py extractor single-initiative [initiative reference]`: Extracts a single initiative.
+- `python quickex.py extractor single-initiative [initiative reference]`: Extracts (or updates) a single initiative, untagging it if it already existed
 - `python quickex.py extractor single-intervention [initiative reference]`: Extracts the video interventions of a single reference.
 - `python quickex.py extractor single-vote [initiative reference]`: Extracts the votes of a single reference.
 - `python quickex.py extractor type-initiative [initiative code]`: Extracts all the new initiatives of the specified initiative type.
