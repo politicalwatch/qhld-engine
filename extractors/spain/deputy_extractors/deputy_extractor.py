@@ -1,12 +1,11 @@
 import re
 
 from urllib.parse import urlparse, parse_qs
+from thefuzz import process
 import datetime
-
 from lxml.html import document_fromstring
-
 from tipi_data.models.deputy import Deputy
-from tipi_data.utils import generate_id
+from tipi_data.utils import generate_slug
 
 
 class DeputyExtractor():
