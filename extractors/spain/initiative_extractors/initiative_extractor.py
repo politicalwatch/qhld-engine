@@ -98,6 +98,7 @@ class InitiativeExtractor:
                     self.soup.select_one('.f-present').text.split(',')[0].strip()).group())
             except Exception as e:
                 log.error(f"Error extracting the creation date at {self.url}")
+                log.error(str(e))
             self.initiative['updated'] = self.get_last_date()
             self.initiative['history'] = self.get_history()
             self.initiative['status'] = self.get_status()
@@ -193,7 +194,8 @@ class InitiativeExtractor:
                     for history_item in history:
                         if place['name'] in history_item:
                             return place['name']
-        except Exception:
+        except Exception as e:
+            log.error(f"Error getting the initiative place ({e})")
             return ''
 
     def get_history(self):
@@ -209,7 +211,8 @@ class InitiativeExtractor:
             final_status_wrapper = self.soup.select_one('.resultadoTramitacion')
             if final_status_wrapper:
                 history.append(final_status_wrapper.text)
-        except Exception:
+        except Exception as e:
+            log.error(f"Error getting the initiative history ({e})")
             pass
         return history
 
