@@ -5,6 +5,7 @@ from lxml.html import document_fromstring
 from urllib.parse import urlparse, parse_qs
 
 from bs4 import BeautifulSoup
+from mongoengine.errors import DoesNotExist
 
 from tipi_data.models.initiative import Initiative
 from tipi_data.models.alert import create_alert
@@ -34,8 +35,12 @@ class InitiativeExtractor:
                     reference=self.get_reference(),
                     initiative_type_alt__ne='Respuesta'
                     )
-        except Exception:
+        except DoesNotExist:
             self.initiative = Initiative()
+        except Exception as e:
+            log.error('An error occurred trying to get the initiative')
+            log.error(str(e))
+            return
 
         self.deputies = deputies
         self.parliamentarygroups = parliamentarygroups
@@ -195,7 +200,8 @@ class InitiativeExtractor:
                         if place['name'] in history_item:
                             return place['name']
         except Exception as e:
-            log.error(f"Error getting the initiative place ({e})")
+            log.error("Error getting the initiative place")
+            log.error(str(e))
             return ''
 
     def get_history(self):
@@ -212,7 +218,8 @@ class InitiativeExtractor:
             if final_status_wrapper:
                 history.append(final_status_wrapper.text)
         except Exception as e:
-            log.error(f"Error getting the initiative history ({e})")
+            log.error("Error getting the initiative history")
+            log.error(str(e))
             pass
         return history
 
