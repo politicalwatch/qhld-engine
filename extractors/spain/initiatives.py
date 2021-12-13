@@ -64,16 +64,16 @@ class InitiativesExtractor:
             self.totals_by_type[initiative_type] = count
 
     def extract(self):
-        start_time = time.time()
+        start_time = time.perf_counter()
         self.extract_references()
 
         log.info(f"Getting {len(self.all_references)} initiatives references")
-        log.debug("--- %s seconds getting references---" % (time.time() - start_time))
+        log.debug("--- %s seconds getting references---" % (time.perf_counter() - start_time))
         log.info("Processing initiatives...")
 
-        start_time = time.time()
+        start_time = time.perf_counter()
         self.extract_initiatives()
-        log.debug("--- %s seconds getting initiatives ---" % (time.time() - start_time))
+        log.debug("--- %s seconds getting initiatives ---" % (time.perf_counter() - start_time))
 
     def extract_all_references(self):
         self.sync_totals()
