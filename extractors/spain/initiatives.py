@@ -1,6 +1,4 @@
-import json
 import time
-from math import ceil
 from logger import get_logger
 
 import requests
@@ -11,13 +9,12 @@ from concurrent.futures import as_completed
 from tipi_data.models.deputy import Deputy
 from tipi_data.models.parliamentarygroup import ParliamentaryGroup
 from tipi_data.models.place import Place
-from tipi_data.models.initiative import Initiative
 from tipi_data.repositories.initiatives import Initiatives
 
 from extractors.config import ID_LEGISLATURA
 from .initiative_types import INITIATIVE_TYPES
 from .initiative_extractor_factory import InitiativeExtractorFactory
-from .initiative_extractors.initiative_status import has_finished, NOT_FINAL_STATUS
+from .initiative_extractors.initiative_status import NOT_FINAL_STATUS
 from .initiative_extractors.video_extractor import VideoExtractor
 from .initiative_extractors.vote_extractor import VoteExtractor
 from .utils import int_to_roman
