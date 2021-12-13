@@ -110,7 +110,8 @@ class InitiativesExtractor:
 
     def extract_references_from_type(self, type_code):
         self.sync_totals()
-        initiatives = Initiatives.get_all().filter(initiative_type=type_code).order_by('reference').only('reference', 'status')
+        initiatives = Initiatives.get_all().filter(
+                initiative_type=type_code).order_by('reference').only('reference', 'status')
 
         last_references = {}
         totals = {}
