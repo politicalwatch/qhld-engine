@@ -157,7 +157,7 @@ class InitiativesExtractor:
 
     def extract_references(self):
         self.sync_totals()
-        initiatives = Initiatives.get_all().order_by('reference').only('reference', 'status')
+        initiatives = Initiatives.get_all_without_answers().order_by('reference').only('reference', 'status')
 
         last_references = {}
         totals = {}
