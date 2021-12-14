@@ -4,6 +4,7 @@ from datetime import datetime
 from lxml.html import document_fromstring
 from urllib.parse import urlparse, parse_qs
 
+import requests
 from bs4 import BeautifulSoup
 from mongoengine.errors import DoesNotExist
 
@@ -23,13 +24,21 @@ log = get_logger(__name__)
 class InitiativeExtractor:
 
     def __init__(self, response, deputies, parliamentarygroups, places):
+        self.attempts = 1
+        self.MAX_ATTEMPTS = 3
+        self.BASE_URL = 'https://www.congreso.es'
+        self.date_regex = r'[0-9]{2}/[0-9]{2}/[0-9]{4}'
+        self.deputies = deputies
+        self.parliamentarygroups = parliamentarygroups
+        self.places = places
+        self.parliamentarygroup_sufix = r' en el Congreso'
+        self.__prepare(response)
+
+    def __prepare(self, response):
         self.response = response
         self.url = response.url
-        self.BASE_URL = 'https://www.congreso.es'
-
-        self.node_tree = document_fromstring(response.text)
-        self.soup = BeautifulSoup(response.text, 'lxml')
-        self.date_regex = r'[0-9]{2}/[0-9]{2}/[0-9]{4}'
+        self.node_tree = document_fromstring(self.response.text)
+        self.soup = BeautifulSoup(self.response.text, 'lxml')
         try:
             self.initiative = Initiative.objects.get(
                     reference=self.get_reference(),
@@ -42,16 +51,20 @@ class InitiativeExtractor:
             log.error(str(e))
             return
 
-        self.deputies = deputies
-        self.parliamentarygroups = parliamentarygroups
-        self.places = places
-        self.parliamentarygroup_sufix = r' en el Congreso'
+    def __try_again(self, url):
+        if self.attempts >= self.MAX_ATTEMPTS:
+            return
+        self.attempts += 1
+        response = requests.get(url)
+        self.__prepare(response)
+        self.extract()
 
     def extract(self):
         try:
             check = self.soup.select_one('.entradilla-iniciativa')
             if check is None:
-                log.error(f"404 error getting {self.initiative['reference']} initiative")
+                log.error(f"Error 404 getting {self.url} initiative. RETRYINGS...")
+                self.__try_again(self.url)
                 return
             self.extract_commons()
             previous_content = self.initiative['content'] if self.has_content() else list()
