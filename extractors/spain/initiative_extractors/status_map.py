@@ -58,7 +58,7 @@ STATUS_MAP = [
                     r'Concluido',
                     ],
                 'initiative_type': {
-                    'includes': ['170', '172', '178', '179','180', '181', '184'],
+                    'includes': ['170', '172', '178', '179', '180', '181', '184'],
                     'excludes': []
                     },
                 'status': 'Respondida'
@@ -185,4 +185,3 @@ STATUS_MAP = [
                 'status': 'Caducada'
                 },
         ]
-
