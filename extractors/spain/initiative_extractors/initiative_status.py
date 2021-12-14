@@ -22,9 +22,7 @@ def get_status(history=list(), initiative_type=''):
     if not history:
         return UNKNOWN
     for status_map_item in STATUS_MAP:
-        if __any_match(
-                status_map_item['latest_history_items'],
-                history[-1]):
+        if __any_match(status_map_item['latest_history_items'], history[-1]):
             includes = status_map_item['initiative_type']['includes']
             excludes = status_map_item['initiative_type']['excludes']
             if not includes and not excludes:
