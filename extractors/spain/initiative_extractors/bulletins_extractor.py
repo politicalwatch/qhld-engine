@@ -162,7 +162,6 @@ class NonExclusiveBulletinExtractor(InitiativeExtractor):
                 cleanup_content += self.cleanup_content(element)
         except Exception:
             # Bulletin not properly formatted
-            self.initiative['status'] = 'En tramitación'
             return []
 
         output = self.extract_initiative_from_bulletin(cleanup_content)
