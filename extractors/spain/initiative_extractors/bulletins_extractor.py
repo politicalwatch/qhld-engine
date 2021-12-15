@@ -143,7 +143,6 @@ class NonExclusiveBulletinExtractor(InitiativeExtractor):
             self.extract_bulletin_metadata()
         except Exception:
             # No Bulletin yet
-            self.initiative['status'] = 'En tramitación'
             return []
 
         tree = document_fromstring(requests.get(self.link).text)
