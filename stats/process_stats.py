@@ -70,7 +70,7 @@ class GenerateStats(object):
         GROUPED_TYPES = [
                 ('legislative', 'Función legislativa'),
                 ('orientation', 'Función de orientación política'),
-                ('overshight', 'Función de control'),
+                ('oversight', 'Función de control'),
                 ]
         UP = 'up'
         DOWN = 'down'
