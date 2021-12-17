@@ -1,7 +1,13 @@
+from datetime import datetime
+from datetime import timedelta
+
 from tipi_data.models.stats import Stats
 from tipi_data.repositories.initiatives import Initiatives
+from tipi_data.models.initiative_type import InitiativeType
 from tipi_data.repositories.knowledgebases import KnowledgeBases
 from tipi_data.repositories.topics import Topics
+
+from extractors.config import MODULE_EXTRACTOR
 
 
 class GenerateStats(object):
@@ -18,7 +24,10 @@ class GenerateStats(object):
 
     def generate(self):
         Stats.objects().delete()
+
         self.overall()
+        if MODULE_EXTRACTOR == 'spain':
+            self.last_days()
         self.deputies_by_topics()
         self.deputies_by_subtopics()
         self.parliamentarygroups_by_topics()
@@ -56,6 +65,39 @@ class GenerateStats(object):
                 for item in results:
                     self.stats['overall']['subtopics'][kb].append(item)
             self.stats['overall']['subtopics'][kb].sort(key=lambda x: x['initiatives'], reverse=True)
+
+    def last_days(self):
+        GROUPED_TYPES = [
+                ('legislative', 'Función legislativa'),
+                ('orientation', 'Función de orientación política'),
+                ('overshight', 'Función de control'),
+                ]
+        UP = 'up'
+        DOWN = 'down'
+        EQUAL = '='
+        DAYS_INTERVAL = 7
+        TODAY = datetime.today()
+
+        self.stats['lastdays'] = dict()
+        for gtk, gt in GROUPED_TYPES:
+            initiative_types = list(map(
+                lambda x: x.name,
+                InitiativeType.objects.filter(group=gt).only('name')))
+            total = Initiatives.get_all().filter(
+                initiative_type_alt__in=initiative_types,
+                created__gt=TODAY - timedelta(days=DAYS_INTERVAL),
+                created__lte=TODAY,
+                ).count()
+            total_prev = Initiatives.get_all().filter(
+                initiative_type_alt__in=initiative_types,
+                created__gt=TODAY-timedelta(days=DAYS_INTERVAL*2),
+                created__lte=TODAY-timedelta(days=DAYS_INTERVAL),
+                ).count()
+            trend = UP if total > total_prev else DOWN if total < total_prev else EQUAL
+            self.stats['lastdays'][gtk] = {
+                    'initiatives': total,
+                    'trend': trend
+                    }
 
     def deputies_by_topics(self):
         self.stats['deputiesByTopics'] = {}
