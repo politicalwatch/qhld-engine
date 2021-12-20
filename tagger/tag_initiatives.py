@@ -56,7 +56,7 @@ class TagInitiatives:
         total = len(initiatives)
         for index, initiative in enumerate(initiatives):
             try:
-                log.info(f"Tagging initiative {index+1} of {total}")
+                log.info(f"Tagging initiative {index+1} of {total}: {initiative['reference']}")
                 if not merge:
                     if kb:
                         initiative.untag_kb(kb)
