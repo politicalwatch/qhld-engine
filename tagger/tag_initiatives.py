@@ -56,7 +56,7 @@ class TagInitiatives:
         total = len(initiatives)
         for index, initiative in enumerate(initiatives):
             try:
-                log.info(f"Tagging initiative {index+1} of {total}: {initiative['reference']}")
+                log.info(f"Tagging initiative {index+1} of {total}: {initiative['reference']} {initiative['initiative_type_alt']}")
                 if not merge:
                     if kb:
                         initiative.untag_kb(kb)
@@ -92,10 +92,19 @@ class TagInitiatives:
                 log.error(f"Error tagging {initiative['id']}: {e}")
 
     def run(self):
+        self.tag_untagged()
+
         kbs = KnowledgeBases.get_all()
         for kb in kbs:
             log.info(f"Tagging kb {kb}")
             self.tag_kb(kb)
+
+    def tag_untagged(self):
+        log.info(f"Tagging completely untagged initiatives")
+        tags = Tags.get_all()
+        tags = codecs.encode(pickle.dumps(tags), "base64").decode()
+        initiatives = list(Initiatives.get_all_untagged())
+        self.tag_initiatives(initiatives, tags, True, True)
 
     def tag_kb(self, kb):
         tags = Tags.by_kb(kb)
