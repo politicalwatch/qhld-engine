@@ -51,6 +51,7 @@ def tag(args):
     command = TagInitiatives()
     subcommands = {
         'all': command.run,
+        'all-long': command.tag_long,
         'kb': command.tag_kb,
         'new-tag': command.new_tag,
         'new-topic': command.new_topic,

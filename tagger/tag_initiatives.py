@@ -108,13 +108,34 @@ class TagInitiatives:
         log.info(f"Tagging completely untagged initiatives")
         tags = Tags.get_all()
         tags = codecs.encode(pickle.dumps(tags), "base64").decode()
-        initiatives = list(Initiatives.get_all_untagged())
+        initiatives = list(Initiatives.get_all_short_untagged())
         self.tag_initiatives(initiatives, tags, True, True)
 
     def tag_kb(self, kb):
         tags = Tags.by_kb(kb)
         tags = codecs.encode(pickle.dumps(tags), "base64").decode()
-        initiatives = list(Initiatives.by_kb_untagged(kb))
+        initiatives = list(Initiatives.by_kb_short_untagged(kb))
+        self.tag_initiatives(initiatives, tags, True, True, kb)
+
+    def tag_long(self):
+        self.tag_long_untagged()
+
+        kbs = KnowledgeBases.get_all()
+        for kb in kbs:
+            log.info(f"Tagging kb {kb}")
+            self.tag_long_by_kb(kb)
+
+    def tag_long_untagged(self):
+        log.info(f"Tagging completely untagged initiatives")
+        tags = Tags.get_all()
+        tags = codecs.encode(pickle.dumps(tags), "base64").decode()
+        initiatives = list(Initiatives.get_all_long_untagged())
+        self.tag_initiatives(initiatives, tags, True, True)
+
+    def tag_long_by_kb(self, kb):
+        tags = Tags.by_kb(kb)
+        tags = codecs.encode(pickle.dumps(tags), "base64").decode()
+        initiatives = list(Initiatives.by_kb_long_untagged(kb))
         self.tag_initiatives(initiatives, tags, True, True, kb)
 
     def new_tag(self, tag):
