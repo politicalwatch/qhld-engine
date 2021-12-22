@@ -1,4 +1,3 @@
-from copy import deepcopy
 import pickle
 import codecs
 
@@ -27,69 +26,75 @@ class TagInitiatives:
                 and self.__same_field(tag1, tag2, 'subtopic') \
                 and self.__same_field(tag1, tag2, 'tag')
 
-    def __merge_results(self, title_result, body_result):
-        DEFAULT_RESULT = {
-                'topics': list(),
-                'tags': list()
-                }
-        if len(title_result['tags']) == 0:
-            if len(body_result['tags']) > 0:
-                return body_result
-            return DEFAULT_RESULT
-        merged_tags = body_result['tags'].copy()
-        for title_tag in title_result['tags']:
+    def __merge_results(self, title_tags, body_tags):
+        if len(title_tags) == 0:
+            if len(body_tags) > 0:
+                return body_tags
+            return []
+        merged_tags = body_tags.copy()
+        for title_tag in title_tags:
             added = False
-            for body_tag in body_result['tags']:
+            for body_tag in body_tags:
                 if self.__same_tag(title_tag, body_tag):
                     body_tag['times'] += title_tag['times']
                     added = True
                     break
             if not added:
                 merged_tags.append(title_tag.copy())
-        return {
-                'topics': sorted(list(set([tag['topic'] for tag in merged_tags]))),
-                'tags': merged_tags
-                }
-
+        return merged_tags
 
     def tag_initiatives(self, initiatives, tags, merge=False, send_alerts=True, kb=False):
         total = len(initiatives)
         for index, initiative in enumerate(initiatives):
-            try:
-                log.info(f"Tagging initiative {index+1} of {total}: {initiative['reference']} {initiative['initiative_type_alt']}")
-                if not merge:
-                    if kb:
-                        initiative.untag_kb(kb)
-                    else:
-                        initiative.untag()
+            log.info(f"Tagging initiative {index+1} of {total}: {initiative['reference']} {initiative['initiative_type_alt']}")
+            self.tag_initiative(initiative, tags, merge, send_alerts, kb)
+    
+    def tag_initiative(self, initiative, tags, merge=False, send_alerts=True, kb=False):
+        try:
+            self.untag_when_required(initiative, merge, kb)
 
-                if kb:
-                    initiative.init_tagged_kb(kb)
+            if kb:
+                initiative.init_tagged_kb(kb)
 
-                tipi_tasks.init()
-                title_result = tipi_tasks.tagger.extract_tags_from_text(initiative['title'], tags)
-                if 'result' not in title_result.keys():
-                    continue
-                title_result = title_result['result']
-                if 'content' not in initiative:
-                    result = title_result
-                else:
-                    text = '.'.join(initiative['content'])
-                    body_result = tipi_tasks.tagger.extract_tags_from_text(text, tags)
-                    if 'result' not in body_result.keys():
-                        continue
-                    body_result = body_result['result']
-                    result = self.__merge_results(title_result, body_result)
+            tags = self.get_tags(initiative, tags)
 
-                for tag in result['tags']:
-                    initiative.add_tag(tag['knowledgebase'], tag['topic'], tag['subtopic'], tag['tag'], tag['times'])
+            for tag in tags:
+                initiative.add_tag(tag['knowledgebase'], tag['topic'], tag['subtopic'], tag['tag'], tag['times'])
 
-                initiative.remove_single_occurences()
-                initiative.save()
-                if initiative.has_tags() and USE_ALERTS and send_alerts:
-                    create_alert(initiative)
-            except Exception as e:
-                log.error(f"Error tagging {initiative['id']}: {e}")
+            initiative.remove_single_occurences()
+
+            initiative.save()
+            if initiative.has_tags() and USE_ALERTS and send_alerts:
+                create_alert(initiative)
+        except Exception as e:
+            log.error(f"Error tagging {initiative['id']}: {e}")
+
+    def get_tags(self, initiative, tags):
+        tipi_tasks.init()
+        title_result = tipi_tasks.tagger.extract_tags_from_text(initiative['title'], tags)
+        title_tags = [] 
+        if 'result' in title_result.keys():
+            title_tags = title_result['result']['tags']
+
+        if 'content' not in initiative:
+            return title_tags
+
+        text = '.'.join(initiative['content'])
+        body_result = tipi_tasks.tagger.extract_tags_from_text(text, tags)
+        if 'result' not in body_result.keys():
+            return title_tags
+
+        body_tags = body_result['result']['tags']
+        return self.__merge_results(title_tags, body_tags)
+
+    def untag_when_required(self, initiative, merge, kb):
+        if merge:
+            return
+
+        if kb:
+            initiative.untag_kb(kb)
+        else:
+            initiative.untag()
 
     def run(self):
         self.tag_untagged()
