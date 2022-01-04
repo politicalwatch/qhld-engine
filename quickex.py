@@ -104,13 +104,40 @@ def extract(args):
     }
     run_command(subcommands, args)
 
+def long_questions(args):
+    query = {
+                'content.100000': {'$exists': True}
+            }
+    initiatives = Initiatives.by_query(query)
+    lengths = {}
+
+    selected_initiatives = []
+    tagged_initiative = False
+    for initiative in initiatives:
+        content = initiative['content']
+        content_str = "".join(content)
+        content_len = len(content_str)
+        if content_len > 531800 and content_len < 532100:
+            if not tagged_initiative and initiative.has_tags():
+                tagged_initiative = initiative
+            if not initiative.has_tags():
+                selected_initiatives.append(initiative)
+
+    print(len(selected_initiatives))
+    for initiative in selected_initiatives:
+        initiative['tagged'] = tagged_initiative['tagged']
+        initiative.save()
+
+
+
 commands = {
     'alerts': send_alerts,
     'generate-alert': generate_alert,
     'tagger': tag,
     'untagger': untag,
     'stats': stats,
-    'extractor': extract
+    'extractor': extract,
+    'long-questions': long_questions,
 }
 
 args = sys.argv
