@@ -120,8 +120,7 @@ def long_questions(args):
         if content_len > 531800 and content_len < 532100:
             if not tagged_initiative and initiative.has_tags():
                 tagged_initiative = initiative
-            if not initiative.has_tags():
-                selected_initiatives.append(initiative)
+            selected_initiatives.append(initiative)
 
     print(len(selected_initiatives))
     for initiative in selected_initiatives:
