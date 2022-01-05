@@ -118,14 +118,17 @@ def long_questions(args):
         content_str = "".join(content)
         content_len = len(content_str)
         if content_len > 531800 and content_len < 532100:
-            if not tagged_initiative and initiative.has_tags():
+            if not tagged_initiative and all(tagged.has_topics for tagged in initiative.tagged) and len(initiative.tagged) == 2:
                 tagged_initiative = initiative
             selected_initiatives.append(initiative)
 
-    print(len(selected_initiatives))
+    total = len(selected_initiatives)
+    counter = 1
     for initiative in selected_initiatives:
+        print(f"Copying tags to initiative {initiative['reference']} {initiative['id']}. {counter} out of {total}")
         initiative['tagged'] = tagged_initiative['tagged']
         initiative.save()
+        counter += 1
 
 
 
