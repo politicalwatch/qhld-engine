@@ -1,7 +1,6 @@
 from importlib import import_module as im
 
 from extractors.config import MODULE_EXTRACTOR
-from utils import FILES
 
 
 class ExtractorTask():
@@ -9,16 +8,21 @@ class ExtractorTask():
 
     def __init__(self):
         self.members_extractor = im('extractors.{}.members'.format(MODULE_EXTRACTOR)).MembersExtractor()
+        self.groups_extractor = im('extractors.{}.groups'.format(MODULE_EXTRACTOR)).GroupsExtractor()
         self.initiatives_extractor = im('extractors.{}.initiatives'.format(MODULE_EXTRACTOR)).InitiativesExtractor()
         super().__init__()
 
     def run(self):
         print("{task}(says: ready to extract data!".format(task=self.__class__.__name__))
         self.members()
+        self.groups()
         self.initiatives()
 
     def members(self):
         self.members_extractor.extract()
+
+    def groups(self):
+        self.groups_extractor.extract()
 
     def initiatives(self):
         self.initiatives_extractor.extract()

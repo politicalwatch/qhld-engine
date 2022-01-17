@@ -1,9 +1,10 @@
 import re
-
-from urllib.parse import urlparse, parse_qs
-from thefuzz import process
 import datetime
+from urllib.parse import urlparse, parse_qs
+
+from thefuzz import process
 from lxml.html import document_fromstring
+
 from tipi_data.models.deputy import Deputy
 from tipi_data.utils import generate_slug
 
@@ -79,12 +80,6 @@ class DeputyExtractor():
     def clean_str(self, string):
         return re.sub(r'\s+', ' ', string).strip()
 
-    def parse_date(self, string):
-        try:
-            return datetime.strptime(re.sub(r'CE(S)?T ', '', string.strip()), "%c")
-        except Exception as e:
-            return None
-
     def get_public_positions(self):
         positions = []
         for position in self.get_by_css('.cargos:not(.ult-init) li'):
@@ -138,6 +133,7 @@ class DeputyExtractor():
         birthday = birthday_paragraph.replace("Nacido el ", "").replace("Nacida el ", "")[:10]
         if birthday != '':
             self.deputy['birthdate'] = self.parse_date(birthday)
+            self.deputy.calculate_age()
 
         legislatures_paragraph = self.clean_str(self.get_by_xpath("//h3[normalize-space(text()) = 'Ficha personal']/following-sibling::p[2]")[0].text)
         self.deputy['legislatures'] = legislatures_paragraph.replace("Diputada", "").replace("Diputado", "").replace(" de la ", "").replace(" Legislaturas", "").replace("y ", "").split(", ")

@@ -100,6 +100,7 @@ def extract(args):
         'type-all-interventions': task.type_all_interventions,
         'type-all-votes': task.type_all_votes,
         'members': task.members,
+        'groups': task.groups,
         'default': task.run
     }
     run_command(subcommands, args)
