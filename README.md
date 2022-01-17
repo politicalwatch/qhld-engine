@@ -54,6 +54,7 @@ Available Commands
 - `python quickex.py extractor type-all-interventions`: Extracts all the video interventions of the initiatives of the specified initiative type.
 - `python quickex.py extractor type-all-votes`: Extracts all the votes of the initiatives of the specified initiative type.
 - `python quickex.py extractor members`: Extracts all the members and updates the existing ones in the DB.
+- `python quickex.py extractor groups`: Updates all the parliamentary groups.
 
 ## Tagger
 - `python quickex.py tagger all` (default): Tags all the initiatives with all the tags and topics.
