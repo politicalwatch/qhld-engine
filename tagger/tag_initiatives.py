@@ -48,7 +48,7 @@ class TagInitiatives:
         for index, initiative in enumerate(initiatives):
             log.info(f"Tagging initiative {index+1} of {total}: {initiative['reference']} {initiative['initiative_type_alt']}")
             self.tag_initiative(initiative, tags, merge, send_alerts, kb)
-    
+
     def tag_initiative(self, initiative, tags, merge=False, send_alerts=True, kb=False):
         try:
             self.untag_when_required(initiative, merge, kb)
@@ -72,7 +72,7 @@ class TagInitiatives:
     def get_tags(self, initiative, tags):
         tipi_tasks.init()
         title_result = tipi_tasks.tagger.extract_tags_from_text(initiative['title'], tags)
-        title_tags = [] 
+        title_tags = []
         if 'result' in title_result.keys():
             title_tags = title_result['result']['tags']
 
