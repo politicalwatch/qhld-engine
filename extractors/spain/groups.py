@@ -31,4 +31,4 @@ class GroupsExtractor:
                 group['composition'] = ParliamentaryGroups.get_composition(g['shortname'])
                 group.save()
             except Exception as e:
-                log.error(f'Cannot create parliamentary group {g['_id']} "{e}"')
+                log.error(f'Cannot create parliamentary group {g["_id"]} "{e}"')
