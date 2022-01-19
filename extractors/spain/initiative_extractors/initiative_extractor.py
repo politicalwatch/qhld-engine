@@ -71,6 +71,7 @@ class InitiativeExtractor:
             if self.should_extract_content():
                 self.extract_content()
             self.initiative['id'] = self.generate_id(self.initiative)
+            self.initiative['oldid'] = self.generate_oldid(self.initiative)
             if previous_content != self.initiative['content']:
                 self.untag()
             else:
@@ -131,6 +132,9 @@ class InitiativeExtractor:
 
     def generate_id(self, initiative):
         return initiative['reference'].replace('/', '-')
+
+    def generate_oldid(self, initiative):
+        return generate_id(initiative['reference'])
 
     def get_reference(self):
         url = urlparse(self.url)

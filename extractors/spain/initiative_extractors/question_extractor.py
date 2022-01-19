@@ -61,6 +61,7 @@ class QuestionExtractor(InitiativeExtractor):
         answer_initiative['author_deputies'] = []
         answer_initiative['author_parliamentarygroups'] = []
         answer_initiative['id'] = self.generate_answer_id(answer_initiative)
+        answer_initiative['oldid'] = self.generate_answer_oldid(answer_initiative)
         answer_initiative.save(force_insert=force)
 
     def retrieve_question(self):
@@ -87,6 +88,13 @@ class QuestionExtractor(InitiativeExtractor):
 
     def generate_answer_id(self, initiative):
         return initiative['reference'].replace('/', '-') + '-respuesta'
+
+    def generate_answer_oldid(self, initiative):
+        return generate_id(
+                initiative['reference'],
+                initiative['initiative_type_alt']
+                )
+
 
     def retrieve_content(self, link_tag, is_img = False):
         url = link_tag.get(self.HREF)
