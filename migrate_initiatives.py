@@ -74,7 +74,7 @@ def get_initiative(id):
         return loaded_initiatives[id]
 
     try:
-        initiative = Initiative.all.get(id=id)
+        initiative = Initiative.objects.get(id=id)
     except Exception:
         initiative = Initiative(id=id)
 

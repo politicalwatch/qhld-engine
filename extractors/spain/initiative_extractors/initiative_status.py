@@ -37,7 +37,7 @@ def get_status(history=list(), initiative_type=''):
 
 def __get_current_status(reference):
     try:
-        initiative = Initiative.all.filter(reference=reference).first()
+        initiative = Initiative.objects.filter(reference=reference).first()
         if 'status' not in initiative:
             return UNKNOWN
         return initiative['status']

@@ -22,7 +22,7 @@ class QuestionExtractor(InitiativeExtractor):
             self.initiative['content'] = self.retrieve_question()
 
         try:
-            answer = Initiative.all.get(
+            answer = Initiative.objects.get(
                 reference=self.get_reference(),
                 initiative_type_alt='Respuesta'
             )
@@ -46,7 +46,7 @@ class QuestionExtractor(InitiativeExtractor):
         if answer == []:
             return
         try:
-            answer_initiative = Initiative.all.get(
+            answer_initiative = Initiative.objects.get(
                 reference=self.initiative['reference'],
                 initiative_type_alt='Respuesta'
             )
