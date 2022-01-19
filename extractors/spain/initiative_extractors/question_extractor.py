@@ -86,10 +86,7 @@ class QuestionExtractor(InitiativeExtractor):
         return self.retrieve_content(link)
 
     def generate_answer_id(self, initiative):
-        return generate_id(
-            initiative['reference'],
-            initiative['initiative_type_alt']
-        )
+        return initiative['reference'].replace('/', '-') + '-respuesta'
 
     def retrieve_content(self, link_tag, is_img = False):
         url = link_tag.get(self.HREF)

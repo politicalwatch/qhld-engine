@@ -130,7 +130,7 @@ class InitiativeExtractor:
             log.error(str(e))
 
     def generate_id(self, initiative):
-        return generate_id(initiative['reference'])
+        return initiative['reference'].replace('/', '-')
 
     def get_reference(self):
         url = urlparse(self.url)
