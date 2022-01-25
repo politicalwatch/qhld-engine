@@ -120,7 +120,7 @@ class InitiativesExtractor:
         for initiative in initiatives:
             if 'reference' not in initiative:
                 continue
-            title = initiative_type['type']
+            title = initiative['initiative_type_alt']
             if title == 'Respuesta':
                 continue
             items = initiative['reference'].split('/')
