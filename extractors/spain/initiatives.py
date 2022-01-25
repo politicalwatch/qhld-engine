@@ -105,8 +105,8 @@ class InitiativesExtractor:
             if not new_items:
                 continue
 
-            for extra in range(1, new_items + self.SAFETY_EXTRACTION_GAP + 1):
-                self.all_references.append(self.format_reference(db_last_reference + extra, code))
+            for reference in range(db_last_reference, origin_total + self.SAFETY_EXTRACTION_GAP):
+                self.all_references.append(self.format_reference(reference, code))
 
     def extract_references_from_type(self, type_code):
         self.sync_totals()
@@ -155,8 +155,8 @@ class InitiativesExtractor:
             if not new_items:
                 continue
 
-            for extra in range(1, new_items + self.SAFETY_EXTRACTION_GAP + 1):
-                self.all_references.append(self.format_reference(db_last_reference + extra, code))
+            for reference in range(db_last_reference, origin_total + self.SAFETY_EXTRACTION_GAP):
+                self.all_references.append(self.format_reference(reference, code))
 
     def extract_references(self):
         self.sync_totals()
@@ -169,7 +169,7 @@ class InitiativesExtractor:
         for initiative in initiatives:
             if 'reference' not in initiative:
                 continue
-            title = initiative_type['type']
+            title = initiative['initiative_type_alt']
             if title == 'Respuesta':
                 continue
             items = initiative['reference'].split('/')
