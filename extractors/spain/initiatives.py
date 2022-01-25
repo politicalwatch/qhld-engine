@@ -120,6 +120,9 @@ class InitiativesExtractor:
         for initiative in initiatives:
             if 'reference' not in initiative:
                 continue
+            title = initiative_type['type']
+            if title == 'Respuesta':
+                continue
             items = initiative['reference'].split('/')
             initiative_type = items[0]
             reference = items[1]
@@ -165,6 +168,9 @@ class InitiativesExtractor:
 
         for initiative in initiatives:
             if 'reference' not in initiative:
+                continue
+            title = initiative_type['type']
+            if title == 'Respuesta':
                 continue
             items = initiative['reference'].split('/')
             initiative_type = items[0]
