@@ -3,7 +3,7 @@ import json
 from logger import get_logger
 
 from tipi_data.repositories.parliamentarygroups import ParliamentaryGroups
-from tipi_data.models.parliamentarygroup import ParliamentaryGroup
+from tipi_data.models.parliamentarygroup import ParliamentaryGroup, Party
 
 
 log = get_logger(__name__)
@@ -29,6 +29,15 @@ class GroupsExtractor:
                 group['name'] = g['name']
                 group['shortname'] = g['shortname']
                 group['composition'] = ParliamentaryGroups.get_composition(g['shortname'])
+                group['color'] = g['color']
+                parties = []
+                for party in g['parties']:
+                    new_party = Party()
+                    new_party['name'] = party['name']
+                    new_party['logo'] = party['logo']
+                    new_party['color'] = party['color']
+                    parties.append(new_party)
+                group['parties'] = parties
                 group.save()
             except Exception as e:
                 log.error(f'Cannot create parliamentary group {g["_id"]} "{e}"')
