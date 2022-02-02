@@ -1,11 +1,11 @@
+import os
+import json
 import requests
 from logger import get_logger
 
 from concurrent.futures import as_completed
 from requests_futures.sessions import FuturesSession
 from .deputy_extractors.deputy_extractor import DeputyExtractor
-
-from tipi_data.models.parliamentarygroup import ParliamentaryGroup
 
 
 log = get_logger(__name__)
@@ -18,7 +18,13 @@ class MembersExtractor:
         self.total = 0
         self.LEGISLATURE = 14
         self.references = []
-        self.parliamentarygroups = ParliamentaryGroup.objects()
+        self.parliamentarygroups = self.__load_groups()
+
+    def __load_groups(self):
+        dirname = os.path.dirname(os.path.realpath(__file__))
+        with open(f'{dirname}/groups.json', 'r') as f:
+            return json.loads(f.read())
+
 
     def extract(self):
         query_params = {
