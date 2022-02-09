@@ -32,11 +32,7 @@ class GroupsExtractor:
                 group['color'] = g['color']
                 parties = []
                 for party in g['parties']:
-                    new_party = Party()
-                    new_party['name'] = party['name']
-                    new_party['logo'] = party['logo']
-                    new_party['color'] = party['color']
-                    parties.append(new_party)
+                    parties.append(party)
                 group['parties'] = parties
                 group.save()
             except Exception as e:
