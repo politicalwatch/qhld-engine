@@ -3,7 +3,7 @@ import json
 from logger import get_logger
 
 from tipi_data.repositories.parliamentarygroups import ParliamentaryGroups
-from tipi_data.models.parliamentarygroup import ParliamentaryGroup, Party
+from tipi_data.models.parliamentarygroup import ParliamentaryGroup
 
 
 log = get_logger(__name__)
