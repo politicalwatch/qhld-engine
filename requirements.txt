@@ -1,8 +1,8 @@
 Scrapy==1.5.1
 cryptography==2.8
 fuzzywuzzy==0.17.0
-git+https://github.com/politicalwatch/tipi-tasks.git
-git+https://github.com/politicalwatch/tipi-data.git
+git+https://github.com/politicalwatch/tipi-tasks.git@legacy
+git+https://github.com/politicalwatch/tipi-data.git@legacy
 ipdb==0.12.3
 pymongo==3.10.0
 python-pcre==0.7
