@@ -15,6 +15,7 @@ from extractors.config import ID_LEGISLATURA
 from .initiative_types import INITIATIVE_TYPES
 from .initiative_extractor_factory import InitiativeExtractorFactory
 from .initiative_extractors.initiative_status import NOT_FINAL_STATUS
+from .grouped_deputies import GroupedDeputies
 from .initiative_extractors.video_extractor import VideoExtractor
 from .initiative_extractors.vote_extractor import VoteExtractor
 from .utils import int_to_roman
@@ -35,6 +36,7 @@ class InitiativesExtractor:
         self.deputies = Deputy.objects()
         self.parliamentarygroups = ParliamentaryGroup.objects()
         self.places = Place.objects()
+        self.grouped_deputies = GroupedDeputies()
 
     def get_types(self):
         return INITIATIVE_TYPES
@@ -220,6 +222,7 @@ class InitiativesExtractor:
                 response,
                 self.deputies,
                 self.parliamentarygroups,
+                self.grouped_deputies,
                 self.places
             ).extract()
 
@@ -253,7 +256,7 @@ class InitiativesExtractor:
 
     def extract_votes(self):
         def callback(response):
-            extractor = InitiativeExtractorFactory.create(response, [], [], [])
+            extractor = InitiativeExtractorFactory.create(response, [], [], {}, [])
             votes_extractor = VoteExtractor(extractor.node_tree, extractor.get_reference())
             votes_extractor.extract()
 

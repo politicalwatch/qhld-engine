@@ -9,6 +9,7 @@ from bs4 import BeautifulSoup
 from mongoengine.errors import DoesNotExist
 
 from tipi_data.models.initiative import Initiative
+from tipi_data.models.parliamentarygroup import ParliamentaryGroup
 from tipi_data.models.alert import create_alert
 from tipi_data.utils import generate_id
 
@@ -21,16 +22,27 @@ from .video_extractor import VideoExtractor
 log = get_logger(__name__)
 
 
+TYPES_WITH_AUTHORS_ON_CONTENT = [
+        'Proposición no de Ley ante el Pleno',
+        'Proposición no de Ley en Comisión',
+        'Proposición de ley de Grupos Parlamentarios del Congreso',
+        'Proposición de ley de Diputados',
+        ]
+
+
 class InitiativeExtractor:
 
-    def __init__(self, response, deputies, parliamentarygroups, places):
+    def __init__(self, response, deputies, parliamentarygroups, grouped_deputies, places):
         self.attempts = 1
         self.MAX_ATTEMPTS = 3
+        self.response = response
+        self.url = response.url
         self.BASE_URL = 'https://www.congreso.es'
         self.date_regex = r'[0-9]{2}/[0-9]{2}/[0-9]{4}'
         self.deputies = deputies
         self.parliamentarygroups = parliamentarygroups
         self.places = places
+        self.grouped_deputies = grouped_deputies
         self.parliamentarygroup_sufix = r' en el Congreso'
         self.__prepare(response)
 
@@ -70,6 +82,8 @@ class InitiativeExtractor:
             previous_content = self.initiative['content'] if self.has_content() else list()
             if self.should_extract_content():
                 self.extract_content()
+                if self.should_extract_deputies_from_content():
+                    self.populate_deputies_and_groups_from_content()
             self.initiative['id'] = self.generate_id(self.initiative)
             self.initiative['oldid'] = self.generate_oldid(self.initiative)
             if previous_content != self.initiative['content']:
@@ -92,6 +106,12 @@ class InitiativeExtractor:
 
     def should_extract_content(self):
         return not self.has_content()
+
+    def should_extract_deputies_from_content(self):
+        # TODO Sacar esto a ../initiative_types.py
+        if self.initiative['initiative_type_alt'] in TYPES_WITH_AUTHORS_ON_CONTENT:
+            return True
+        return False
 
     def extract_videos(self):
         extractor = VideoExtractor(self.initiative['reference'])
@@ -129,6 +149,34 @@ class InitiativeExtractor:
             log.error(str(e))
         except Exception as e:
             log.error(str(e))
+
+    def populate_deputies_and_groups_from_content(self):
+        found_deputies = list()
+        found_groups = list()
+
+        def normalize_name(name):
+            return ' '.join(name.split(',')[::-1]).strip()
+
+        regex_line_with_deputies = r"Palacio del Congreso de los Diputados.*, Diputad[oa](s)?"
+        try:
+            groups = self.initiative['author_parliamentarygroups']
+            deputies_to_search = self.grouped_deputies.get_deputies(groups)
+        except Exception:
+            deputies_to_search = self.grouped_deputies.get_deputies()
+        content = ' '.join(self.initiative['content'])
+        result = re.search(regex_line_with_deputies, content)
+        if result is None:
+            return
+        for deputy in deputies_to_search:
+            if re.search(normalize_name(deputy['name']), result.group()):
+                found_deputies.append(deputy['name'])
+                found_groups.append(
+                        ParliamentaryGroup.objects(
+                            shortname=deputy['parliamentarygroup']
+                            ).first()['name'])
+
+        self.initiative['author_deputies'] = found_deputies
+        self.initiative['author_parliamentarygroups'] = list(set(found_groups))
 
     def generate_id(self, initiative):
         return initiative['reference'].replace('/', '-')
@@ -173,9 +221,6 @@ class InitiativeExtractor:
                         and self.__is_short_parliamentarygroup(_short_parliamentarygroup.group().strip()[1:-1])
                     if has_short_parliamentarygroup:
                         deputy_name = re.sub(regex_short_parliamentarygroup, '', item.text_content())
-                        if re.search(regex_more_deputies, deputy_name):
-                            deputy_name = re.sub(regex_more_deputies, '', deputy_name)
-                            self.initiative['author_others'].append(item.text_content())
                         if self.__is_deputy(deputy_name):
                             self.initiative['author_deputies'].append(deputy_name)
                             parliamentarygroup_name = self.__get_parliamentarygroup_name(
@@ -183,12 +228,7 @@ class InitiativeExtractor:
                             if parliamentarygroup_name:
                                 self.initiative['author_parliamentarygroups'].append(parliamentarygroup_name)
                     else:
-                        if re.search(regex_more_deputies, item.text_content()):
-                            deputy_name = re.sub(regex_more_deputies, '', item.text_content())
-                            self.initiative['author_others'].append(item.text_content())
-                            if self.__is_deputy(deputy_name):
-                                self.initiative['author_deputies'].append(deputy_name)
-                        else:
+                        if not re.search(regex_more_deputies, item.text_content()):
                             if self.__is_deputy(item.text_content()):
                                 self.initiative['author_deputies'].append(item.text_content())
                                 parliamentarygroup_name = self.__get_parliamentarygroup_name(

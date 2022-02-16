@@ -11,7 +11,7 @@ class InitiativeExtractorFactory:
         return query.get('_iniciativas_id')[0].split('/')[0]
 
     @staticmethod
-    def create(response, deputies, parliamentarygroups, places):
+    def create(response, deputies, parliamentarygroups, grouped_deputies, places):
         extractor = InitiativeExtractor
 
         initiative_code = InitiativeExtractorFactory.get_type(response)
@@ -20,5 +20,5 @@ class InitiativeExtractorFactory:
             if initiative_code == initiative_type.get('code') and "class" in initiative_type:
                 extractor = initiative_type.get("class")
 
-        return extractor(response, deputies, parliamentarygroups, places)
+        return extractor(response, deputies, parliamentarygroups, grouped_deputies, places)
 
