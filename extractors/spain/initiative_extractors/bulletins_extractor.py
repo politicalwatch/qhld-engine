@@ -165,12 +165,33 @@ class NonExclusiveBulletinExtractor(InitiativeExtractor):
             return []
 
         output = self.extract_initiative_from_bulletin(cleanup_content)
+
+        # Initiative is published with the Senate.
+        if output == [' (CD) ']:
+            output = self.extract_senate_initiative(cleanup_content)
+
         return output
 
     def extract_initiative_from_bulletin(self, full_content):
         clean_content = self.clean_str_to_substr(full_content, 'Página ' + self.page)
         clean_content = self.clean_str_to_substr(clean_content, self.initiative['reference'])
 
+        try:
+            end_pos = re.search(self.INITIATIVE_REFERENCE_REGEX, clean_content).start()
+        except Exception:
+            # Last initiative in the Bulletin.
+            return clean_content.split("\n")
+
+        content = clean_content[:end_pos]
+        return content.split("\n")
+
+    def extract_senate_initiative(self, full_content):
+        clean_content = self.clean_str_to_substr(full_content, 'Página ' + self.page)
+        clean_content = self.clean_str_to_substr(clean_content, self.initiative['reference'])
+
+        start_pos = re.search(self.INITIATIVE_REFERENCE_REGEX, clean_content).start()
+
+        clean_content = clean_content[start_pos + 15:]
         try:
             end_pos = re.search(self.INITIATIVE_REFERENCE_REGEX, clean_content).start()
         except Exception:
