@@ -25,7 +25,7 @@ class GenerateStats(object):
     def generate(self):
         Stats.objects().delete()
 
-        self.overall()
+        # self.overall()
         if MODULE_EXTRACTOR == 'spain':
             self.last_days()
         self.deputies_by_topics()
@@ -83,16 +83,23 @@ class GenerateStats(object):
             initiative_types = list(map(
                 lambda x: x.name,
                 InitiativeType.objects.filter(group=gt).only('name')))
-            total = Initiatives.get_all().filter(
-                initiative_type_alt__in=initiative_types,
-                created__gt=TODAY - timedelta(days=DAYS_INTERVAL),
-                created__lte=TODAY,
-                ).count()
-            total_prev = Initiatives.get_all().filter(
-                initiative_type_alt__in=initiative_types,
-                created__gt=TODAY-timedelta(days=DAYS_INTERVAL*2),
-                created__lte=TODAY-timedelta(days=DAYS_INTERVAL),
-                ).count()
+
+            total = Initiatives.by_query({
+                'initiative_type_alt': {
+                    '$in': initiative_types},
+                'created': {
+                    '$gt': TODAY - timedelta(days=DAYS_INTERVAL),
+                    '$lte': TODAY},
+                }).count()
+
+            total_prev = Initiatives.by_query({
+                'initiative_type_alt': {
+                    '$in': initiative_types},
+                'created': {
+                    '$gt': TODAY - timedelta(days=DAYS_INTERVAL*2),
+                    '$lte': TODAY - timedelta(days=DAYS_INTERVAL)},
+                }).count()
+
             trend = UP if total > total_prev else DOWN if total < total_prev else EQUAL
             self.stats['lastdays'][gtk] = {
                     'initiatives': total,
