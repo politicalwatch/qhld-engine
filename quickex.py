@@ -5,13 +5,14 @@ from tagger.tag_initiatives import TagInitiatives
 from untagger.untag_initiatives import UntagInitiatives
 from alerts.send_alerts import SendAlerts
 from stats.process_stats import GenerateStats
+from footprint.compute_footprint import ComputeFootprint
 from tipi_data.repositories.initiatives import Initiatives
 from tipi_data.models.alert import create_alert
 
 
 def print_help():
     print('Usage: quickex.py TASK')
-    print('Apply task: alerts, tagger, untagger, stats or extractor')
+    print('Apply task: alerts, tagger, untagger, stats, footprint, or extractor')
     print('Example: python quickex.py stats')
 
 def run_command(commands, arguments):
@@ -64,6 +65,9 @@ def tag(args):
 
 def stats(args):
     GenerateStats().generate()
+
+def footprint(args):
+    ComputeFootprint().compute()
 
 def untag(args):
     command = UntagInitiatives()
@@ -139,6 +143,7 @@ commands = {
     'tagger': tag,
     'untagger': untag,
     'stats': stats,
+    'footprint': footprint,
     'extractor': extract,
     'long-questions': long_questions,
 }
