@@ -76,7 +76,7 @@ class GenerateStats(object):
         UP = 'up'
         DOWN = 'down'
         EQUAL = 'equal'
-        DAYS_INTERVAL = 7
+        DAYS_INTERVAL = 15
         TODAY = datetime.today()
 
         self.stats['lastdays'] = dict()
