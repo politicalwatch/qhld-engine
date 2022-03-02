@@ -176,7 +176,8 @@ class InitiativeExtractor:
                             ).first()['name'])
 
         self.initiative['author_deputies'] = found_deputies
-        self.initiative['author_parliamentarygroups'] = list(set(found_groups))
+        if not self.initiative['author_parliamentarygroups']:
+            self.initiative['author_parliamentarygroups'] = list(set(found_groups))
 
     def generate_id(self, initiative):
         return initiative['reference'].replace('/', '-')
