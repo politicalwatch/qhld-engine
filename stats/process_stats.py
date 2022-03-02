@@ -23,7 +23,6 @@ class GenerateStats(object):
         self.stats = Stats()
 
     def generate(self):
-        Stats.objects().delete()
 
         # self.overall()
         if MODULE_EXTRACTOR == 'spain':
@@ -34,6 +33,8 @@ class GenerateStats(object):
         self.parliamentarygroups_by_subtopics()
         self.places_by_topics()
         self.places_by_subtopics()
+
+        Stats.objects().delete()
         self.stats.save()
 
     def overall(self):
