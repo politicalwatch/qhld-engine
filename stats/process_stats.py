@@ -24,7 +24,7 @@ class GenerateStats(object):
 
     def generate(self):
 
-        # self.overall()
+        self.overall()
         if MODULE_EXTRACTOR == 'spain':
             self.last_days()
         self.deputies_by_topics()
