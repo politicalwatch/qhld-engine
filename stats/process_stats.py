@@ -74,7 +74,7 @@ class GenerateStats(object):
                 ]
         UP = 'up'
         DOWN = 'down'
-        EQUAL = '='
+        EQUAL = 'equal'
         DAYS_INTERVAL = 7
         TODAY = datetime.today()
 
