@@ -1,6 +1,4 @@
-import json
 from datetime import datetime
-from datetime import timedelta
 
 from logger import get_logger
 
@@ -28,12 +26,14 @@ log = get_logger(__name__)
 class ComputeFootprint:
 
     def __init__(self):
+        log.info("Initiatizing footprint...")
         self.topics = {}
         self.knowledgebases = list(KnowledgeBases.get_all())
         for kb in self.knowledgebases:
             self.topics[kb] = Topics.by_kb(kb)
         self.deputies = Deputies.get_all()
         self.footprint_by_deputies = self.__initiatize_footprint_by_deputies()
+        log.info("Footprint initiatization finished.")
 
     def compute(self):
         log.info("Starting footprint computation...")
@@ -64,28 +64,30 @@ class ComputeFootprint:
 
     def compute_deputy_by_topic(self, deputy, topic):
         score = 0
+        deputy_name = deputy['name']
+        topic_name = topic['name'] if topic else None
 
         score += FootprintSumPointOneManager(
-                topic['name'],
-                deputy['name']).compute()
+                topic_name,
+                deputy_name).compute()
         score += FootprintSumTwoManager(
-                topic['name'],
-                deputy['name']).compute()
+                topic_name,
+                deputy_name).compute()
         score += FootprintSumFiveManager(
-                topic['name'],
-                deputy['name']).compute()
+                topic_name,
+                deputy_name).compute()
         score += FootprintSumTwentyManager(
-                topic['name'],
-                deputy['name']).compute()
+                topic_name,
+                deputy_name).compute()
         score += FootprintSumFourtyManager(
-                topic['name'],
-                deputy['name']).compute()
+                topic_name,
+                deputy_name).compute()
         score += FootprintAdditionalFiveManager(
-                topic['name'],
-                deputy['name']).compute()
+                topic_name,
+                deputy_name).compute()
         score += FootprintAdditionalTwentyManager(
-                topic['name'],
-                deputy['name']).compute()
+                topic_name,
+                deputy_name).compute()
 
         if score > 0:
             fdm = FootprintDeputyManager(deputy)
@@ -93,8 +95,8 @@ class ComputeFootprint:
             score += fdm.compute_social()
 
             penalty = FootprintInactivityPenalty(
-                    topic['name'],
-                    deputy['name']).compute()
+                    topic_name,
+                    deputy_name).compute()
             score = f"{score - (score * penalty):.2f}"
 
         return score
@@ -103,8 +105,16 @@ class ComputeFootprint:
         return sorted(lst, key=lambda element: float(element['score']), reverse=True)
 
     def __initiatize_footprint_by_deputies(self):
+        global_score = dict()
+        for d in self.deputies:
+            global_score[d['id']] = self.compute_deputy_by_topic(d, None)
+
         return [
-                FootprintByDeputy(id=d['id'], name=d['name'], topics=list())
+                FootprintByDeputy(
+                    id=d['id'],
+                    name=d['name'],
+                    score=global_score[d['id']],
+                    topics=list())
                 for d in self.deputies
                 ]
 

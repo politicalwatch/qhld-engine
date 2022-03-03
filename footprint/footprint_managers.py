@@ -7,12 +7,14 @@ from tipi_data.repositories.initiatives import Initiatives
 class FootprintQueryManager:
 
     def parse_query(self, types, topic, deputy, status):
-        return {
-                'tagged.topics': topic,
+        query = {
                 'author_deputies': deputy,
                 'initiative_type_alt': {'$in': types},
                 'status': status,
                 }
+        if topic:
+            query['tagged.topics'] = topic
+        return query
 
 
 class FootprintSumManager(FootprintQueryManager):
@@ -155,7 +157,7 @@ class FootprintInactivityPenalty():
         return date >= (self.today - self.__months(3))
 
     def compute(self):
-        last_date = Initiatives.get_last_valid_creation_date(self.topic, self.deputy)
+        last_date = Initiatives.get_last_valid_creation_date(deputy=self.deputy, topic=self.topic)
         if not last_date:
             return 0
         if self.more_than_twelve(last_date) > 0 and self.less_than_twelve(last_date) == 0:
