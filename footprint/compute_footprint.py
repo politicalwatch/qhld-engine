@@ -10,12 +10,12 @@ from tipi_data.repositories.topics import Topics
 from tipi_data.repositories.deputies import Deputies
 
 from .footprint_managers import FootprintSumPointOneManager, \
-        FootprintSumTwoManager, \
-        FootprintSumFiveManager, \
-        FootprintSumTwentyManager, \
+        FootprintSumFourManager, \
+        FootprintSumTenManager, \
         FootprintSumFourtyManager, \
-        FootprintAdditionalFiveManager, \
+        FootprintSumEightyManager, \
         FootprintAdditionalTwentyManager, \
+        FootprintAdditionalSixtyManager, \
         FootprintInactivityPenalty, \
         FootprintDeputyManager
 
@@ -70,22 +70,22 @@ class ComputeFootprint:
         score += FootprintSumPointOneManager(
                 topic_name,
                 deputy_name).compute()
-        score += FootprintSumTwoManager(
+        score += FootprintSumFourManager(
                 topic_name,
                 deputy_name).compute()
-        score += FootprintSumFiveManager(
-                topic_name,
-                deputy_name).compute()
-        score += FootprintSumTwentyManager(
+        score += FootprintSumTenManager(
                 topic_name,
                 deputy_name).compute()
         score += FootprintSumFourtyManager(
                 topic_name,
                 deputy_name).compute()
-        score += FootprintAdditionalFiveManager(
+        score += FootprintSumEightyManager(
                 topic_name,
                 deputy_name).compute()
         score += FootprintAdditionalTwentyManager(
+                topic_name,
+                deputy_name).compute()
+        score += FootprintAdditionalSixtyManager(
                 topic_name,
                 deputy_name).compute()
 

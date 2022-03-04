@@ -50,7 +50,7 @@ class FootprintSumPointOneManager(FootprintSumManager):
 
 
 
-class FootprintSumTwoManager(FootprintSumManager):
+class FootprintSumFourManager(FootprintSumManager):
     def types(self):
         return [
                 'Comparecencia del Gobierno en Comisión (art. 44)',
@@ -68,10 +68,10 @@ class FootprintSumTwoManager(FootprintSumManager):
 
                 ]
     def __multiply(self):
-        return 2
+        return 4
 
 
-class FootprintSumFiveManager(FootprintSumManager):
+class FootprintSumTenManager(FootprintSumManager):
     def types(self):
         return [
                 'Pregunta oral en Pleno',
@@ -81,10 +81,10 @@ class FootprintSumFiveManager(FootprintSumManager):
                 ]
 
     def multiply(self):
-        return 5
+        return 10
 
 
-class FootprintSumTwentyManager(FootprintSumManager):
+class FootprintSumFourtyManager(FootprintSumManager):
     def types(self):
         return [
                 'Proposición no de Ley ante el Pleno',
@@ -94,10 +94,10 @@ class FootprintSumTwentyManager(FootprintSumManager):
                 ]
 
     def multiply(self):
-        return 20
+        return 40
 
 
-class FootprintSumFourtyManager(FootprintSumManager):
+class FootprintSumEightyManager(FootprintSumManager):
     def types(self):
 
         return [
@@ -109,10 +109,10 @@ class FootprintSumFourtyManager(FootprintSumManager):
                 ]
 
     def multiply(self):
-        return 40
+        return 80
 
-# 
-class FootprintAdditionalFiveManager(FootprintSumFiveManager):
+
+class FootprintAdditionalTwentyManager(FootprintSumManager):
     def types(self):
         return [
                 'Proposición no de Ley ante el Pleno',
@@ -122,8 +122,11 @@ class FootprintAdditionalFiveManager(FootprintSumFiveManager):
     def status(self):
         return 'Aprobada'
 
+    def multiply(self):
+        return 20
 
-class FootprintAdditionalTwentyManager(FootprintSumTwentyManager):
+
+class FootprintAdditionalSixtyManager(FootprintSumManager):
     def types(self):
         return [
                 'Proposición de ley de Grupos Parlamentarios del Congreso',
@@ -132,6 +135,9 @@ class FootprintAdditionalTwentyManager(FootprintSumTwentyManager):
 
     def status(self):
         return 'Aprobada'
+
+    def multiply(self):
+        return 60
 
 
 class FootprintInactivityPenalty():
