@@ -6,22 +6,26 @@ from tipi_data.repositories.initiatives import Initiatives
 
 class FootprintQueryManager:
 
-    def parse_query(self, types, topic, deputy, status):
+    def parse_query(self, types, topic, entity, typeof, status):
         query = {
-                'author_deputies': deputy,
                 'initiative_type_alt': {'$in': types},
                 'status': status,
                 }
         if topic:
             query['tagged.topics'] = topic
+        if typeof == 'deputy':
+            query['author_deputies'] = entity
+        if typeof == 'parliamentarygroup':
+            query['author_parliamentarygroups'] = entity
         return query
 
 
 class FootprintSumManager(FootprintQueryManager):
 
-    def __init__(self, topic, deputy):
+    def __init__(self, topic, entity, typeof):
         self.topic = topic
-        self.deputy = deputy
+        self.entity = entity
+        self.typeof = typeof
 
     def types(self):
         return list()
@@ -34,7 +38,7 @@ class FootprintSumManager(FootprintQueryManager):
 
     def compute(self):
         return Initiatives.by_query(
-                self.parse_query(self.types(), self.topic, self.deputy, self.status())
+                self.parse_query(self.types(), self.topic, self.entity, self.typeof, self.status())
                 ).count() * self.multiply()
 
 
@@ -141,9 +145,10 @@ class FootprintAdditionalSixtyManager(FootprintSumManager):
 
 
 class FootprintInactivityPenalty():
-    def __init__(self, topic, deputy):
+    def __init__(self, topic, entity, typeof):
         self.topic = topic
-        self.deputy = deputy
+        self.entity = entity
+        self.typeof = typeof
         self.today = datetime.today()
         self.DAYS_IN_MONTH = 30
 
@@ -163,7 +168,10 @@ class FootprintInactivityPenalty():
         return date >= (self.today - self.__months(3))
 
     def compute(self):
-        last_date = Initiatives.get_last_valid_creation_date(deputy=self.deputy, topic=self.topic)
+        last_date = Initiatives.get_last_valid_creation_date(
+                entity=self.entity,
+                topic=self.topic,
+                typeof=self.typeof)
         if not last_date:
             return 0
         if self.more_than_twelve(last_date) > 0 and self.less_than_twelve(last_date) == 0:
