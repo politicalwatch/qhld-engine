@@ -130,7 +130,8 @@ class InitiativeExtractor:
             self.initiative['initiative_type'] = self.initiative['reference'].split('/')[0]
             self.initiative['initiative_type_alt'] = self.soup.select('.titular-seccion')[1].text[:-1]
             self.initiative['place'] = self.get_place()
-            self.populate_authors()
+            if not self.has_authors():
+                self.populate_authors()
             try:
                 self.initiative['created'] = self.__parse_date(re.search(
                     self.date_regex,
@@ -327,6 +328,18 @@ class InitiativeExtractor:
             return True
         except TypeError:
             return False
+
+    def has_deputies(self):
+        return self.has('author_deputies') and self.initiative['author_deputies'] != []
+
+    def has_parliamentarygroups(self):
+        return self.has('author_parliamentarygroups') and self.initiative['author_parliamentarygroups'] != []
+
+    def has_others(self):
+        return self.has('author_others') and self.initiative['author_others'] != []
+
+    def has_authors(self):
+        return self.has_deputies() or self.has_parliamentarygroups() or self.has_others()
 
     def has_content(self):
         return self.has('content') and len(self.initiative['content']) > 0
