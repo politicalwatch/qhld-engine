@@ -41,10 +41,10 @@ def generate_alert(arguments):
 
 
 def modify_regex(tag):
-    tagger = TagInitiatives()
     untagger = UntagInitiatives()
-
     untagger.remove_tag(tag)
+
+    tagger = TagInitiatives()
     tagger.new_tag(tag)
 
 
