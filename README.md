@@ -58,6 +58,7 @@ Available Commands
 
 ## Tagger
 - `python quickex.py tagger all` (default): Tags all the initiatives with all the tags and topics.
+- `python quickex.py tagger all-long`: Tags all the long-content initiatives with all the tags and topics.
 - `python quickex.py tagger kb [KNOWLEDGE_BASE]`: Tags all the initiatives with all the tags and topics of the specified knowledge base.
 - `python quickex.py tagger new-tag [TAG]`: Tags all the initiatives with the tag specified. Must be already present in the topics dictionary.
 - `python quickex.py tagger new-topic [TOPIC]`: Tags all the initiatives with the all tags of the specified topic. Must be already present in the topic dictionary.
