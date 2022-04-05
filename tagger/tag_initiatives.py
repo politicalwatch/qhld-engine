@@ -43,7 +43,7 @@ class TagInitiatives:
                 merged_tags.append(title_tag.copy())
         return merged_tags
 
-    def tag_initiatives(self, initiatives, tags, merge=False, send_alerts=True, kb=False):
+    def tag_initiatives(self, initiatives, tags, merge=False, send_alerts=True, kb=None):
         total = len(initiatives)
         for index, initiative in enumerate(initiatives):
             log.info(f"Tagging initiative {index+1} of {total}: {initiative['reference']} {initiative['initiative_type_alt']}")
