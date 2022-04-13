@@ -23,6 +23,8 @@ def run_command(commands, arguments):
                 return commands[arguments[2]](arguments[3])
             if args_amount == 5:
                 return commands[arguments[2]](arguments[3], arguments[4])
+            if args_amount == 6:
+                return commands[arguments[2]](arguments[3], arguments[4], arguments[5])
             else:
                 return commands[arguments[2]]()
         else:
@@ -40,12 +42,12 @@ def generate_alert(arguments):
     print('Alerts created')
 
 
-def modify_regex(tag):
+def modify_regex(topic, tag):
     untagger = UntagInitiatives()
-    untagger.remove_tag(tag)
+    untagger.by_tag(topic, tag)
 
     tagger = TagInitiatives()
-    tagger.new_tag(tag)
+    tagger.new_tag(topic, tag)
 
 
 def tag(args):
@@ -54,8 +56,8 @@ def tag(args):
         'all': command.run,
         'all-long': command.tag_long,
         'kb': command.tag_kb,
-        'new-tag': command.new_tag,
         'new-topic': command.new_topic,
+        'new-tag': command.new_tag,
         'modify-regex': modify_regex,
         'rename-tag': command.rename,
         'reference': command.by_reference,

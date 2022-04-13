@@ -59,17 +59,17 @@ Available Commands
 ## Tagger
 - `python quickex.py tagger all` (default): Tags all the initiatives with all the tags and topics.
 - `python quickex.py tagger all-long`: Tags all the long-content initiatives with all the tags and topics.
-- `python quickex.py tagger kb [KNOWLEDGE_BASE]`: Tags all the initiatives with all the tags and topics of the specified knowledge base.
-- `python quickex.py tagger new-tag [TAG]`: Tags all the initiatives with the tag specified. Must be already present in the topics dictionary.
-- `python quickex.py tagger new-topic [TOPIC]`: Tags all the initiatives with the all tags of the specified topic. Must be already present in the topic dictionary.
-- `python quickex.py tagger modify-regex [TAG]`: Finds the tag and removes it from all initiatives and tags all the initiatives using the updated regex. The regex must be updated in the topic dictionary.
-- `python quickex.py tagger rename-tag [OLD TAG] [NEW TAG]`: Finds all the occurrences of the specified tag in all the initiatives and replace it with the new name.
+- `python quickex.py tagger kb "[KNOWLEDGE_BASE]"`: Tags all the initiatives with all the tags and topics of the specified knowledge base.
+- `python quickex.py tagger new-topic "[TOPIC]"`: Tags all the initiatives with the all tags of the specified topic. Must be already present in the topic dictionary.
+- `python quickex.py tagger new-tag "[TOPIC]" "[TAG]"`: Tags all the initiatives with the tag specified. Must be already present in the topics dictionary.
+- `python quickex.py tagger modify-regex  "[TOPIC]" "[TAG]"`: Finds the tag and removes it from all initiatives and tags all the initiatives using the updated regex. The regex must be updated in the topic dictionary.
+- `python quickex.py tagger rename-tag  "[TOPIC]" "[OLD TAG]" "[NEW TAG]"`: Finds all the occurrences of the specified tag in all the initiatives and replace it with the new name.
 
 ## Untagger
 - `python quickex.py untagger all` (default): Marks all initiatives as not tagged.
 - `python quickex.py untagger kb [KNOWLEDGE_BASE]`: Removes tags from the specified knowledge base from all initiatives.
 - `python quickex.py untagger topic "[TOPIC]"`: Removes all tags from the specified topic from all initiatives.
-- `python quickex.py untagger tag "[TAG]"`: Removes the specified tag from all the initiatives.
+- `python quickex.py untagger tag  "[TOPIC]" "[TAG]"`: Removes the specified topic's tag from all the initiatives.
 - `python quickex.py untagger reference "[REFERENCE]"`: Removes all the tags from the specified initiative.
 
 ## Alerts

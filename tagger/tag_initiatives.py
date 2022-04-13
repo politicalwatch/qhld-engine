@@ -105,61 +105,68 @@ class TagInitiatives:
             self.tag_kb(kb)
 
     def tag_untagged(self):
-        log.info(f"Tagging completely untagged initiatives")
+        log.info("Tagging completely untagged initiatives")
         tags = Tags.get_all()
         tags = codecs.encode(pickle.dumps(tags), "base64").decode()
         initiatives = list(Initiatives.get_all_short_untagged())
         self.tag_initiatives(initiatives, tags, True, True)
 
     def tag_kb(self, kb):
+        log.info(f'Tagging knowledge base "{kb}"')
         tags = Tags.by_kb(kb)
         tags = codecs.encode(pickle.dumps(tags), "base64").decode()
         initiatives = list(Initiatives.by_kb_short_untagged(kb))
         self.tag_initiatives(initiatives, tags, True, True, kb)
 
     def tag_long(self):
+        log.info("Tagging long initiatives")
         self.tag_long_untagged()
-
         kbs = KnowledgeBases.get_all()
         for kb in kbs:
             log.info(f"Tagging kb {kb}")
             self.tag_long_by_kb(kb)
 
     def tag_long_untagged(self):
-        log.info(f"Tagging completely untagged initiatives")
+        log.info("Tagging completely untagged initiatives")
         tags = Tags.get_all()
         tags = codecs.encode(pickle.dumps(tags), "base64").decode()
         initiatives = list(Initiatives.get_all_long_untagged())
         self.tag_initiatives(initiatives, tags, True, True)
 
     def tag_long_by_kb(self, kb):
+        log.info(f'Tagging completely untagged initiatives by knowledge base "{kb}"')
         tags = Tags.by_kb(kb)
         tags = codecs.encode(pickle.dumps(tags), "base64").decode()
         initiatives = list(Initiatives.by_kb_long_untagged(kb))
         self.tag_initiatives(initiatives, tags, True, True, kb)
 
-    def new_tag(self, tag):
+    def new_topic(self, topic):
+        log.info(f'Tagging topic "{topic}"')
+        tags = codecs.encode(pickle.dumps(Tags.by_topic(topic)), "base64").decode()
+        initiatives = list(Initiatives.get_all())
+        self.tag_initiatives(initiatives, tags, True, False)
+
+    def new_tag(self, topic, tag):
+        log.info(f'Tagging tag "{tag}" from topic "{topic}"')
         tags = Tags.by_name(tag)
         tags = codecs.encode(pickle.dumps(tags), "base64").decode()
         initiatives = list(Initiatives.get_all())
         self.tag_initiatives(initiatives, tags, True, False)
 
-    def new_topic(self, topic):
-        tags = codecs.encode(pickle.dumps(Tags.by_topic(topic)), "base64").decode()
-        initiatives = list(Initiatives.get_all())
-        self.tag_initiatives(initiatives, tags, True, False)
-
     def by_reference(self, reference):
+        log.info(f'Tagging initiative "{reference}"')
         tags = codecs.encode(pickle.dumps(Tags.get_all()), "base64").decode()
         initiatives = list(Initiatives.by_reference(reference))
         self.tag_initiatives(initiatives, tags, False, False)
 
-    def rename(self, old_tag, new_tag):
-        initiatives = Initiatives.by_tag(old_tag)
+    def rename(self, topic, old_tag, new_tag):
+        log.info(f'Renaming tag "{old_tag}" by "{new_tag}" from topic "{topic}"')
+        initiatives = Initiatives.by_tag(topic, old_tag)
         for initiative in initiatives:
-            for tag in initiative['tags']:
-                if tag.tag == old_tag:
-                    tag.tag = new_tag
+            for kb in initiative.tagged:
+                for tag in kb.tags:
+                    if tag.topic == topic and tag.tag == old_tag:
+                        tag.tag = new_tag
             initiative.save()
 
     def merge_tags(self, old_tags, new_tags):
