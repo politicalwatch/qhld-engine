@@ -149,7 +149,7 @@ class TagInitiatives:
     def new_tag(self, topic, tag):
         log.info(f'Tagging tag "{tag}" from topic "{topic}"')
         tag = Tags.by_name(topic, tag)
-        tags = codecs.encode(pickle.dumps([tag]), "base64").decode()
+        tags = codecs.encode(pickle.dumps(tag), "base64").decode()
         initiatives = list(Initiatives.get_all())
         self.tag_initiatives(initiatives, tags, True, False)
 
