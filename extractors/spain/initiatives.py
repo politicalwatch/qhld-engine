@@ -42,22 +42,53 @@ class InitiativesExtractor:
         return INITIATIVE_TYPES
 
     def sync_totals(self):
+        headers = {
+            "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/99.0",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            "Accept-Language": "es-ES,es;q=0.8,en-US;q=0.5,en;q=0.3",
+            "Upgrade-Insecure-Requests": "1",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "none",
+            "Sec-Fetch-User": "?1"
+        }
+
+        response = requests.get(self.BASE_URL, headers=headers)
+        if not response.ok:
+            raise Exception
+
+        cookies = response.cookies
+
+        headers = {
+            "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/99.0",
+            "Accept": "application/json, text/javascript, */*; q=0.01",
+            "Accept-Language": "es-ES,es;q=0.8,en-US;q=0.5,en;q=0.3",
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "X-Requested-With": "XMLHttpRequest",
+            "Sec-Fetch-Dest": "empty",
+            "Sec-Fetch-Mode": "cors",
+            "Sec-Fetch-Site": "same-origin"
+        }
         query_params = {
                 'p_p_id': 'iniciativas',
                 'p_p_lifecycle': 2,
                 'p_p_state': 'normal',
                 'p_p_mode': 'view',
                 'p_p_resource_id': 'cambiarLegislaturaIndice',
-                '_iniciativas_legislatura': self.LEGISLATURE
+                'p_p_cacheability': 'cacheLevelPage'
                 }
-        response = requests.get(
+        form_data = {
+                '_iniciativas_legislatura': f"{self.LEGISLATURE}+"
+                }
+        response = requests.post(
                 self.BASE_URL,
-                params=query_params
+                params=query_params,
+                data=form_data,
+                headers=headers,
+                cookies=cookies
                 )
-
         if not response.ok:
-            log.error(f"Error {response.status_code} when requesting an initiative on URL {response.url}.")
-            return
+            raise Exception
 
         soup = BeautifulSoup(response.json()['content'], 'lxml')
         for element in soup.select('.listado_1 li'):
