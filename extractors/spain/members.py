@@ -14,7 +14,7 @@ log = get_logger(__name__)
 class MembersExtractor:
     def __init__(self):
         self.ITEMS_PER_PAGE = 20
-        self.BASE_URL = 'https://www.congreso.es/web/guest/busqueda-de-diputados'
+        self.BASE_URL = 'https://www.congreso.es/busqueda-de-diputados'
         self.total = 0
         self.LEGISLATURE = 14
         self.references = []
@@ -27,6 +27,30 @@ class MembersExtractor:
 
 
     def extract(self):
+        headers = {
+            "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/99.0",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            "Accept-Language": "es-ES,es;q=0.8,en-US;q=0.5,en;q=0.3",
+            "Upgrade-Insecure-Requests": "1",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "none",
+            "Sec-Fetch-User": "?1"
+        }
+
+        response = requests.get(self.BASE_URL, headers=headers)
+        cookies = response.cookies
+
+        headers = {
+            "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/99.0",
+            "Accept": "application/json, text/javascript, */*; q=0.01",
+            "Accept-Language": "es-ES,es;q=0.8,en-US;q=0.5,en;q=0.3",
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "X-Requested-With": "XMLHttpRequest",
+            "Sec-Fetch-Dest": "empty",
+            "Sec-Fetch-Mode": "cors",
+            "Sec-Fetch-Site": "same-origin"
+        }
         query_params = {
             'p_p_id': 'diputadomodule',
             'p_p_lifecycle': 2,
@@ -50,9 +74,18 @@ class MembersExtractor:
         response = requests.post(
             self.BASE_URL,
             params=query_params,
-            data=form_data
+            data=form_data,
+            headers=headers,
+            cookies=cookies
         )
-        items = response.json().get('data')
+
+        if response.status_code > 399:
+            log.error(f"Error {response.status_code} when requesting the members list on URL {response.url}.")
+            return
+
+        json_data = response.json()
+
+        items = json_data.get('data')
         for deputy in items:
             self.references.append(deputy['codParlamentario'])
 

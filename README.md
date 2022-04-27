@@ -75,3 +75,4 @@ Available Commands
 
 ## Alerts
 - `python quickex.py generate-alert [REFERENCE]`: Inserts the specified initiative inside the initiative_alerts collection.
+- `python quickex.py send-alert: Send the alerts.
