@@ -54,6 +54,11 @@ class InitiativesExtractor:
                 self.BASE_URL,
                 params=query_params
                 )
+
+        if response.status_code > 399:
+            log.error(f"Error {response.status_code} when requesting an initiative on URL {response.url}.")
+            return
+
         soup = BeautifulSoup(response.json()['content'], 'lxml')
         for element in soup.select('.listado_1 li'):
             initiative_type = element.select_one('a').getText().strip()
