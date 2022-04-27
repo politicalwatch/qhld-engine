@@ -39,6 +39,11 @@ class MembersExtractor:
         }
 
         response = requests.get(self.BASE_URL, headers=headers)
+
+        if not response.ok:
+            log.error(f"Error {response.status_code} when requesting the members list on URL {response.url}.")
+            return
+
         cookies = response.cookies
 
         headers = {
