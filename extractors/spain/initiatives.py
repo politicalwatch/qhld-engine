@@ -55,7 +55,7 @@ class InitiativesExtractor:
                 params=query_params
                 )
 
-        if response.status_code > 399:
+        if not response.ok:
             log.error(f"Error {response.status_code} when requesting an initiative on URL {response.url}.")
             return
 
@@ -251,6 +251,7 @@ class InitiativesExtractor:
                 params=query_params))
         for future in as_completed(futures_requests):
             response = future.result()
+
             if response.ok:
                 callback(response)
 

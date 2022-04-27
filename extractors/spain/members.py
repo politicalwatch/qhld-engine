@@ -79,7 +79,7 @@ class MembersExtractor:
             cookies=cookies
         )
 
-        if response.status_code > 399:
+        if not response.ok:
             log.error(f"Error {response.status_code} when requesting the members list on URL {response.url}.")
             return
 
