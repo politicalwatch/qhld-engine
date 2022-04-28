@@ -1,6 +1,7 @@
 import os
 import json
 import requests
+from requests.structures import CaseInsensitiveDict
 from logger import get_logger
 
 from concurrent.futures import as_completed
@@ -27,18 +28,24 @@ class MembersExtractor:
 
 
     def extract(self):
-        headers = {
-            "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/99.0",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-            "Accept-Language": "es-ES,es;q=0.8,en-US;q=0.5,en;q=0.3",
-            "Upgrade-Insecure-Requests": "1",
-            "Sec-Fetch-Dest": "document",
-            "Sec-Fetch-Mode": "navigate",
-            "Sec-Fetch-Site": "none",
-            "Sec-Fetch-User": "?1"
-        }
+        headers = CaseInsensitiveDict()
+        headers["User-Agent"] = "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/99.0"
+        headers["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
+        headers["Accept-Language"] = "es-ES,es;q=0.8,en-US;q=0.5,en;q=0.3"
+        headers["Accept-Encoding"] = "gzip, deflate, br"
+        headers["DNT"] = "1"
+        headers["Connection"] = "keep-alive"
+        headers["Upgrade-Insecure-Requests"] = "1"
+        headers["Sec-Fetch-Dest"] = "document"
+        headers["Sec-Fetch-Mode"] = "navigate"
+        headers["Sec-Fetch-Site"] = "none"
+        headers["Sec-Fetch-User"] = "?1"
 
-        response = requests.get(self.BASE_URL, headers=headers)
+        req = requests.Request('get', url, headers=headers)
+        req = req.prepare()
+
+        session = requests.Session()
+        response = session.send(req)
 
         if not response.ok:
             log.error(f"Error {response.status_code} when requesting the members list on URL {response.url}.")
