@@ -41,7 +41,7 @@ class MembersExtractor:
         headers["Sec-Fetch-Site"] = "none"
         headers["Sec-Fetch-User"] = "?1"
 
-        req = requests.Request('get', url, headers=headers)
+        req = requests.Request('get', self.BASE_URL, headers=headers)
         req = req.prepare()
 
         session = requests.Session()
