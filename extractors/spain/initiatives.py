@@ -285,6 +285,8 @@ class InitiativesExtractor:
 
             if response.ok:
                 callback(response)
+            else:
+                log.error(f"Error {response.status_code} processing initiative on {response.url}")
 
     def extract_videos(self):
         for reference in self.all_references:
