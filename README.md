@@ -74,5 +74,5 @@ Available Commands
 - `python quickex.py untagger reference "[REFERENCE]"`: Removes all the tags from the specified initiative.
 
 ## Alerts
+- `python quickex.py send-alerts: Send the alerts.
 - `python quickex.py generate-alert [REFERENCE]`: Inserts the specified initiative inside the initiative_alerts collection.
-- `python quickex.py send-alert: Send the alerts.

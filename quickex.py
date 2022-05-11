@@ -12,7 +12,7 @@ from tipi_data.models.alert import create_alert
 
 def print_help():
     print('Usage: quickex.py TASK')
-    print('Apply task: alerts, tagger, untagger, stats, footprint, or extractor')
+    print('Apply task: send-alerts, generate-alert, tagger, untagger, stats, footprint, extractor')
     print('Example: python quickex.py stats')
 
 def run_command(commands, arguments):
@@ -140,7 +140,7 @@ def long_questions(args):
 
 
 commands = {
-    'alerts': send_alerts,
+    'send-alerts': send_alerts,
     'generate-alert': generate_alert,
     'tagger': tag,
     'untagger': untag,
