@@ -119,7 +119,6 @@ class CongressApi(object):
         return self.post(url, headers, data)
 
     def get_initiative(self, reference):
-        print('Getting single initiative')
         reference_parts = reference.split('/')
         initiative_type = reference_parts[0]
         url = self.url_builder.for_initiative(reference)
