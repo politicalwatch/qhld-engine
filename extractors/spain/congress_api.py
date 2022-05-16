@@ -7,7 +7,6 @@ class CongressHeadersBuilder:
 
     def __init__(self):
         self.headers = CaseInsensitiveDict()
-        self.set_defaults()
 
     def set_defaults(self):
         self.set_user_agent()
@@ -16,21 +15,15 @@ class CongressHeadersBuilder:
         self.set("Accept-Encoding", "gzip, deflate, br")
         self.set("DNT", "1")
         self.set("Connection", "keep-alive")
+        self.set("Host", "www.congreso.es")
 
     def set_user_agent(self, user_agent=None):
         if not user_agent:
-            user_agent = "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/99.0"
+            user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:4.8) Goanna/20220409 PaleMoon/29.4.6"
         self.set("User-Agent", user_agent)
 
-    def for_web(self):
-        self.set("Upgrade-Insecure-Requests", "1")
-        self.set("Sec-Fetch-Dest", "document")
-        self.set("Sec-Fetch-Mode", "navigate")
-        self.set("Sec-Fetch-Site", "none")
-        self.set("Sec-Fetch-User", "?1")
-        return self.headers
-
     def for_api(self):
+        self.set_defaults()
         self.set("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
         self.set("X-Requested-With", "XMLHttpRequest")
         self.set("Origin", "https://www.congreso.es")
@@ -40,10 +33,20 @@ class CongressHeadersBuilder:
         self.set("TE", "trailers")
         return self.headers
 
+    def for_web(self):
+        self.set_user_agent()
+        self.set('Cookie', 'GUEST_LANGUAGE_ID=es_ES')
+        self.set('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8')
+        self.set("Host", "www.congreso.es")
+        self.set('Accept-Language', 'en-us')
+        self.set('Accept-Encoding', 'br, gzip, deflate')
+        self.set("Connection", "keep-alive")
+        return self.headers
+
     def set(self, header, value):
         self.headers[header] = value
         return self
-
+        
 class CongressUrlBuilder:
     def __init__(self):
         self.url = "https://www.congreso.es/"
@@ -95,7 +98,7 @@ class CongressApi(object):
     def request_cookies(self):
         headers = CongressHeadersBuilder().for_web()
         url = self.url_builder.for_cookies()
-        response = self.get(url, headers)
+        response = requests.get(url, headers=headers)
         self.cookies = response.cookies
 
     def get_deputies(self):
@@ -116,9 +119,12 @@ class CongressApi(object):
         return self.post(url, headers, data)
 
     def get_initiative(self, reference):
+        print('Getting single initiative')
+        reference_parts = reference.split('/')
+        initiative_type = reference_parts[0]
         url = self.url_builder.for_initiative(reference)
         headers = CongressHeadersBuilder().for_web()
-        return self.async_get(url, headers)
+        return self.get(url, headers)
 
     def get(self, url, headers):
         response = requests.get(url, headers=headers)
@@ -130,7 +136,8 @@ class CongressApi(object):
 
     def async_get(self, url, headers):
         session = self.get_session()
-        return session.get(url, headers=headers)
+        cookies = self.get_cookies()
+        return session.get(url, headers=headers, cookies=cookies)
 
     def post(self, url, headers, data):
         cookies = self.get_cookies()
@@ -148,22 +155,19 @@ class CongressApi(object):
         api.get_cookies()
 
         print('Getting deputies')
-        api = CongressApi()
         api.get_deputies()
 
         print('Getting single deputies')
-        api = CongressApi()
         api.get_deputy('267')
         api.get_deputy('237')
 
         print('Getting initiative totals')
-        api = CongressApi()
         api.get_initiative_totals()
 
         print('Getting initiatives')
-        api = CongressApi()
         api.get_initiative('181/001810')
         api.get_initiative('161/001542')
         api.get_initiative('184/057540')
 
-# CongressApi.test()
+
+#CongressApi.test()
