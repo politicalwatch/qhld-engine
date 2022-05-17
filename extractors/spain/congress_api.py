@@ -123,7 +123,7 @@ class CongressApi(object):
         initiative_type = reference_parts[0]
         url = self.url_builder.for_initiative(reference)
         headers = CongressHeadersBuilder().for_web()
-        return self.get(url, headers)
+        return self.async_get(url, headers)
 
     def get(self, url, headers):
         response = requests.get(url, headers=headers)
