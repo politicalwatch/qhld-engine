@@ -24,6 +24,10 @@ class ExtractorTask():
     def groups(self):
         self.groups_extractor.extract()
 
+    def totals(self):
+        self.initiatives_extractor.sync_totals()
+        print(self.initiatives_extractor.totals_by_type)
+
     def initiatives(self):
         self.initiatives_extractor.extract()
 

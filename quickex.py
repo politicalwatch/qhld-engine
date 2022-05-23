@@ -87,6 +87,7 @@ def extract(args):
     task = ExtractorTask()
     subcommands = {
         'initiatives': task.initiatives,
+        'totals': task.totals,
         'references': task.references,
         'votes': task.votes,
         'interventions': task.interventions,
