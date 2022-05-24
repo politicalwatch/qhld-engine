@@ -159,6 +159,7 @@ class InitiativesExtractor:
         initiatives = Initiatives.get_all_without_answers().order_by('reference').only('reference', 'status')
 
         last_references = {}
+        totals = {}
         previous_ref = 1
 
         for initiative in initiatives:
@@ -171,6 +172,9 @@ class InitiativesExtractor:
             initiative_type = items[0]
             reference = items[1]
 
+            if initiative_type not in totals:
+                totals[initiative_type] = 0
+
             last_references[initiative_type] = reference
             int_reference = int(reference)
             missing_references = self.calculate_references_between(previous_ref, int_reference, initiative_type)
@@ -179,6 +183,7 @@ class InitiativesExtractor:
             if initiative['status'] in NOT_FINAL_STATUS:
                 self.all_references.append(initiative['reference'])
 
+            totals[initiative_type] += 1
             previous_ref = int_reference + 1
 
         for initiative_type in self.get_types():
@@ -187,18 +192,16 @@ class InitiativesExtractor:
 
             db_last_reference = int(last_references[code]) if code in last_references else 0
             origin_total = self.totals_by_type[title] if title in self.totals_by_type else 0
-            db_total = last_references[code] if code in last_references else 0
+            db_total = totals[code] if code in totals else 0
 
             new_items = int(origin_total) - int(db_total)
 
             if new_items < 0:
-                new_items = 0
+                continue
 
             gap = self.SAFETY_EXTRACTION_GAP
-            if initiative_type['code'] == '184':
-                gap += 20
 
-            for extra in range(1, new_items + gap + 1):
+            for extra in range(1, new_items + gap):
                 self.all_references.append(self.format_reference(db_last_reference + extra, code))
 
     def calculate_references_between(self, previous_ref, new_ref, initiative_type):
