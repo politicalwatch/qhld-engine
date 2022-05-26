@@ -106,6 +106,16 @@ STATUS_MAP = [
                 },
         {
                 'latest_history_items': [
+                    r'Inadmitido a trámite en términos absolutos',
+                    ],
+                'initiative_type': {
+                    'includes': [],
+                    'excludes': []
+                    },
+                'status': 'No admitida a trámite'
+                },
+        {
+                'latest_history_items': [
                     r'Decaído',
                     ],
                 'initiative_type': {
