@@ -112,7 +112,7 @@ STATUS_MAP = [
                     'includes': [],
                     'excludes': []
                     },
-                'status': 'Retirada'
+                'status': 'No admitida a trámite'
                 },
         {
                 'latest_history_items': [
