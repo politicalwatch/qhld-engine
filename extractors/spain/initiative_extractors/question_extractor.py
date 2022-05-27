@@ -2,7 +2,7 @@ from .initiative_extractor import InitiativeExtractor
 from .bulletins_extractor import NonExclusiveBulletinExtractor
 from .utils.pdf_parsers import PDFExtractor
 from copy import deepcopy
-from .initiative_status import NOT_FINAL_STATUS, ON_PROCESS
+from .initiative_status import NOT_FINAL_STATUS, ON_PROCESS, is_final_status
 from tipi_data.models.initiative import Initiative
 from tipi_data.utils import generate_id
 from logger import get_logger
@@ -32,9 +32,12 @@ class QuestionExtractor(InitiativeExtractor):
         except Exception as e:
             extract_answer = True
 
+        if is_final_status(self.initiative['status']) and self.initiative['status'] != 'Respondida':
+            extract_answer = False
+
         if extract_answer == True:
             answer_content = self.retrieve_answer()
-            if answer_content == [] and self.initiative['status'] not in NOT_FINAL_STATUS:
+            if answer_content == []:
                 self.initiative['status'] = ON_PROCESS
             else:
                 self.create_answer_initative(answer_content)

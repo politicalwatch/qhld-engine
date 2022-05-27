@@ -48,7 +48,7 @@ STATUS_MAP = [
                 ],
             'initiative_type': {
                 'includes': [],
-                'excludes': ['080', '170', '172', '180', '181', '184', '212', '213', '214', '219']
+                'excludes': ['080', '170', '172', '178', '179', '180', '181', '184', '212', '213', '214', '219']
                 },
             'status': 'Aprobada'
             },
@@ -97,16 +97,6 @@ STATUS_MAP = [
         {
                 'latest_history_items': [
                     r'Inadmitido a trámite',
-                    ],
-                'initiative_type': {
-                    'includes': [],
-                    'excludes': []
-                    },
-                'status': 'No admitida a trámite'
-                },
-        {
-                'latest_history_items': [
-                    r'Inadmitido a trámite en términos absolutos',
                     ],
                 'initiative_type': {
                     'includes': [],
