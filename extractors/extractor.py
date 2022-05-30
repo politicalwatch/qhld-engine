@@ -24,6 +24,10 @@ class ExtractorTask():
     def groups(self):
         self.groups_extractor.extract()
 
+    def totals(self):
+        self.initiatives_extractor.extract_references()
+        print(self.initiatives_extractor.all_references)
+
     def initiatives(self):
         self.initiatives_extractor.extract()
 
