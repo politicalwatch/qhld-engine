@@ -18,7 +18,6 @@ class MembersExtractor:
         self.ITEMS_PER_PAGE = 20
         self.BASE_URL = 'https://www.congreso.es/busqueda-de-diputados'
         self.total = 0
-        self.LEGISLATURE = 14
         self.references = []
         self.parliamentarygroups = self.__load_groups()
         self.api = CongressApi()

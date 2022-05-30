@@ -1,9 +1,7 @@
 import time
 from logger import get_logger
 
-import requests
 from bs4 import BeautifulSoup
-from requests_futures.sessions import FuturesSession
 from concurrent.futures import as_completed
 
 from tipi_data.models.deputy import Deputy
@@ -11,14 +9,12 @@ from tipi_data.models.parliamentarygroup import ParliamentaryGroup
 from tipi_data.models.place import Place
 from tipi_data.repositories.initiatives import Initiatives
 
-from extractors.config import ID_LEGISLATURA
 from .initiative_types import INITIATIVE_TYPES
 from .initiative_extractor_factory import InitiativeExtractorFactory
 from .initiative_extractors.initiative_status import NOT_FINAL_STATUS
 from .grouped_deputies import GroupedDeputies
 from .initiative_extractors.video_extractor import VideoExtractor
 from .initiative_extractors.vote_extractor import VoteExtractor
-from .utils import int_to_roman
 from .congress_api import CongressApi
 
 
@@ -28,7 +24,6 @@ log = get_logger(__name__)
 class InitiativesExtractor:
 
     def __init__(self):
-        self.LEGISLATURE = ID_LEGISLATURA
         self.INITIATIVES_PER_PAGE = 25
         self.BASE_URL = 'https://www.congreso.es/web/guest/indice-de-iniciativas'
         self.SAFETY_EXTRACTION_GAP = 3

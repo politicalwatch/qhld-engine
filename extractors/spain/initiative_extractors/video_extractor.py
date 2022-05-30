@@ -1,7 +1,12 @@
 import requests
 import math
+
 from tipi_data.utils import generate_id
 from tipi_data.models.video import Video
+
+from extractors.config import ID_LEGISLATURA
+from extractors.spain.utils import int_to_roman
+
 
 class VideoExtractor():
 
@@ -43,7 +48,7 @@ class VideoExtractor():
 
 
     def retrieve_json(self, page):
-        url = 'https://www.congreso.es/web/guest/busqueda-de-intervenciones?p_p_id=intervenciones&p_p_lifecycle=2&p_p_state=normal&p_p_mode=view&p_p_resource_id=filtrarListado&p_p_cacheability=cacheLevelPage&_intervenciones_mode=view&_intervenciones_legislatura=XIV&_intervenciones_id_iniciativa=' + self.reference
+        url = f'https://www.congreso.es/web/guest/busqueda-de-intervenciones?p_p_id=intervenciones&p_p_lifecycle=2&p_p_state=normal&p_p_mode=view&p_p_resource_id=filtrarListado&p_p_cacheability=cacheLevelPage&_intervenciones_mode=view&_intervenciones_legislatura={int_to_roman(ID_LEGISLATURA)}&_intervenciones_id_iniciativa={self.reference}'
         data = {
             '_intervenciones_paginaActual': page
         }
