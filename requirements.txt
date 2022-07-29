@@ -1,4 +1,4 @@
-Scrapy==1.5.1
+Scrapy==2.6.2
 cryptography==2.8
 git+https://github.com/politicalwatch/tipi-tasks.git
 git+https://github.com/politicalwatch/tipi-data.git
