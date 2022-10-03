@@ -226,7 +226,11 @@ class InitiativesExtractor:
             futures_requests.append(self.api.get_initiative(reference))
 
         for future in as_completed(futures_requests):
-            response = future.result()
+            try:
+                response = future.result()
+            except Exception as e:
+                log.error(f"Error {e} processing initiative")
+                continue
 
             if response.ok:
                 callback(response)
