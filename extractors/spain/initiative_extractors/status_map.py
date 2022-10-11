@@ -38,7 +38,7 @@ STATUS_MAP = [
                 ],
             'initiative_type': {
                 'includes': [],
-                'excludes': []
+                'excludes': ['170', '172', '178', '179', '180', '181', '184', '212', '213', '214', '219']
                 },
             'status': 'Aprobada'
             },
@@ -55,7 +55,6 @@ STATUS_MAP = [
         {
                 'latest_history_items': [
                     r'Tramitado por completo sin',
-                    r'Concluido',
                     ],
                 'initiative_type': {
                     'includes': ['170', '172', '178', '179', '180', '181', '184'],
@@ -66,7 +65,6 @@ STATUS_MAP = [
         {
                 'latest_history_items': [
                     r'Tramitado por completo sin',
-                    r'Concluido',
                     ],
                 'initiative_type': {
                     'includes': ['212', '213', '214', '219'],
