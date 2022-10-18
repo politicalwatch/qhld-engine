@@ -35,20 +35,11 @@ STATUS_MAP = [
                 r'Convalidado',
                 r'Tramitado con propuesta de resolución',
                 r'Concluido desde',
-                ],
-            'initiative_type': {
-                'includes': [],
-                'excludes': ['170', '172', '178', '179', '180', '181', '184', '212', '213', '214', '219']
-                },
-            'status': 'Aprobada'
-            },
-        {
-            'latest_history_items': [
                 r'Tramitado por completo sin',
                 ],
             'initiative_type': {
                 'includes': [],
-                'excludes': ['080', '170', '172', '178', '179', '180', '181', '184', '212', '213', '214', '219']
+                'excludes': ['080', '170', '172', '178', '179', '180', '181', '184',, '210', '212', '213', '214', '219']
                 },
             'status': 'Aprobada'
             },
@@ -67,7 +58,7 @@ STATUS_MAP = [
                     r'Tramitado por completo sin',
                     ],
                 'initiative_type': {
-                    'includes': ['212', '213', '214', '219'],
+                    'includes': ['210', '212', '213', '214', '219'],
                     'excludes': [],
                     },
                 'status': 'Celebrada'
