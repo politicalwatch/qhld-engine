@@ -79,7 +79,7 @@ class TagInitiatives:
         if 'content' not in initiative:
             return title_tags
 
-        text = '.'.join(initiative['content'])
+        text = ' '.join(initiative['content'])
         body_result = tipi_tasks.tagger.extract_tags_from_text(text, tags)
         if 'result' not in body_result.keys():
             return title_tags
