@@ -128,7 +128,8 @@ class InitiativeExtractor:
             self.initiative['title'] = title
             self.initiative['reference'] = reference
             self.initiative['initiative_type'] = self.initiative['reference'].split('/')[0]
-            self.initiative['initiative_type_alt'] = self.soup.select('.titular-seccion')[1].text[:-1]
+            i_type_alt = self.soup.select('.titular-seccion')[1].text
+            self.initiative['initiative_type_alt'] = i_type_alt[:-1] if i_type_alt[-1] == '.' else i_type_alt
             self.initiative['place'] = self.get_place()
             if not self.has_authors():
                 self.populate_authors()
