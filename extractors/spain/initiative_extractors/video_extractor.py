@@ -1,11 +1,15 @@
 import requests
 import math
+from logger import get_logger
 
 from tipi_data.utils import generate_id
 from tipi_data.models.video import Video
 
 from extractors.config import ID_LEGISLATURA
 from extractors.spain.utils import int_to_roman
+
+
+log = get_logger(__name__)
 
 
 class VideoExtractor():
