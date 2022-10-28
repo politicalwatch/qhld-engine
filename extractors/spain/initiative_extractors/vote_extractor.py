@@ -1,13 +1,16 @@
-from lxml.html import document_fromstring
+import re
+from logger import get_logger
+
+import requests
 from lxml.etree import tostring
 from html import unescape
+
 from tipi_data.models.voting import Voting
-from logger import get_logger
 from tipi_data.utils import generate_id
-import re
-import requests
+
 
 log = get_logger(__name__)
+
 
 class VoteExtractor():
     JSON_XPATH = "//div[@class='votaciones']/div[1]/a[contains(text(), 'JSON')]"
