@@ -6,6 +6,7 @@ from lxml.etree import tostring
 from html import unescape
 
 from tipi_data.models.voting import Voting
+from tipi_data.repositories.initiatives import Initiatives
 from tipi_data.utils import generate_id
 
 
@@ -15,22 +16,33 @@ log = get_logger(__name__)
 class VoteExtractor():
     JSON_XPATH = "//div[@class='votaciones']/div[1]/a[contains(text(), 'JSON')]"
     VOTE_TYPES = [
-        'Toma en consideración',
-        'Debate de totalidad',
-        'Votación de conjunto'
-    ]
+            'Toma en consideración',
+            'Debate de totalidad',
+            'Votación de conjunto'
+            ]
 
     def __init__(self, tree, reference):
         self.tree = tree
         self.reference = reference
+        initiative = Initiatives.by_reference(reference).first()
+        self.title = initiative['title'] if initiative else ''
 
     def extract(self):
         votes_html = self.get_votes_html()
+        has_a_type_vote = False
         for item in votes_html:
             for type in self.VOTE_TYPES:
                 if type in item:
-                    link = self.extract_link(item)
-                    self.extract_votes(link)
+                    has_a_type_vote = True
+                    self.__extract_item(item, type)
+            if not has_a_type_vote:
+                if self.title in item:
+                    self.__extract_item(item, 'Principal')
+
+    def __extract_item(self, item, label):
+        log.info(f"Extracting '{label}' votes for {self.reference}")
+        link = self.extract_link(item)
+        self.extract_votes(link)
 
     def get_votes_html(self):
         elements = self.tree.cssselect('.votaciones')
@@ -79,14 +91,12 @@ class VoteExtractor():
 
         return party_votes
 
-    def vote_exists(self):
-        return False
-        # return Voting.objects(id=self.initiative['id'])
-
     def save_votes(self, data):
         votes = Voting()
         information = data.get('informacion')
-        votes['id'] = self.generate_id(self.reference, information.get('tituloSubGrupo'))
+        votes['id'] = self.generate_id(
+                self.reference,
+                information.get('textoExpediente') + '\n' + information.get('tituloSubGrupo'))
         votes['reference'] = self.reference
         votes['title'] = information.get('textoExpediente')
         votes['subgroup_text'] = information.get('textoSubGrupo')
@@ -109,5 +119,3 @@ class VoteExtractor():
             reference,
             text
         )
-
-
