@@ -248,9 +248,22 @@ class InitiativesExtractor:
             votes_extractor = VoteExtractor(extractor.node_tree, extractor.get_reference())
             votes_extractor.extract()
 
+        self.__skip_oversight_initiatives()
         self.process_initiatives(callback)
 
     def format_reference(self, ref, initiative_type):
         reference = str(ref)
         missing_zeros = 6 - len(reference)
         return initiative_type + '/' + ('0' * missing_zeros) + reference
+
+    def __skip_oversight_initiatives(self):
+        oversight_types = [
+                t['code']
+                for t in INITIATIVE_TYPES
+                if t['group'] == 'Función de control'
+                ]
+        self.all_references = [
+                ref
+                for ref in self.all_references
+                if ref.split('/')[0] not in oversight_types
+                ]
