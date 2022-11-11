@@ -16,7 +16,6 @@ class PartialAmendments(BaseAmendments):
         justification = []
         propossed_change = []
 
-        # TODO fix this.
         for index, item in enumerate(text_list):
             if self.should_skip(item):
                 continue
