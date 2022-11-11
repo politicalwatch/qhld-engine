@@ -1,6 +1,7 @@
 import sys
 
 from extractors.extractor import ExtractorTask
+from extractors.extractor import ExtractorTask
 from tagger.tag_initiatives import TagInitiatives
 from untagger.untag_initiatives import UntagInitiatives
 from alerts.send_alerts import SendAlerts

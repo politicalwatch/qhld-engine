@@ -14,9 +14,11 @@ from tipi_data.models.alert import create_alert
 from tipi_data.utils import generate_id
 
 from logger import get_logger
+from .amendment_extractor import AmendmentExtractor
 from .initiative_status import get_status, is_final_status
-from .vote_extractor import VoteExtractor
 from .video_extractor import VideoExtractor
+from .vote_extractor import VoteExtractor
+from ...config import AMENDMENTS_FEATURE
 
 
 log = get_logger(__name__)
@@ -91,6 +93,12 @@ class InitiativeExtractor:
             else:
                 if is_final_status(self.initiative['status']) and self.has_knowledge_bases():
                     create_alert(self.initiative)
+
+            if AMENDMENTS_FEATURE and AmendmentExtractor.can_have_amendments(self.initiative['initiative_type']):
+                task = AmendmentExtractor(self.initiative, self.soup, self.node_tree)
+                if task.has_amendments():
+                    task.extract()
+
             self.initiative.save()
             log.info(f"Iniciativa {self.initiative['reference']} procesada")
         except Exception as e:

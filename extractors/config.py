@@ -8,3 +8,5 @@ REDIS_HOST = env.get('REDIS_HOST', 'localhost')
 REDIS_PORT = int(env.get('REDIS_PORT', '6379'))
 REDIS_DB_CHECK = int(env.get('REDIS_DB_CHECK', '0'))
 REDIS_DB_DENYLIST = int(env.get('REDIS_DB_DENYLIST', '1'))
+
+AMENDMENTS_FEATURE = bool(env.get('AMENDMENTS_FEATURE', False))
