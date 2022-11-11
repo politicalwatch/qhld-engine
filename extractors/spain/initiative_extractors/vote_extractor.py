@@ -5,9 +5,8 @@ import requests
 from lxml.etree import tostring
 from html import unescape
 
-from tipi_data.models.voting import Voting
 from tipi_data.repositories.initiatives import Initiatives
-from tipi_data.utils import generate_id
+from tipi_data.repositories.votings import Votings
 
 
 log = get_logger(__name__)
@@ -57,7 +56,7 @@ class VoteExtractor():
         items = html.split('JSON</a>')
         cleaned = []
         for item in items:
-            cleaned.append(unescape(item)+ 'JSON</a>')
+            cleaned.append(unescape(item) + 'JSON</a>')
 
         return cleaned[:len(cleaned) - 1]
 
@@ -75,47 +74,5 @@ class VoteExtractor():
         data = response.json()
         self.save_votes(data)
 
-    def get_party_votes(self, data):
-        votaciones = data.get('votaciones')
-        party_votes = {}
-        for vote in votaciones:
-            group = vote.get('grupo')
-            vote_value = vote.get('voto')
-
-            if group not in party_votes:
-                party_votes[group] = {}
-            if vote_value not in party_votes[group]:
-                party_votes[group][vote_value] = 0
-
-            party_votes[group][vote_value] = party_votes[group][vote_value] + 1
-
-        return party_votes
-
     def save_votes(self, data):
-        votes = Voting()
-        information = data.get('informacion')
-        votes['id'] = self.generate_id(
-                self.reference,
-                information.get('textoExpediente') + '\n' + information.get('tituloSubGrupo'))
-        votes['reference'] = self.reference
-        votes['title'] = information.get('textoExpediente')
-        votes['subgroup_text'] = information.get('textoSubGrupo')
-        votes['subgroup_title'] = information.get('tituloSubGrupo')
-
-        totals = data.get('totales')
-        votes['total_yes'] = totals.get('afavor')
-        votes['total_no'] = totals.get('enContra')
-        votes['total_abstention'] = totals.get('abstenciones')
-        votes['total_skip'] = totals.get('noVotan')
-        votes['total_present'] = totals.get('presentes')
-
-        votes['by_party'] = self.get_party_votes(data)
-        votes['by_deputy'] = data.get('votaciones')
-
-        votes.save()
-
-    def generate_id(self, reference, text):
-        return generate_id(
-            reference,
-            text
-        )
+        Votings.save(self.reference, data)
