@@ -24,14 +24,18 @@ class BaseAmendments:
     def cleanup(self):
         delimiter = r"ENMIENDA NÚM"
         match = re.search(delimiter, self.content)
+        if not match:
+            # No amendments.
+            return []
         content = self.content[match.start():]
-        content = content.split("ENMIENDA NÚM. ")
+        content = content.split("ENMIENDA NÚM.")
         content = [element for element in content if element != ""]
         return content
 
     def create_amendment(self, text):
         text_list = text.split('\n')
         amendment = Amendment(bulletin_name=self.name, reference=self.reference)
+        amendment.mark_as_congress()
 
         self.process_text(amendment, text_list)
 
@@ -79,5 +83,5 @@ class BaseAmendments:
         pass
 
     def should_skip(self, item):
-        skipped = ['', '[**********página con cuadro**********]', 'Común', 'Podemos-En Comú Podem-Galicia en Común', '[...]\'']
+        skipped = ['', '[**********página con cuadro**********]', 'Común', 'Podemos-En Comú Podem-Galicia en Común', '[...]\'', 'FIRMANTE:']
         return item.startswith('Página') or item in skipped

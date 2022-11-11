@@ -4,10 +4,12 @@ import re
 from lxml.html import document_fromstring
 
 from tipi_data.repositories.amendments import Amendments
-from .amendments.totallity_amendments import TotallityAmendments
 from .amendments.partial_amendments import PartialAmendments
+from .amendments.senate_amendments import SenateAmendments
+from .amendments.totallity_amendments import TotallityAmendments
 
-amendment_types = [TotallityAmendments, PartialAmendments]
+# amendment_types = [SenateAmendments]
+amendment_types = [PartialAmendments, SenateAmendments, TotallityAmendments]
 
 class AmendmentExtractor:
     TAG_RE = re.compile(r'<[^>]+>')  # TODO Move to utils
