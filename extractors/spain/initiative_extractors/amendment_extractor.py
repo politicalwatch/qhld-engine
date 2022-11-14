@@ -17,7 +17,7 @@ class AmendmentExtractor:
 
     @staticmethod
     def can_have_amendments(initiative_type):
-        types = ['120', '121', '122', '123', '124', '125', '127', '162', '162', '171', '173']
+        types = ['120', '121', '122', '123', '124', '125', '127', '171', '173']
 
         return initiative_type in types
 
