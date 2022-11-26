@@ -1,4 +1,5 @@
 import re
+import json
 from logger import get_logger
 
 import requests
@@ -70,9 +71,12 @@ class VoteExtractor():
         return link[:end]
 
     def extract_votes(self, url):
-        response = requests.get(url)
-        data = response.json()
-        self.save_votes(data)
+        try:
+            response = requests.get(url)
+            data = response.json()
+            self.save_votes(data)
+        except json.decoder.JSONDecodeError:
+            log.error(f"Error getting votes from {url}")
 
     def save_votes(self, data):
         Votings.save(self.reference, data)
