@@ -70,6 +70,11 @@ class CongressUrlBuilder:
     def for_initiative(self, reference):
         return f"{self.url}busqueda-de-iniciativas?p_p_id=iniciativas&p_p_lifecycle=0&p_p_state=normal&p_p_mode=view&_iniciativas_mode=mostrarDetalle&_iniciativas_legislatura={int_to_roman(ID_LEGISLATURA)}&_iniciativas_id={reference.replace('/', '%2F')}"
 
+    def for_amendment(self, link):
+        if link.startswith('http'):
+            return link
+        return f"{self.url}{link}"
+
 
 class CongressForbiddenError(Exception):
     pass
@@ -130,6 +135,11 @@ class CongressApi(object):
         url = self.url_builder.for_initiative(reference)
         headers = CongressHeadersBuilder().for_web()
         return self.async_get(url, headers)
+
+    def get_amendment(self, link):
+        url = self.url_builder.for_amendment(link)
+        headers = CongressHeadersBuilder().for_web()
+        return self.get(url, headers)
 
     def get(self, url, headers):
         response = requests.get(url, headers=headers)

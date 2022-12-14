@@ -32,6 +32,11 @@ class PartialAmendments(BaseAmendments):
                 continue
 
             if not has_type:
+                if item.startswith('Enmienda a la totalidad de devolución'):
+                    amendment.add_type('De devolución')
+                    has_type = True
+                    continue
+
                 if not item.startswith('De '):
                     applies_to += ' ' + item
                     continue

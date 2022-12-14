@@ -7,13 +7,13 @@ from tipi_data.repositories.amendments import Amendments
 from .amendments.partial_amendments import PartialAmendments
 from .amendments.senate_amendments import SenateAmendments
 from .amendments.totallity_amendments import TotallityAmendments
+from ..congress_api import CongressApi
 
 # amendment_types = [SenateAmendments]
 amendment_types = [PartialAmendments, SenateAmendments, TotallityAmendments]
 
 class AmendmentExtractor:
     TAG_RE = re.compile(r'<[^>]+>')  # TODO Move to utils
-    BASE_URL = 'https://www.congreso.es'
 
     @staticmethod
     def can_have_amendments(initiative_type):
@@ -25,6 +25,7 @@ class AmendmentExtractor:
         self.soup = soup
         self.initiative = initiative
         self.node_tree = node_tree
+        self.api = CongressApi()
 
     def has_amendments(self):
         elements = self.find_amendment_elements()
@@ -50,17 +51,17 @@ class AmendmentExtractor:
         bulletin_link = self.bulletins[bulletin_name]
         content = list()
         try:
-            bulletin_tree = document_fromstring(requests.get(
-                f"{self.BASE_URL}{bulletin_link}"
-                ).text)
+            response = self.api.get_amendment(bulletin_link)
+            html_text = response.text
+            bulletin_tree = document_fromstring(html_text)
             content += self.retrieve_bulletin_content(bulletin_tree)
 
             more_links = bulletin_tree.xpath("//a[contains(text(), 'parte ')]")
             for link in more_links:
                 page_url = link.get('href')
-                page_bulletin_tree = document_fromstring(requests.get(
-                    f"{page_url}"
-                    ).text)
+                response = self.api.get_amendment(page_url)
+                html_text = response.text
+                page_bulletin_tree = document_fromstring(html_text)
                 new_content = self.retrieve_bulletin_content(page_bulletin_tree)
                 content += new_content
 
