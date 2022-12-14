@@ -56,6 +56,7 @@ def tag(args):
     subcommands = {
         'all': command.run,
         'all-long': command.tag_long,
+        'amendments': command.tag_amendments,
         'kb': command.tag_kb,
         'new-topic': command.new_topic,
         'new-tag': command.new_tag,

@@ -2,12 +2,13 @@ import pickle
 import codecs
 
 import tipi_tasks
-from tipi_data.repositories.tags import Tags
+from tipi_data.models.alert import create_alert
+from tipi_data.models.initiative import Tag
+from tipi_data.repositories.amendments import Amendments
 from tipi_data.repositories.initiatives import Initiatives
 from tipi_data.repositories.knowledgebases import KnowledgeBases
+from tipi_data.repositories.tags import Tags
 from tipi_data.repositories.alerts import InitiativeAlerts
-from tipi_data.models.initiative import Tag
-from tipi_data.models.alert import create_alert
 
 from logger import get_logger
 from alerts.settings import USE_ALERTS
@@ -175,3 +176,40 @@ class TagInitiatives:
                 continue
             old_tags.append(new_tag)
         return old_tags
+
+    def tag_amendments(self):
+        amendments = list(Amendments.get_all_untagged())
+        tags = Tags.get_all()
+        tags = codecs.encode(pickle.dumps(tags), "base64").decode()
+
+        total = len(amendments)
+        for index, amendment in enumerate(amendments):
+            log.info(f"Tagging amendment {index+1} of {total}: {amendment['id']} {amendment['type']}")
+            self.tag_amendment(amendment, tags)
+
+    def tag_amendment(self, amendment, tags):
+        try:
+            result_tags = self.get_amendment_tags(amendment['justification'], tags)
+
+            for tag in result_tags:
+                amendment.add_justification_tag(tag['knowledgebase'], tag['topic'], tag['subtopic'], tag['tag'], tag['times'])
+
+            if 'propossed_change' in amendment:
+                result_tags = self.get_amendment_tags(amendment['propossed_change'], tags)
+
+                for tag in result_tags:
+                    amendment.add_propossed_change_tag(tag['knowledgebase'], tag['topic'], tag['subtopic'], tag['tag'], tag['times'])
+
+            amendment.save()
+        except Exception as e:
+            log.error(f"Error tagging {amendment['id']}: {e}")
+
+    def get_amendment_tags(self, text, tags):
+        tipi_tasks.init()
+        result = tipi_tasks.tagger.extract_tags_from_text(' '.join(text), tags)
+
+        tags = []
+        if 'result' in result.keys():
+            tags = result['result']['tags']
+
+        return tags
