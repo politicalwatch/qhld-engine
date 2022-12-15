@@ -43,6 +43,11 @@ class PartialAmendments(BaseAmendments):
                     has_type = True
                     continue
 
+                if item.startswith('Se añade un nuevo'):
+                    amendment.add_type('De adición')
+                    has_type = True
+                    continue
+
                 if not item.startswith('De '):
                     applies_to += ' ' + item
                     continue
