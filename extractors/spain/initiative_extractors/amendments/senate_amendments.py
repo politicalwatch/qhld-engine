@@ -34,6 +34,10 @@ class SenateAmendments(BaseAmendments):
                 has_authors = self.process_authorship(amendment, item)
                 continue
 
+            if item.startswith('RETIRADA'):
+                amendment.add_type('RETIRADA')
+                break
+
             if not intro_skipped:
                 if item.startswith('ENMIENDA'):
                     intro_skipped = True
