@@ -18,6 +18,7 @@ class SenateAmendments(BaseAmendments):
         author_list = []
         justification = []
         propossed_change = []
+        amendment_type = ''
 
         for index, item in enumerate(text_list):
             if self.should_skip(item):
@@ -44,8 +45,10 @@ class SenateAmendments(BaseAmendments):
                 continue
 
             if not has_type:
-                amendment.add_type(item.replace('.', ''))
-                has_type = True
+                amendment_type += ' ' + item
+                if len(item) > 4:
+                    amendment.add_type(amendment_type.replace('.', ''))
+                    has_type = True
                 continue
 
             if not has_propossed_change:
