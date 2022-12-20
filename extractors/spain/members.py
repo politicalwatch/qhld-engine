@@ -1,7 +1,5 @@
 import os
 import json
-import requests
-from requests.structures import CaseInsensitiveDict
 from logger import get_logger
 
 from concurrent.futures import as_completed
@@ -27,7 +25,6 @@ class MembersExtractor:
         with open(f'{dirname}/groups.json', 'r') as f:
             return json.loads(f.read())
 
-
     def extract(self):
         try:
             response = self.api.get_deputies()
@@ -50,7 +47,6 @@ class MembersExtractor:
         future_requests = []
 
         for reference in self.references:
-            session = FuturesSession()
             future_requests.append(self.api.get_deputy(reference))
 
         for future in as_completed(future_requests):

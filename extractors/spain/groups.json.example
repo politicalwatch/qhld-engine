@@ -63,7 +63,7 @@
         "color": "linear-gradient(to bottom, #c9222f 0%, #6bab55 100%)"
     },
     {
-        "_id": "geh-nildu",
+        "_id": "geh-bildu",
         "name": "Grupo Parlamentario Euskal Herria Bildu",
         "shortname": "GEH Bildu",
         "parties": ["EH Bildu"],
