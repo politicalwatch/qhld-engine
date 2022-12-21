@@ -5,8 +5,13 @@ from urllib.parse import urlparse, parse_qs
 from thefuzz import process
 from lxml.html import document_fromstring
 
+from logger import get_logger
+
 from tipi_data.models.deputy import Deputy
 from tipi_data.utils import generate_slug
+
+
+log = get_logger(__name__)
 
 
 class DeputyExtractor():
@@ -37,6 +42,7 @@ class DeputyExtractor():
         self.extract_from_text()
         self.extract_mail()
         self.deputy.save()
+        log.info(f"{self.deputy['name']} updated!")
 
     def get_src_by_css(self, selector):
         item = self.get_by_css(selector)
