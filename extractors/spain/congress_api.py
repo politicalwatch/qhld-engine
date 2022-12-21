@@ -117,7 +117,7 @@ class CongressApi(object):
         url = self.url_builder.for_deputies()
         headers = CongressHeadersBuilder().for_api()
         # NOTE: The param 'tipo' indicates that all returned deputies will be non-active ones
-        data = f"_diputadomodule_idLegislatura={ID_LEGISLATURA}&_diputadomodule_genero=0&_diputadomodule_grupo=all&_diputadomodule_tipo=0&_diputadomodule_nombre=&_diputadomodule_apellidos=&_diputadomodule_formacion=all&_diputadomodule_filtroProvincias=%5B%5D&_diputadomodule_nombreCircunscripcion="
+        data = f"_diputadomodule_idLegislatura={ID_LEGISLATURA}&_diputadomodule_genero=0&_diputadomodule_grupo=all&_diputadomodule_tipo=2&_diputadomodule_nombre=&_diputadomodule_apellidos=&_diputadomodule_formacion=all&_diputadomodule_filtroProvincias=%5B%5D&_diputadomodule_nombreCircunscripcion="
         return self.post(url, headers, data)
 
     def get_deputy(self, code):
