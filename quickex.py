@@ -1,7 +1,6 @@
 import sys
 
 from extractors.extractor import ExtractorTask
-from extractors.extractor import ExtractorTask
 from tagger.tag_initiatives import TagInitiatives
 from untagger.untag_initiatives import UntagInitiatives
 from alerts.send_alerts import SendAlerts
@@ -109,7 +108,8 @@ def extract(args):
         'type-all-interventions': task.type_all_interventions,
         'type-all-votes': task.type_all_votes,
         'members': task.members,
-        'groups': task.groups,
+        'load-groups': task.load_groups,
+        'calculate-composition-groups': task.calculate_composition_groups,
         'default': task.run
     }
     run_command(subcommands, args)
@@ -119,7 +119,6 @@ def long_questions(args):
                 'content.100000': {'$exists': True}
             }
     initiatives = Initiatives.by_query(query)
-    lengths = {}
 
     selected_initiatives = []
     tagged_initiative = False
@@ -139,7 +138,6 @@ def long_questions(args):
         initiative['tagged'] = tagged_initiative['tagged']
         initiative.save()
         counter += 1
-
 
 
 commands = {

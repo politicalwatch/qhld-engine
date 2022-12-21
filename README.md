@@ -53,8 +53,10 @@ Available Commands
 - `python quickex.py extractor type-all-references`: Prints all the initiatives of the specified initiative type.
 - `python quickex.py extractor type-all-interventions`: Extracts all the video interventions of the initiatives of the specified initiative type.
 - `python quickex.py extractor type-all-votes`: Extracts all the votes of the initiatives of the specified initiative type.
+
+- `python quickex.py extractor load-groups "[PARLIAMENTARY_GROUPS_FILE.JSON]"`: Initiatizes all the parliamentary groups (it must be executed once at the beginning of a legislature).
 - `python quickex.py extractor members`: Extracts all the members and updates the existing ones in the DB.
-- `python quickex.py extractor groups`: Updates all the parliamentary groups.
+- `python quickex.py extractor calculate-composition-groups`: Calculates composition (based on members) for all the parliamentary groups.
 
 ## Tagger
 - `python quickex.py tagger all` (default): Tags all the initiatives with all the tags and topics.

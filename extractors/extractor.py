@@ -15,14 +15,17 @@ class ExtractorTask():
     def run(self):
         print("{task}(says: ready to extract data!".format(task=self.__class__.__name__))
         self.members()
-        self.groups()
+        self.calculate_composition_groups()
         self.initiatives()
 
     def members(self):
         self.members_extractor.extract()
 
-    def groups(self):
-        self.groups_extractor.extract()
+    def load_groups(self, groups_file):
+        self.groups_extractor.load(groups_file)
+
+    def calculate_composition_groups(self):
+        self.groups_extractor.calculate_composition()
 
     def totals(self):
         self.initiatives_extractor.extract_references()

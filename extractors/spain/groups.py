@@ -1,4 +1,3 @@
-import os
 import json
 from logger import get_logger
 
@@ -11,18 +10,19 @@ log = get_logger(__name__)
 
 class GroupsExtractor:
 
-    def __init__(self):
+    def load(self, groups_file):
         try:
-            dirname = os.path.dirname(os.path.realpath(__file__))
-            with open(f'{dirname}/groups.json', 'r') as f:
-                self.groups = json.loads(f.read())
+            with open(f'{groups_file}', 'r') as f:
+                self.__save(json.loads(f.read()))
+                self.calculate_composition()
         except FileNotFoundError:
             log.error('Cannot import parliamentary groups due file not found')
         except Exception as e:
             log.error(f'Cannot import parliamentary groups due "{e}"')
+        pass
 
-    def extract(self):
-        for g in self.groups:
+    def __save(self, groups):
+        for g in groups:
             try:
                 group = ParliamentaryGroup()
                 group['id'] = g['_id']
@@ -35,5 +35,14 @@ class GroupsExtractor:
                     parties.append(party)
                 group['parties'] = parties
                 group.save()
+                log.info(f"{g['name']} loaded!")
             except Exception as e:
                 log.error(f'Cannot create parliamentary group {g["_id"]} "{e}"')
+
+    def calculate_composition(self):
+        for group in ParliamentaryGroups.get_all():
+            try:
+                group['composition'] = ParliamentaryGroups.get_composition(group['shortname'])
+                group.save()
+            except Exception as e:
+                log.error(f'Cannot calculate composition for parliamentary group {group["_id"]} "{e}"')

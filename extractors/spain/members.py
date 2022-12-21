@@ -1,11 +1,11 @@
-import os
-import json
 from logger import get_logger
 
 from concurrent.futures import as_completed
-from requests_futures.sessions import FuturesSession
-from .deputy_extractors.deputy_extractor import DeputyExtractor
+
+from tipi_data.repositories.parliamentarygroups import ParliamentaryGroups
+
 from .congress_api import CongressApi, CongressError, CongressForbiddenError
+from .deputy_extractors.deputy_extractor import DeputyExtractor
 
 
 log = get_logger(__name__)
@@ -17,13 +17,8 @@ class MembersExtractor:
         self.BASE_URL = 'https://www.congreso.es/busqueda-de-diputados'
         self.total = 0
         self.references = []
-        self.parliamentarygroups = self.__load_groups()
+        self.parliamentarygroups = ParliamentaryGroups.get_all()
         self.api = CongressApi()
-
-    def __load_groups(self):
-        dirname = os.path.dirname(os.path.realpath(__file__))
-        with open(f'{dirname}/groups.json', 'r') as f:
-            return json.loads(f.read())
 
     def extract(self):
         try:
