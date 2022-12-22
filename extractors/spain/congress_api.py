@@ -2,7 +2,7 @@ import requests
 from requests.structures import CaseInsensitiveDict
 from requests_futures.sessions import FuturesSession
 
-from extractors.config import ID_LEGISLATURA
+from extractors.config import ID_LEGISLATURA, CURRENT_LEGISLATURE
 from .utils import int_to_roman
 
 
@@ -116,8 +116,8 @@ class CongressApi(object):
     def get_deputies(self):
         url = self.url_builder.for_deputies()
         headers = CongressHeadersBuilder().for_api()
-        # NOTE: The param 'tipo' indicates that all returned deputies will be non-active ones
-        data = f"_diputadomodule_idLegislatura={ID_LEGISLATURA}&_diputadomodule_genero=0&_diputadomodule_grupo=all&_diputadomodule_tipo=2&_diputadomodule_nombre=&_diputadomodule_apellidos=&_diputadomodule_formacion=all&_diputadomodule_filtroProvincias=%5B%5D&_diputadomodule_nombreCircunscripcion="
+        deputies_type = '2' if CURRENT_LEGISLATURE else '1'
+        data = f"_diputadomodule_idLegislatura={ID_LEGISLATURA}&_diputadomodule_genero=0&_diputadomodule_grupo=all&_diputadomodule_tipo={deputies_type}&_diputadomodule_nombre=&_diputadomodule_apellidos=&_diputadomodule_formacion=all&_diputadomodule_filtroProvincias=%5B%5D&_diputadomodule_nombreCircunscripcion="
         return self.post(url, headers, data)
 
     def get_deputy(self, code):
