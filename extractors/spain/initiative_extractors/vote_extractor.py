@@ -2,12 +2,13 @@ import re
 import json
 from logger import get_logger
 
-import requests
 from lxml.etree import tostring
 from html import unescape
 
 from tipi_data.repositories.initiatives import Initiatives
 from tipi_data.repositories.votings import Votings
+
+from ..congress_api import CongressApi
 
 
 log = get_logger(__name__)
@@ -23,6 +24,7 @@ class VoteExtractor():
 
     def __init__(self, tree, reference):
         self.tree = tree
+        self.api = CongressApi()
         self.reference = reference
         initiative = Initiatives.by_reference(reference).first()
         self.title = initiative['title'] if initiative else ''
@@ -72,7 +74,7 @@ class VoteExtractor():
 
     def extract_votes(self, url):
         try:
-            response = requests.get(url)
+            response = self.api.get_vote(url)
             data = response.json()
             self.save_votes(data)
         except json.decoder.JSONDecodeError:

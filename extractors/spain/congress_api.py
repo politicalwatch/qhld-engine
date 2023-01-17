@@ -141,6 +141,10 @@ class CongressApi(object):
         headers = CongressHeadersBuilder().for_web()
         return self.get(url, headers)
 
+    def get_vote(self, url):
+        headers = CongressHeadersBuilder().for_web()
+        return self.get(url, headers)
+
     def get(self, url, headers):
         response = requests.get(url, headers=headers)
         if response.status_code == 403:
