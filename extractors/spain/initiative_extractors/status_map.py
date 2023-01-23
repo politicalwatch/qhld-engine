@@ -32,7 +32,6 @@ STATUS_MAP = [
             'latest_history_items': [
                 r'Aprobado con modificaciones',
                 r'Aprobado sin modificaciones',
-                r'Convalidado',
                 r'Tramitado con propuesta de resolución',
                 r'Concluido desde',
                 r'Tramitado por completo sin',
@@ -62,6 +61,16 @@ STATUS_MAP = [
                     'excludes': [],
                     },
                 'status': 'Celebrada'
+                },
+        {
+                'latest_history_items': [
+                    r'Convalidado',
+                    ],
+                'initiative_type': {
+                    'includes': [],
+                    'excludes': [],
+                    },
+                'status': 'Convalidada'
                 },
         {
                 'latest_history_items': [
