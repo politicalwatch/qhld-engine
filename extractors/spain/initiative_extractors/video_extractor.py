@@ -1,5 +1,5 @@
-import requests
 import math
+import json
 from logger import get_logger
 
 from tipi_data.utils import generate_id
@@ -7,6 +7,7 @@ from tipi_data.models.video import Video
 
 from extractors.config import ID_LEGISLATURA
 from extractors.spain.utils import int_to_roman
+from ..congress_api import CongressApi
 
 
 log = get_logger(__name__)
@@ -16,8 +17,10 @@ class VideoExtractor():
 
     def __init__(self, reference):
         self.reference = reference
+        self.api = CongressApi()
 
     def extract(self):
+        log.info(f"Getting videos from {self.reference}")
         json = self.retrieve_json(1)
         if 'error' in json or 'intervenciones_encontradas' not in json:
             return
@@ -29,7 +32,7 @@ class VideoExtractor():
 
         if pages > 1:
             for x in range(2, pages):
-                json = self.retrieve_json(1)
+                json = self.retrieve_json(x)
                 self.extract_interventions(json['lista_intervenciones'])
 
     def extract_interventions(self, interventions):
@@ -50,14 +53,12 @@ class VideoExtractor():
 
             video.save()
 
-
     def retrieve_json(self, page):
-        url = f'https://www.congreso.es/web/guest/busqueda-de-intervenciones?p_p_id=intervenciones&p_p_lifecycle=2&p_p_state=normal&p_p_mode=view&p_p_resource_id=filtrarListado&p_p_cacheability=cacheLevelPage&_intervenciones_mode=view&_intervenciones_legislatura={int_to_roman(ID_LEGISLATURA)}&_intervenciones_id_iniciativa={self.reference}'
-        data = {
-            '_intervenciones_paginaActual': page
-        }
-        response = requests.post(url, data=data)
-        return response.json()
+        try:
+            response = self.api.get_video(self.reference, page)
+            return response.json()
+        except json.decoder.JSONDecodeError:
+            log.error(f"Error getting video for {self.reference}")
 
     def generate_id(self, link):
         return generate_id(link)

@@ -75,6 +75,9 @@ class CongressUrlBuilder:
             return link
         return f"{self.url}{link}"
 
+    def for_video(self, reference):
+        return f'https://www.congreso.es/web/guest/busqueda-de-intervenciones?p_p_id=intervenciones&p_p_lifecycle=2&p_p_state=normal&p_p_mode=view&p_p_resource_id=filtrarListado&p_p_cacheability=cacheLevelPage&_intervenciones_mode=view&_intervenciones_legislatura={int_to_roman(ID_LEGISLATURA)}&_intervenciones_id_iniciativa={reference}'
+
 
 class CongressForbiddenError(Exception):
     pass
@@ -144,6 +147,14 @@ class CongressApi(object):
     def get_vote(self, url):
         headers = CongressHeadersBuilder().for_web()
         return self.get(url, headers)
+
+    def get_video(self, reference, page):
+        url = self.url_builder.for_video(reference)
+        headers = CongressHeadersBuilder().for_api()
+        data = {
+            '_intervenciones_paginaActual': page
+        }
+        return self.post(url, headers, data)
 
     def get(self, url, headers):
         response = requests.get(url, headers=headers)
