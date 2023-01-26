@@ -46,6 +46,16 @@ class CongressHeadersBuilder:
         self.set("Connection", "keep-alive")
         return self.headers
 
+    def for_pdf(self):
+        self.set_user_agent()
+        self.set('Cookie', 'GUEST_LANGUAGE_ID=es_ES')
+        self.set('Accept', 'application/pdf;q=0.9,*/*;q=0.8')
+        self.set("Host", "www.congreso.es")
+        self.set('Accept-Language', 'en-us')
+        self.set('Accept-Encoding', 'br, gzip, deflate')
+        self.set("Connection", "keep-alive")
+        return self.headers
+
     def set(self, header, value):
         self.headers[header] = value
         return self
@@ -155,6 +165,10 @@ class CongressApi(object):
             '_intervenciones_paginaActual': page
         }
         return self.post(url, headers, data)
+
+    def get_pdf(self, url):
+        headers = CongressHeadersBuilder().for_pdf()
+        return self.get(url, headers)
 
     def get(self, url, headers):
         response = requests.get(url, headers=headers)

@@ -1,9 +1,10 @@
+import tempfile
 from pdf2image import convert_from_path
 from pytesseract import image_to_string
 from textract import process
 
-import requests
-import tempfile
+from ...congress_api import CongressApi
+
 
 class PDFParser():
     def __init__(self, file):
@@ -17,6 +18,7 @@ class PDFParser():
             return content
         except Exception:
             return []
+
 
 class PDFImageParser():
     def __init__(self, file):
@@ -32,15 +34,17 @@ class PDFImageParser():
 
         return texts
 
+
 class PDFExtractor():
     BASE_URL = 'https://www.congreso.es'
 
     def __init__(self, url, is_img=False):
         self.url = self.BASE_URL + url
         self.is_img = is_img
+        self.api = CongressApi()
 
     def retrieve(self):
-        response = requests.get(self.url)
+        response = self.api.get_pdf(self.url)
         content = []
         if not response.ok:
             return content
