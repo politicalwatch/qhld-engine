@@ -35,7 +35,7 @@ class QuestionExtractor(InitiativeExtractor):
         if is_final_status(self.initiative['status']) and self.initiative['status'] != 'Respondida':
             extract_answer = False
 
-        if extract_answer == True:
+        if extract_answer:
             answer_content = self.retrieve_answer()
             if answer_content == []:
                 self.initiative['status'] = ON_PROCESS
