@@ -1,5 +1,5 @@
 Scrapy==1.5.1
-cryptography==2.8
+cryptography==39.0.1
 git+https://github.com/politicalwatch/tipi-tasks.git
 git+https://github.com/politicalwatch/tipi-data.git
 ipdb==0.12.3
