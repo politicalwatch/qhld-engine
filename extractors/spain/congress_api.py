@@ -63,7 +63,7 @@ class CongressHeadersBuilder:
 
 class CongressUrlBuilder:
     def __init__(self):
-        self.url = "https://www.congreso.es/"
+        self.url = "https://www.congreso.es/es/"
 
     def for_deputies(self):
         return f'{self.url}busqueda-de-diputados?p_p_id=diputadomodule&p_p_lifecycle=2&p_p_state=normal&p_p_mode=view&p_p_resource_id=searchDiputados&p_p_cacheability=cacheLevelPage'
@@ -72,7 +72,7 @@ class CongressUrlBuilder:
         return f'{self.url}busqueda-de-diputados?p_p_id=diputadomodule&p_p_lifecycle=0&p_p_state=normal&p_p_mode=view&_diputadomodule_mostrarFicha=true&codParlamentario={code}&idLegislatura={int_to_roman(ID_LEGISLATURA)}&mostrarAgenda=false'
 
     def for_cookies(self):
-        return self.url
+        return f'{self.url}/busqueda-de-diputados'
 
     def for_initiative_totals(self):
         return f'{self.url}indice-de-iniciativas?p_p_id=iniciativas&p_p_lifecycle=2&p_p_state=normal&p_p_mode=view&p_p_resource_id=cambiarLegislaturaIndice&p_p_cacheability=cacheLevelPage'
