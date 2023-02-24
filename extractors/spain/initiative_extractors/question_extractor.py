@@ -60,7 +60,7 @@ class QuestionExtractor(InitiativeExtractor):
             force = True
         answer_initiative['content'] = answer
         answer_initiative['initiative_type_alt'] = 'Respuesta'
-        answer_initiative['author_others'] = ['Gobierno']
+        answer_initiative['author_others'] = ['RTVE'] if answer_initiative['initiative_type'] == '179' else ['Gobierno']
         answer_initiative['author_deputies'] = []
         answer_initiative['author_parliamentarygroups'] = []
         answer_initiative['id'] = self.generate_answer_id(answer_initiative)
