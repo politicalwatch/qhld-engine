@@ -1,4 +1,3 @@
-import requests
 import re
 
 from lxml.html import document_fromstring
