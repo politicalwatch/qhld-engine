@@ -80,13 +80,13 @@ class CongressUrlBuilder:
     def for_initiative(self, reference):
         return f"{self.url}busqueda-de-iniciativas?p_p_id=iniciativas&p_p_lifecycle=0&p_p_state=normal&p_p_mode=view&_iniciativas_mode=mostrarDetalle&_iniciativas_legislatura={int_to_roman(ID_LEGISLATURA)}&_iniciativas_id={reference.replace('/', '%2F')}"
 
-    def for_amendment(self, link):
+    def for_video(self, reference):
+        return f'https://www.congreso.es/web/guest/busqueda-de-intervenciones?p_p_id=intervenciones&p_p_lifecycle=2&p_p_state=normal&p_p_mode=view&p_p_resource_id=filtrarListado&p_p_cacheability=cacheLevelPage&_intervenciones_mode=view&_intervenciones_legislatura={int_to_roman(ID_LEGISLATURA)}&_intervenciones_id_iniciativa={reference}'
+
+    def for_url(self, link):
         if link.startswith('http'):
             return link
         return f"{self.url}{link}"
-
-    def for_video(self, reference):
-        return f'https://www.congreso.es/web/guest/busqueda-de-intervenciones?p_p_id=intervenciones&p_p_lifecycle=2&p_p_state=normal&p_p_mode=view&p_p_resource_id=filtrarListado&p_p_cacheability=cacheLevelPage&_intervenciones_mode=view&_intervenciones_legislatura={int_to_roman(ID_LEGISLATURA)}&_intervenciones_id_iniciativa={reference}'
 
 
 class CongressForbiddenError(Exception):
@@ -149,8 +149,13 @@ class CongressApi(object):
         headers = CongressHeadersBuilder().for_web()
         return self.async_get(url, headers)
 
+    def get_url(self, url):
+        url = self.url_builder.for_url(url)
+        headers = CongressHeadersBuilder().for_web()
+        return self.get(url, headers)
+
     def get_amendment(self, link):
-        url = self.url_builder.for_amendment(link)
+        url = self.url_builder.for_url(link)
         headers = CongressHeadersBuilder().for_web()
         return self.get(url, headers)
 

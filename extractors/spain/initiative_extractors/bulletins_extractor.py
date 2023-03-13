@@ -1,6 +1,5 @@
 import re
 import html
-import requests
 
 from lxml.html import document_fromstring, tostring
 
@@ -34,7 +33,7 @@ class BulletinsExtractor(InitiativeExtractor):
         self.initiative['extra']['imported_bulletins'] = len(urls)
         try:
             for url in urls:
-                bulletin_tree = document_fromstring(requests.get(
+                bulletin_tree = document_fromstring(self.api.get_url(
                     f"{self.BASE_URL}{url}"
                     ).text)
                 content += self.retrieve_bulletin_content(bulletin_tree)
@@ -42,7 +41,7 @@ class BulletinsExtractor(InitiativeExtractor):
                 more_links = bulletin_tree.xpath("//a[contains(text(), 'parte ')]")
                 for link in more_links:
                     page_url = link.get('href')
-                    page_bulletin_tree = document_fromstring(requests.get(
+                    page_bulletin_tree = document_fromstring(self.api.get_url(
                         f"{page_url}"
                         ).text)
                     new_content = self.retrieve_bulletin_content(page_bulletin_tree)
@@ -145,7 +144,7 @@ class NonExclusiveBulletinExtractor(InitiativeExtractor):
             # No Bulletin yet
             return []
 
-        tree = document_fromstring(requests.get(self.link).text)
+        tree = document_fromstring(self.api.get_url(self.link).text)
         cleanup_content = ''
 
         try:
@@ -155,7 +154,7 @@ class NonExclusiveBulletinExtractor(InitiativeExtractor):
             more_links = tree.xpath("//a[contains(text(), 'parte ')]")
             for link in more_links:
                 page_url = link.get('href')
-                page_bulletin_tree = document_fromstring(requests.get(
+                page_bulletin_tree = document_fromstring(self.api.get_url(
                     f"{page_url}"
                     ).text)
                 element = page_bulletin_tree.xpath("//div[contains(@class, 'textoIntegro')]")[0]

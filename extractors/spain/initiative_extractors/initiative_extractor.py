@@ -4,7 +4,6 @@ from datetime import datetime
 from lxml.html import document_fromstring
 from urllib.parse import urlparse, parse_qs
 
-import requests
 from bs4 import BeautifulSoup
 from mongoengine.errors import DoesNotExist
 
@@ -19,6 +18,7 @@ from .initiative_status import get_status, is_final_status
 from .video_extractor import VideoExtractor
 from .vote_extractor import VoteExtractor
 from ...config import AMENDMENTS_FEATURE
+from ..congress_api import CongressApi
 
 
 log = get_logger(__name__)
@@ -46,6 +46,7 @@ class InitiativeExtractor:
         self.places = places
         self.grouped_deputies = grouped_deputies
         self.parliamentarygroup_sufix = r' en el Congreso'
+        self.api = CongressApi()
         self.__prepare(response)
 
     def __prepare(self, response):
@@ -69,7 +70,7 @@ class InitiativeExtractor:
         if self.attempts >= self.MAX_ATTEMPTS:
             return
         self.attempts += 1
-        response = requests.get(url)
+        response = self.api.get_url(url)
         self.__prepare(response)
         self.extract()
 
