@@ -75,7 +75,7 @@ class QuestionExtractor(InitiativeExtractor):
         if link_text == 'Pregunta':
             return self.retrieve_content(link, True)
         if link_text == 'Pregunta (ver boletín de la iniciativa, según acuerdo de mesa)':
-            bulletin_extractor = NonExclusiveBulletinExtractor(self.response, [], [], [])
+            bulletin_extractor = NonExclusiveBulletinExtractor(self.response, [], [], {}, [])
             bulletin_extractor.initiative['reference'] = self.get_reference()
             bulletin_extractor.extract_content()
             return bulletin_extractor.initiative['content']
