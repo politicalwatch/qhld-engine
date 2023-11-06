@@ -29,10 +29,10 @@ class ComputeFootprint:
 
     def __init__(self):
         log.info("Initiatizing footprint...")
-        self.topics = {}
+        self.topics = []
         self.knowledgebases = list(KnowledgeBases.get_all())
         for kb in self.knowledgebases:
-            self.topics[kb] = Topics.by_kb(kb)
+            self.topics += Topics.by_kb(kb)
         self.deputies = Deputies.get_all()
         self.footprint_by_deputies = self.__initiatize_footprint_by_deputies()
         self.parliamentarygroups = ParliamentaryGroups.get_all()
@@ -42,7 +42,7 @@ class ComputeFootprint:
     def compute(self):
         log.info("Starting footprint computation...")
 
-        for topic in self.topics['politicas']:
+        for topic in self.topics:
             log.info(f"{topic['name'].upper()}: Computing footprint...")
             initial = datetime.now()
 
