@@ -1,5 +1,5 @@
-from datetime import datetime
-from datetime import timedelta
+from os import environ as env
+from datetime import datetime, timedelta
 
 from tipi_data.models.stats import Stats
 from tipi_data.repositories.initiatives import Initiatives
@@ -33,6 +33,7 @@ class GenerateStats(object):
         self.parliamentarygroups_by_subtopics()
         self.places_by_topics()
         self.places_by_subtopics()
+        self.topics_by_week()
 
         Stats.objects().delete()
         self.stats.save()
@@ -216,6 +217,48 @@ class GenerateStats(object):
                         '_id': subtopic,
                         'places': results
                     })
+
+    def topics_by_week(self):
+        start_date = env.get('LEGISLATURE_START_DATE', '')
+        end_date = env.get('LEGISLATURE_END_DATE', '')
+        self.stats['topicsByWeek'] = {}
+        for kb in self.knowledgebases:
+            self.stats['topicsByWeek'][kb] = list()
+
+            for topic in self.topics[kb]:
+                pipeline = [
+                    {'$match': {'tagged.topics': topic['name'], 'created': {'$exists': True}}},
+                    {'$project': {'yearWeek': {'$dateToString': {'format': '%G-%V', 'date': '$created' }}}},
+                    {'$group': {'_id': '$yearWeek', 'initiatives': {'$sum': 1}}},
+                    {'$sort': {'_id': 1}}
+                    ]
+                results = list(Initiatives.by_kb(kb).aggregate(*pipeline))
+                if len(results) > 0:
+                    results = self.__generate_remaining_weeks(start_date, end_date, results)
+                    self.stats['topicsByWeek'][kb].append({
+                        '_id': topic['name'],
+                        'byWeek': results
+                    })
+
+    def __generate_remaining_weeks(self, start_date_param, end_date_param, data):
+        if end_date_param == '':
+            now = datetime.now()
+        else:
+            end_date_parts = end_date_param.split('-')
+            now = datetime(int(end_date_parts[0]), int(end_date_parts[1]), int(end_date_parts[2]))
+        start_date_parts = start_date_param.split('-')
+        start_date = datetime(int(start_date_parts[0]), int(start_date_parts[1]), int(start_date_parts[2]))
+        remaining_weeks = []
+        date_it = start_date
+        while date_it <= now:
+            week_it = date_it.strftime('%Y-%U')
+            if not any(d['_id'] == week_it for d in data):
+                remaining_weeks.append({'_id': week_it, 'initiatives': 0})
+            date_it += timedelta(weeks=1)
+        data += remaining_weeks
+        data = sorted(data, key=lambda d: d['_id'])
+        return data
+
 
 
 if __name__ == "__main__":
