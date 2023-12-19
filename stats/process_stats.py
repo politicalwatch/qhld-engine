@@ -254,7 +254,7 @@ class GenerateStats(object):
         while date_it <= now:
             week_it = date_it.strftime('%Y-%U')
             if not any(d['week'] == week_it for d in data):
-                remaining_weeks.append({'week': week_it, 'initiatives': 0})
+                remaining_weeks.append({'initiatives': 0, 'week': week_it})
             date_it += timedelta(weeks=1)
         data += remaining_weeks
         data = sorted(data, key=lambda d: d['week'])
