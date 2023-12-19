@@ -230,7 +230,8 @@ class GenerateStats(object):
                     {'$match': {'tagged.topics': topic['name'], 'created': {'$exists': True}}},
                     {'$project': {'yearWeek': {'$dateToString': {'format': '%G-%V', 'date': '$created' }}}},
                     {'$group': {'_id': '$yearWeek', 'initiatives': {'$sum': 1}}},
-                    {'$sort': {'_id': 1}}
+                    {'$project': {'week': '$_id', 'initiatives': 1, '_id': 0}},
+                    {'$sort': {'week': 1}}
                     ]
                 results = list(Initiatives.by_kb(kb).aggregate(*pipeline))
                 if len(results) > 0:
@@ -252,11 +253,11 @@ class GenerateStats(object):
         date_it = start_date
         while date_it <= now:
             week_it = date_it.strftime('%Y-%U')
-            if not any(d['_id'] == week_it for d in data):
-                remaining_weeks.append({'_id': week_it, 'initiatives': 0})
+            if not any(d['week'] == week_it for d in data):
+                remaining_weeks.append({'week': week_it, 'initiatives': 0})
             date_it += timedelta(weeks=1)
         data += remaining_weeks
-        data = sorted(data, key=lambda d: d['_id'])
+        data = sorted(data, key=lambda d: d['week'])
         return data
 
 
