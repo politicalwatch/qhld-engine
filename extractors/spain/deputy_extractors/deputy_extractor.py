@@ -21,15 +21,20 @@ class DeputyExtractor:
         self.response = response
         self.groups = list(map(lambda x: x["shortname"], parliamentarygroups))
         self.node_tree = document_fromstring(response.text)
-        self.deputy = Deputy()
+        try:
+            self.deputy = Deputy(name=self.get_text_by_css(".nombre-dip"))
+        except Exception:
+            self.deputy = Deputy()
 
     def extract(self):
         self.deputy["name"] = self.get_text_by_css(".nombre-dip")
         self.deputy["parliamentarygroup"] = self.get_abbr_group()
         self.deputy["image"] = self.BASE_URL + self.get_src_by_css(".img-dip img")
         self.deputy["public_position"] = self.get_public_positions()
-        self.deputy["party_logo"] = self.get_src_by_css(".logo-partido img")
-        self.deputy["party_name"] = self.get_text_by_css(".siglas-partido")
+        if not self.__exists('party_logo'):
+            self.deputy["party_logo"] = self.get_src_by_css(".logo-partido img")
+        if not self.__exists('party_name'):
+            self.deputy["party_name"] = self.get_text_by_css(".siglas-partido")
         self.deputy["url"] = self.response.url
         (
             self.deputy["gender"],
@@ -44,6 +49,12 @@ class DeputyExtractor:
         self.extract_mail()
         self.deputy.save()
         log.info(f"{self.deputy['name']} updated!")
+
+    def __exists(self, attr):
+        try:
+            return self.deputy[attr] != ''
+        except Exception:
+            return False
 
     def get_src_by_css(self, selector):
         item = self.get_by_css(selector)
