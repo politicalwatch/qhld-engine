@@ -50,7 +50,7 @@ class FootprintSumPointOneManager(FootprintSumManager):
                 ]
 
     def multiply(self):
-        return 0.1
+        return 0
 
 
 
