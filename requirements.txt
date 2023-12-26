@@ -14,4 +14,4 @@ pdf2image==1.14.0
 pytesseract==0.3.7
 thefuzz==0.19.0
 python-slugify==5.0.2
-cssselect==1.2.0
+cssselect==1.1.0
