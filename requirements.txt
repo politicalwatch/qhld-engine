@@ -1,4 +1,4 @@
-cryptography==40.0.2
+cryptography==41.0.6
 git+https://github.com/politicalwatch/tipi-tasks.git
 git+https://github.com/politicalwatch/tipi-data.git
 ipdb==0.12.3
