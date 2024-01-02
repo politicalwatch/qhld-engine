@@ -33,6 +33,7 @@ class GenerateStats(object):
         self.parliamentarygroups_by_subtopics()
         self.places_by_topics()
         self.places_by_subtopics()
+        self.by_week()
         self.topics_by_week()
 
         Stats.objects().delete()
@@ -217,6 +218,21 @@ class GenerateStats(object):
                         '_id': subtopic,
                         'places': results
                     })
+
+    def by_week(self):
+        start_date = env.get('LEGISLATURE_START_DATE', '')
+        end_date = env.get('LEGISLATURE_END_DATE', '')
+        pipeline = [
+            {'$match': {'created': {'$exists': True}}},
+            {'$project': {'yearWeek': {'$dateToString': {'format': '%G-%V', 'date': '$created' }}}},
+            {'$group': {'_id': '$yearWeek', 'initiatives': {'$sum': 1}}},
+            {'$project': {'week': '$_id', 'initiatives': 1, '_id': 0}},
+            {'$sort': {'week': 1}}
+            ]
+        results = list(Initiatives.get_all().aggregate(*pipeline))
+        if len(results) > 0:
+            results = self.__generate_remaining_weeks(start_date, end_date, results)
+            self.stats['byWeek'] = results
 
     def topics_by_week(self):
         start_date = env.get('LEGISLATURE_START_DATE', '')
