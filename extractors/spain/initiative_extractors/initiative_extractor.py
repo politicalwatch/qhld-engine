@@ -203,14 +203,18 @@ class InitiativeExtractor:
 
     def get_last_date(self):
         try:
-            all_dates = re.findall(self.date_regex, self.soup.select_one('#portlet_iniciativas').text.strip())
+            title_elem_regex = r"<div class=\"entradilla-iniciativa\">.*</div>"
+            html_text = "".join([str(s) for s in self.soup.select_one('#portlet_iniciativas').contents])
+            text = re.sub(title_elem_regex, "", html_text).strip()
+            all_dates = re.findall(self.date_regex, text)
             all_dates.sort(key=lambda d: time.mktime(time.strptime(d, "%d/%m/%Y")), reverse=True)
             return self.__parse_date([
                 d
                 for d in all_dates
                 if time.mktime(time.strptime(d, "%d/%m/%Y")) < time.time()
                 ][0])
-        except Exception:
+        except Exception as e:
+            log.error(str(e))
             return None
 
     def populate_authors(self):
