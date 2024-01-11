@@ -23,7 +23,6 @@ class GenerateStats(object):
         self.stats = Stats()
 
     def generate(self):
-
         self.overall()
         if MODULE_EXTRACTOR == 'spain':
             self.last_days()
@@ -223,7 +222,7 @@ class GenerateStats(object):
         start_date = env.get('LEGISLATURE_START_DATE', '')
         end_date = env.get('LEGISLATURE_END_DATE', '')
         pipeline = [
-            {'$match': {'created': {'$exists': True}}},
+            {'$match': {'created': {'$exists': True, '$gte': self.__convert_to_date(start_date)}}},
             {'$project': {'yearWeek': {'$dateToString': {'format': '%G-%V', 'date': '$created' }}}},
             {'$group': {'_id': '$yearWeek', 'initiatives': {'$sum': 1}}},
             {'$project': {'week': '$_id', 'initiatives': 1, '_id': 0}},
@@ -243,7 +242,7 @@ class GenerateStats(object):
 
             for topic in self.topics[kb]:
                 pipeline = [
-                    {'$match': {'tagged.topics': topic['name'], 'created': {'$exists': True}}},
+                    {'$match': {'tagged.topics': topic['name'], 'created': {'$exists': True, '$gte': self.__convert_to_date(start_date)}}},
                     {'$project': {'yearWeek': {'$dateToString': {'format': '%G-%V', 'date': '$created' }}}},
                     {'$group': {'_id': '$yearWeek', 'initiatives': {'$sum': 1}}},
                     {'$project': {'week': '$_id', 'initiatives': 1, '_id': 0}},
@@ -261,20 +260,28 @@ class GenerateStats(object):
         if end_date_param == '':
             now = datetime.now()
         else:
-            end_date_parts = end_date_param.split('-')
-            now = datetime(int(end_date_parts[0]), int(end_date_parts[1]), int(end_date_parts[2]))
-        start_date_parts = start_date_param.split('-')
-        start_date = datetime(int(start_date_parts[0]), int(start_date_parts[1]), int(start_date_parts[2]))
+            now = self.__convert_to_date(end_date_param)
+        start_date = self.__convert_to_date(start_date_param)
         remaining_weeks = []
         date_it = start_date
         while date_it <= now:
-            week_it = date_it.strftime('%Y-%U')
+            week_it = date_it.strftime('%G-%V')
             if not any(d['week'] == week_it for d in data):
                 remaining_weeks.append({'initiatives': 0, 'week': week_it})
             date_it += timedelta(weeks=1)
         data += remaining_weeks
         data = sorted(data, key=lambda d: d['week'])
         return data
+
+    def __convert_to_date(self, str_date, separator='-'):
+        if str_date == '':
+            return None
+        str_date_parts = str_date.split(separator)
+        return datetime(
+                int(str_date_parts[0]),
+                int(str_date_parts[1]),
+                int(str_date_parts[2])
+                )
 
 
 
