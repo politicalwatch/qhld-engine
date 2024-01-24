@@ -11,7 +11,7 @@ from tipi_data.repositories.tags import Tags
 from tipi_data.repositories.alerts import InitiativeAlerts
 
 from logger import get_logger
-from alerts.settings import USE_ALERTS
+from alerts.settings import USE_ALERTS, REASONS
 
 
 log = get_logger(__name__)
@@ -66,7 +66,7 @@ class TagInitiatives:
 
             initiative.save()
             if initiative.has_tags() and USE_ALERTS and send_alerts:
-                create_alert(initiative)
+                create_alert(initiative, REASONS['published'])
         except Exception as e:
             log.error(f"Error tagging {initiative['id']}: {e}")
 

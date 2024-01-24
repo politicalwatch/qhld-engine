@@ -13,6 +13,7 @@ from tipi_data.models.alert import create_alert
 from tipi_data.utils import generate_id
 
 from logger import get_logger
+from alerts.settings import USE_ALERTS, REASONS
 from .amendment_extractor import AmendmentExtractor
 from .initiative_status import get_status, is_final_status
 from .video_extractor import VideoExtractor
@@ -59,8 +60,10 @@ class InitiativeExtractor:
                     reference=self.get_reference(),
                     initiative_type_alt__ne='Respuesta'
                     )
+            self.is_a_new_initiative = False
         except DoesNotExist:
             self.initiative = Initiative()
+            self.is_a_new_initiative = True
         except Exception as e:
             log.error('An error occurred trying to get the initiative')
             log.error(str(e))
@@ -92,8 +95,8 @@ class InitiativeExtractor:
             if previous_content != self.initiative['content']:
                 self.untag()
             else:
-                if is_final_status(self.initiative['status']) and self.has_knowledge_bases():
-                    create_alert(self.initiative)
+                if is_final_status(self.initiative['status']) and USE_ALERTS:
+                    create_alert(self.initiative, REASONS['finished'])
 
             if AMENDMENTS_FEATURE and AmendmentExtractor.can_have_amendments(self.initiative['initiative_type']):
                 task = AmendmentExtractor(self.initiative, self.soup, self.node_tree)
@@ -101,6 +104,8 @@ class InitiativeExtractor:
                     task.extract()
 
             self.initiative.save()
+            if self.is_a_new_initiative and USE_ALERTS:
+                create_alert(self.initiative, REASONS['new'])
             log.info(f"Iniciativa {self.initiative['reference']} procesada")
         except Exception as e:
             log.error(e)
