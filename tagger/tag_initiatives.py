@@ -2,7 +2,6 @@ import pickle
 import codecs
 
 import tipi_tasks
-from tipi_data.models.alert import create_alert
 from tipi_data.models.initiative import Tag
 from tipi_data.repositories.amendments import Amendments
 from tipi_data.repositories.initiatives import Initiatives
@@ -66,7 +65,7 @@ class TagInitiatives:
 
             initiative.save()
             if initiative.has_tags() and USE_ALERTS and send_alerts:
-                create_alert(initiative, REASONS['published'])
+                InitiativeAlerts.create_alert(initiative, REASONS['published'])
         except Exception as e:
             log.error(f"Error tagging {initiative['id']}: {e}")
 

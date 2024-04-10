@@ -9,8 +9,8 @@ from mongoengine.errors import DoesNotExist
 
 from tipi_data.models.initiative import Initiative
 from tipi_data.models.parliamentarygroup import ParliamentaryGroup
-from tipi_data.models.alert import create_alert
 from tipi_data.utils import generate_id
+from tipi_data.repositories.alerts import InitiativeAlerts
 
 from logger import get_logger
 from alerts.settings import USE_ALERTS, REASONS
@@ -96,7 +96,7 @@ class InitiativeExtractor:
                 self.untag()
             else:
                 if is_final_status(self.initiative['status']) and USE_ALERTS:
-                    create_alert(self.initiative, REASONS['finished'])
+                    InitiativeAlerts.create_alert(self.initiative, REASONS['finished'])
 
             if AMENDMENTS_FEATURE and AmendmentExtractor.can_have_amendments(self.initiative['initiative_type']):
                 task = AmendmentExtractor(self.initiative, self.soup, self.node_tree)
@@ -105,7 +105,7 @@ class InitiativeExtractor:
 
             self.initiative.save()
             if self.is_a_new_initiative and USE_ALERTS:
-                create_alert(self.initiative, REASONS['new'])
+                InitiativeAlerts.create_alert(self.initiative, REASONS['new'])
             log.info(f"Iniciativa {self.initiative['reference']} procesada")
         except Exception as e:
             log.error(e)
