@@ -7,7 +7,7 @@ from alerts.send_alerts import SendAlerts
 from stats.process_stats import GenerateStats
 from footprint.compute_footprint import ComputeFootprint
 from tipi_data.repositories.initiatives import Initiatives
-from tipi_data.models.alert import create_alert
+from tipi_data.repositories.alerts import InitiativeAlerts
 
 
 def print_help():
@@ -38,7 +38,7 @@ def send_alerts(args):
 def generate_alert(arguments):
     reference = arguments[2]
     initiative = Initiatives.by_reference(reference)
-    create_alert(initiative[0])
+    InitiativeAlerts.create_alert(initiative[0], 'Nueva iniciativa')
     print('Alerts created')
 
 
