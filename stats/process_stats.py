@@ -6,6 +6,7 @@ from tipi_data.repositories.initiatives import Initiatives
 from tipi_data.models.initiative_type import InitiativeType
 from tipi_data.repositories.knowledgebases import KnowledgeBases
 from tipi_data.repositories.topics import Topics
+from tipi_data.repositories.footprints import Footprints
 
 from extractors.config import MODULE_EXTRACTOR
 
@@ -115,12 +116,13 @@ class GenerateStats(object):
 
             for topic in self.topics[kb]:
                 pipeline = [
-                        {'$match': {'tagged.topics': topic['name'], 'initiative_type': {'$nin': ['179', '184']}}},
-                    {'$unwind': '$author_deputies'},
-                    {'$group': {'_id': '$author_deputies', 'initiatives': {'$sum': 1}}}, {'$sort': {'initiatives': -1}},
+                    {'$unwind': '$topics'},
+                    {'$match': {'topics.name': topic['name']}},
+                    {'$group': {'_id': '$name', 'footprint': {'$sum': '$topics.score'}}},
+                    {'$sort': {'footprint': -1}},
                     {'$limit': 10}
                     ]
-                results = list(Initiatives.by_kb(kb).aggregate(*pipeline))
+                results = list(Footprints.get_all_deputies().aggregate(*pipeline))
                 if len(results) > 0:
                     self.stats['deputiesByTopics'][kb].append({
                         '_id': topic['name'],
