@@ -51,10 +51,7 @@ class DeputyExtractor:
         log.info(f"{self.deputy['name']} updated!")
 
     def __exists(self, attr):
-        try:
-            return self.deputy[attr] != ''
-        except Exception:
-            return False
+        return getattr(self.deputy, attr, None)
 
     def get_src_by_css(self, selector):
         item = self.get_by_css(selector)
