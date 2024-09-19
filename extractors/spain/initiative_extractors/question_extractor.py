@@ -12,33 +12,37 @@ log = get_logger(__name__)
 
 
 class QuestionExtractor(InitiativeExtractor):
-    QUESTION = 'Pregunta'
-    ANSWER = 'Contestación'
-    HREF = 'href'
-    A = 'a'
+    QUESTION = "Pregunta"
+    ANSWER = "Contestación"
+    HREF = "href"
+    A = "a"
 
     def extract_content(self):
         if not self.has_content():
-            self.initiative['content'] = self.retrieve_question()
+            self.initiative["content"] = self.retrieve_question()
 
         try:
             answer = Initiative.objects.get(
-                reference=self.get_reference(),
-                initiative_type_alt='Respuesta'
+                reference=self.get_reference(), initiative_type_alt="Respuesta"
             )
 
-            has_content = 'content' in answer
-            extract_answer = (not has_content) or (has_content and len(answer['content']) == 0)
+            has_content = "content" in answer
+            extract_answer = (not has_content) or (
+                has_content and len(answer["content"]) == 0
+            )
         except Exception as e:
             extract_answer = True
 
-        if is_final_status(self.initiative['status']) and self.initiative['status'] != 'Respondida':
+        if (
+            is_final_status(self.initiative["status"])
+            and self.initiative["status"] != "Respondida"
+        ):
             extract_answer = False
 
         if extract_answer:
             answer_content = self.retrieve_answer()
             if answer_content == []:
-                self.initiative['status'] = ON_PROCESS
+                self.initiative["status"] = ON_PROCESS
             else:
                 self.create_answer_initative(answer_content)
 
@@ -50,21 +54,21 @@ class QuestionExtractor(InitiativeExtractor):
             return
         try:
             answer_initiative = Initiative.objects.get(
-                reference=self.initiative['reference'],
-                initiative_type_alt='Respuesta'
+                reference=self.initiative["reference"], initiative_type_alt="Respuesta"
             )
             force = False
         except Exception:
             answer_initiative = deepcopy(self.initiative)
-            answer_initiative['tagged'] = []
+            answer_initiative["tagged"] = []
             force = True
-        answer_initiative['content'] = answer
-        answer_initiative['initiative_type_alt'] = 'Respuesta'
-        answer_initiative['author_others'] = ['RTVE'] if answer_initiative['initiative_type'] == '179' else ['Gobierno']
-        answer_initiative['author_deputies'] = []
-        answer_initiative['author_parliamentarygroups'] = []
-        answer_initiative['id'] = self.generate_answer_id(answer_initiative)
-        answer_initiative['oldid'] = self.generate_answer_oldid(answer_initiative)
+        answer_initiative["content"] = answer
+        answer_initiative["initiative_type_alt"] = "Respuesta"
+        answer_initiative["author_others"] = (
+            ["RTVE"] if answer_initiative["initiative_type"] == "179" else ["Gobierno"]
+        )
+        answer_initiative["author_deputies"] = []
+        answer_initiative["author_parliamentarygroups"] = []
+        answer_initiative["id"] = self.generate_answer_id(answer_initiative)
         answer_initiative.save(force_insert=force)
 
     def retrieve_question(self):
@@ -72,13 +76,18 @@ class QuestionExtractor(InitiativeExtractor):
         if link == []:
             return []
         link_text = link.text_content()
-        if link_text == 'Pregunta':
+        if link_text == "Pregunta":
             return self.retrieve_content(link, True)
-        if link_text == 'Pregunta (ver boletín de la iniciativa, según acuerdo de mesa)':
-            bulletin_extractor = NonExclusiveBulletinExtractor(self.response, [], [], {}, [])
-            bulletin_extractor.initiative['reference'] = self.get_reference()
+        if (
+            link_text
+            == "Pregunta (ver boletín de la iniciativa, según acuerdo de mesa)"
+        ):
+            bulletin_extractor = NonExclusiveBulletinExtractor(
+                self.response, [], [], {}, []
+            )
+            bulletin_extractor.initiative["reference"] = self.get_reference()
             bulletin_extractor.extract_content()
-            return bulletin_extractor.initiative['content']
+            return bulletin_extractor.initiative["content"]
 
         log.error(f"Error, unkown question type found {link_text}")
         return []
@@ -90,22 +99,17 @@ class QuestionExtractor(InitiativeExtractor):
         return self.retrieve_content(link)
 
     def generate_answer_id(self, initiative):
-        return initiative['reference'].replace('/', '-') + '-respuesta'
+        return initiative["reference"].replace("/", "-") + "-respuesta"
 
-    def generate_answer_oldid(self, initiative):
-        return generate_id(
-                initiative['reference'],
-                initiative['initiative_type_alt']
-                )
-
-
-    def retrieve_content(self, link_tag, is_img = False):
+    def retrieve_content(self, link_tag, is_img=False):
         url = link_tag.get(self.HREF)
         extractor = PDFExtractor(url, is_img)
         return extractor.retrieve()
 
     def find_link(self, content):
-        items = self.node_tree.xpath(f"//section[@id='portlet_iniciativas']//a[contains(normalize-space(text()), '{content}')]")
+        items = self.node_tree.xpath(
+            f"//section[@id='portlet_iniciativas']//a[contains(normalize-space(text()), '{content}')]"
+        )
         if len(items) == 0:
             return []
         return items[0]
