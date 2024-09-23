@@ -34,9 +34,9 @@ class ComputeFootprint:
         for kb in self.knowledgebases:
             self.topics += Topics.by_kb(kb)
         self.deputies = Deputies.get_all()
-        self.footprint_by_deputies = self.__initiatize_footprint_by_deputies()
+        self.footprint_by_deputies = self.__initialize_footprint_by_deputies()
         self.parliamentarygroups = ParliamentaryGroups.get_all()
-        self.footprint_by_parliamentarygroups = self.__initiatize_footprint_by_parliamentarygroups()
+        self.footprint_by_parliamentarygroups = self.__initialize_footprint_by_parliamentarygroups()
         log.info("Footprint initiatization finished.")
 
     def compute(self):
@@ -123,12 +123,13 @@ class ComputeFootprint:
                     typeof).compute()
             score = f"{score - (score * penalty):.2f}"
 
+
         return score
 
     def __sort_scores(self, lst):
         return sorted(lst, key=lambda element: float(element['score']), reverse=True)
 
-    def __initiatize_footprint_by_deputies(self):
+    def __initialize_footprint_by_deputies(self):
         global_score = dict()
         for d in self.deputies:
             global_score[d['id']] = self.compute_by_topic(d, None, 'deputy')
@@ -162,7 +163,7 @@ class ComputeFootprint:
             fbd['topics'] = self.__sort_scores(fbd['topics'])
             fbd.save()
 
-    def __initiatize_footprint_by_parliamentarygroups(self):
+    def __initialize_footprint_by_parliamentarygroups(self):
         global_score = dict()
         for g in self.parliamentarygroups:
             global_score[g['id']] = self.compute_by_topic(g, None, 'parliamentarygroup')
