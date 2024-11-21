@@ -1,6 +1,6 @@
 FROM python:3.8-slim
 
-RUN apt-get update && apt-get install -y git gcc libpcre3-dev cron poppler-utils tesseract-ocr tesseract-ocr-spa tesseract-ocr-cat antiword
+RUN apt-get update && apt-get install -y git gcc cron poppler-utils tesseract-ocr tesseract-ocr-spa tesseract-ocr-cat antiword
 
 COPY requirements.txt /app/
 WORKDIR /app

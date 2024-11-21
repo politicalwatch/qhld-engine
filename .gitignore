@@ -73,6 +73,7 @@ blacklist
 *.db
 *.db*
 *.log
+.DS_Store
 
 # For production site
 engineenv
