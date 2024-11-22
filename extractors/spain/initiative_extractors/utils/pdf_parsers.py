@@ -1,26 +1,26 @@
 import tempfile
 from pdf2image import convert_from_path
 from pytesseract import image_to_string
-from textract import process
+from pdfminer.high_level import extract_text
 
 from ...congress_api import CongressApi
 
 
-class PDFParser():
+class PDFParser:
     def __init__(self, file):
         self.file = file
 
     def extract(self):
         try:
-            content = process(self.file.name)
-            content = content.decode('utf-8').strip()
-            content = content.replace('\f', ' ').replace('\t', '').split('\n')
+            content = extract_text(self.file.name)
+            content = content.strip()
+            content = content.replace("\f", " ").replace("\t", "").split("\n")
             return content
         except Exception:
             return []
 
 
-class PDFImageParser():
+class PDFImageParser:
     def __init__(self, file):
         self.file = file
 
@@ -29,14 +29,14 @@ class PDFImageParser():
         texts = []
 
         for i in range(len(images)):
-            text = image_to_string(images[i], lang = 'spa')
+            text = image_to_string(images[i], lang="spa")
             texts.append(text)
 
         return texts
 
 
-class PDFExtractor():
-    BASE_URL = 'https://www.congreso.es'
+class PDFExtractor:
+    BASE_URL = "https://www.congreso.es"
 
     def __init__(self, url, is_img=False):
         self.url = self.BASE_URL + url
@@ -49,7 +49,7 @@ class PDFExtractor():
         if not response.ok:
             return content
         try:
-            with tempfile.NamedTemporaryFile(suffix='.pdf') as file:
+            with tempfile.NamedTemporaryFile(suffix=".pdf") as file:
                 file.write(bytes(response.content))
                 content = self.extract(file, self.is_img)
                 file.close()
