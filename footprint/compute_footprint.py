@@ -28,7 +28,7 @@ log = get_logger(__name__)
 class ComputeFootprint:
 
     def __init__(self):
-        log.info("Initiatizing footprint...")
+        log.info("Initializing footprint...")
         self.topics = []
         self.knowledgebases = list(KnowledgeBases.get_all())
         for kb in self.knowledgebases:
@@ -37,7 +37,7 @@ class ComputeFootprint:
         self.footprint_by_deputies = self.__initialize_footprint_by_deputies()
         self.parliamentarygroups = ParliamentaryGroups.get_all()
         self.footprint_by_parliamentarygroups = self.__initialize_footprint_by_parliamentarygroups()
-        log.info("Footprint initiatization finished.")
+        log.info("Footprint initialization finished.")
 
     def compute(self):
         log.info("Starting footprint computation...")
