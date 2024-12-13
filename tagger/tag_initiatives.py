@@ -11,6 +11,7 @@ from tipi_data.repositories.alerts import InitiativeAlerts
 
 from logger import get_logger
 from alerts.settings import USE_ALERTS, REASONS
+from tagger.topic_alignment import calculate_single_topic_alignment
 
 
 log = get_logger(__name__)
@@ -63,9 +64,13 @@ class TagInitiatives:
 
             initiative.remove_single_occurences()
 
+            calculate_single_topic_alignment(initiative, False)
+
             initiative.save()
+
             if initiative.has_tags() and USE_ALERTS and send_alerts:
                 InitiativeAlerts.create_alert(initiative, REASONS['published'])
+
         except Exception as e:
             log.error(f"Error tagging {initiative['id']}: {e}")
 

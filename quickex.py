@@ -3,6 +3,7 @@ import sys
 from extractors.extractor import ExtractorTask
 from tagger.tag_initiatives import TagInitiatives
 from untagger.untag_initiatives import UntagInitiatives
+from tagger.topic_alignment import calculate_topic_alignment
 from alerts.send_alerts import SendAlerts
 from stats.process_stats import GenerateStats
 from footprint.compute_footprint import ComputeFootprint
@@ -12,7 +13,7 @@ from tipi_data.repositories.alerts import InitiativeAlerts
 
 def print_help():
     print('Usage: quickex.py TASK')
-    print('Apply task: send-alerts, generate-alert, tagger, untagger, stats, footprint, extractor')
+    print('Apply task: send-alerts, generate-alert, topic-alignment, tagger, untagger, stats, footprint, extractor')
     print('Example: python quickex.py stats')
 
 def run_command(commands, arguments):
@@ -41,6 +42,12 @@ def generate_alert(arguments):
     InitiativeAlerts.create_alert(initiative[0], 'Nueva iniciativa')
     print('Alerts created')
 
+def topic_aligment(arguments):
+    try:
+        id = arguments[2]
+    except IndexError:
+        id = None
+    calculate_topic_alignment(id)
 
 def modify_regex(topic, tag):
     untagger = UntagInitiatives()
@@ -143,6 +150,7 @@ def long_questions(args):
 commands = {
     'send-alerts': send_alerts,
     'generate-alert': generate_alert,
+    'topic-alignment': topic_aligment,
     'tagger': tag,
     'untagger': untag,
     'stats': stats,

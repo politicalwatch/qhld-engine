@@ -79,3 +79,12 @@ Available Commands
 ## Alerts
 - `python quickex.py send-alerts: Send the alerts.
 - `python quickex.py generate-alert [REFERENCE]`: Inserts the specified initiative inside the initiative_alerts collection.
+
+## Stats
+- `python quickex.py stats: Calculates stats.
+
+## Footprint
+- `python quickex.py footprint: Calculates footprint.
+
+## Topic alignment
+- `python quickex.py topic-alignment [INITIATIVE ID]: Calculates topic alignment for all (or one) initiative.
