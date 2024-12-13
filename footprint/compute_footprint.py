@@ -1,6 +1,8 @@
 from datetime import datetime
 
 from logger import get_logger
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import multiprocessing
 
 from tipi_data.models.footprint import FootprintByTopic, \
         FootprintByDeputy, \
@@ -49,32 +51,70 @@ class ComputeFootprint:
             topic_footprint = FootprintByTopic()
             topic_footprint['id'] = topic['id']
             topic_footprint['name'] = topic['name']
-            topic_footprint['deputies'] = list()
 
-            for group in self.parliamentarygroups:
-                score = self.compute_by_topic(group, topic, 'parliamentarygroup')
-                topic_footprint['parliamentarygroups'].append(FootprintElement(
-                    name=group['name'],
-                    score=float(score)
-                    ))
-                self.__add_footprint_by_parliamentarygroup(group, topic, score)
-            topic_footprint['parliamentarygroups'] = self.__sort_scores(topic_footprint['parliamentarygroups'])
+            topic_footprint['deputies'] = list()
+            with ThreadPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
+                future_to_deputy = {
+                        executor.submit(self.compute_by_topic, d, topic, 'deputy'): d
+                        for d in self.deputies
+                        }
+                for future in as_completed(future_to_deputy):
+                    d = future_to_deputy[future]
+                    try:
+                        topic_footprint['deputies'].append(FootprintElement(
+                            name=d['name'],
+                            score=float(future.result())
+                            ))
+                    except Exception as e:
+                        log.error(f"Cannot generate footprint by deputy {d} for topic {topic}: {e}")
+
+            self.__normalize_topic_scores(topic_footprint['deputies'])
+            topic_footprint['deputies'] = self.__sort_scores(topic_footprint['deputies'])
 
             for deputy in self.deputies:
-                score = self.compute_by_topic(deputy, topic, 'deputy')
-                topic_footprint['deputies'].append(FootprintElement(
-                    name=deputy['name'],
-                    score=float(score)
-                    ))
-                self.__add_footprint_by_deputy(deputy, topic, score)
+                self.__add_footprint_by_deputy(
+                        deputy,
+                        topic,
+                        list(filter(
+                            lambda x: x['name'] == deputy['name'],
+                            topic_footprint['deputies']
+                            ))[0]['score']
+                        )
 
-            topic_footprint['deputies'] = self.__sort_scores(topic_footprint['deputies'])
+            topic_footprint['parliamentarygroups'] = list()
+            with ThreadPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
+                future_to_groups = {
+                        executor.submit(self.compute_by_topic, g, topic, 'parliamentarygroup'): g
+                        for g in self.parliamentarygroups
+                        }
+                for future in as_completed(future_to_groups):
+                    g = future_to_groups[future]
+                    try:
+                        topic_footprint['parliamentarygroups'].append(FootprintElement(
+                            name=g['name'],
+                            score=float(future.result())
+                            ))
+                    except Exception as e:
+                        log.error(f"Cannot generate footprint by group {g} for topic {topic}: {e}")
+
+            self.__normalize_topic_scores(topic_footprint['parliamentarygroups'])
+            topic_footprint['parliamentarygroups'] = self.__sort_scores(topic_footprint['parliamentarygroups'])
+
+            for group in self.parliamentarygroups:
+                self.__add_footprint_by_parliamentarygroup(
+                        group,
+                        topic,
+                        list(filter(
+                            lambda x: x['name'] == group['name'],
+                            topic_footprint['parliamentarygroups']
+                            ))[0]['score']
+                        )
 
             topic_footprint.save()
             log.info(f"{topic['name'].upper()}: footprint computed in {(datetime.now() - initial).seconds} seconds.")
 
-        self.__save_footprint_by_parliamentarygroups()
         self.__save_footprint_by_deputies()
+        self.__save_footprint_by_parliamentarygroups()
         log.info("Footprint computation finished.")
 
     def compute_by_topic(self, entity, topic, typeof):
@@ -126,14 +166,23 @@ class ComputeFootprint:
 
         return score
 
-    def __sort_scores(self, lst):
-        return sorted(lst, key=lambda element: float(element['score']), reverse=True)
-
     def __initialize_footprint_by_deputies(self):
         global_score = dict()
-        for d in self.deputies:
-            global_score[d['id']] = self.compute_by_topic(d, None, 'deputy')
+        
+        with ThreadPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
+            future_to_deputy = {
+                    executor.submit(self.compute_by_topic, d, None, 'deputy'): d
+                    for d in self.deputies
+                    }
+            for future in as_completed(future_to_deputy):
+                d = future_to_deputy[future]
+                try:
+                    global_score[d['id']] = float(future.result())
+                except Exception as e:
+                    log.error(f"Cannot generate footprint by deputy {d}: {e}")
 
+        self.__normalize_scores(global_score)
+        
         return [
                 FootprintByDeputy(
                     id=d['id'],
@@ -165,9 +214,20 @@ class ComputeFootprint:
 
     def __initialize_footprint_by_parliamentarygroups(self):
         global_score = dict()
-        for g in self.parliamentarygroups:
-            global_score[g['id']] = self.compute_by_topic(g, None, 'parliamentarygroup')
+        
+        with ThreadPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
+            future_to_group = {
+                    executor.submit(self.compute_by_topic, g, None, 'parliamentarygroup'): g
+                    for g in self.parliamentarygroups
+                    }
+            for future in as_completed(future_to_group):
+                g = future_to_group[future]
+                try:
+                    global_score[g['id']] = float(future.result())
+                except Exception as e:
+                    log.error(f"Cannot generate footprint by group {d}: {e}")
 
+        self.__normalize_scores(global_score)
         return [
                 FootprintByParliamentaryGroup(
                     id=g['id'],
@@ -176,6 +236,7 @@ class ComputeFootprint:
                     topics=list())
                 for g in self.parliamentarygroups
                 ]
+        
 
     def __add_footprint_by_parliamentarygroup(self, group, topic, score):
         group_footprint = self.__get_group__footprint(group)
@@ -196,6 +257,23 @@ class ComputeFootprint:
         for fbpg in self.footprint_by_parliamentarygroups:
             fbpg['topics'] = self.__sort_scores(fbpg['topics'])
             fbpg.save()
+
+    def __normalize_scores(self, scores):
+        max_score = max(score for score in scores.values())
+        min_score = min(score for score in scores.values())
+        for key, score in scores.items():
+            normalized_score = 0 + (score - min_score) * (100 - 0) / (max_score - min_score)
+            scores[key] = round(normalized_score, 2)
+
+    def __normalize_topic_scores(self, scores):
+        max_score = max(item['score'] for item in scores)
+        min_score = min(item['score'] for item in scores)
+        for item in scores:
+            normalized_score = 0 + (item['score'] - min_score) * (100 - 0) / (max_score - min_score)
+            item['score'] = round(normalized_score, 2)
+
+    def __sort_scores(self, lst):
+        return sorted(lst, key=lambda element: float(element['score']), reverse=True)
 
 
 if __name__ == "__main__":
