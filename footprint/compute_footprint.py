@@ -13,8 +13,7 @@ from tipi_data.repositories.topics import Topics
 from tipi_data.repositories.deputies import Deputies
 from tipi_data.repositories.parliamentarygroups import ParliamentaryGroups
 
-from .footprint_managers import FootprintSumPointOneManager, \
-        FootprintSumFourManager, \
+from .footprint_managers import FootprintSumFourManager, \
         FootprintSumTenManager, \
         FootprintSumFourtyManager, \
         FootprintSumEightyManager, \
@@ -122,10 +121,6 @@ class ComputeFootprint:
         entity_name = entity['name']
         topic_name = topic['name'] if topic else None
 
-        score += FootprintSumPointOneManager(
-                topic_name,
-                entity_name,
-                typeof).compute()
         score += FootprintSumFourManager(
                 topic_name,
                 entity_name,

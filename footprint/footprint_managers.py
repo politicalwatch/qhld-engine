@@ -49,8 +49,8 @@ class FootprintSumPointOneManager(FootprintSumManager):
                 'Pregunta a la Corporación RTVE con respuesta escrita',
                 ]
 
-    def multiply(self):
-        return 0
+    def multiply(self)j
+        return 0.1
 
 
 
