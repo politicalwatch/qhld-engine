@@ -37,9 +37,36 @@ class FootprintSumManager(FootprintQueryManager):
         return 1
 
     def compute(self):
-        return Initiatives.by_query(
-                self.parse_query(self.types(), self.topic, self.entity, self.typeof, self.status())
-                ).count() * self.multiply()
+        query = self.parse_query(self.types(), self.topic, self.entity, self.typeof, self.status())
+
+        if not self.topic:
+            return Initiatives.by_query(query).count() * self.multiply()
+
+        ipeline = [
+            { "$match": query },
+            { "$unwind": "$tagged" },
+            { "$unwind": "$tagged.topic_alignment" },
+            { "$match": { "tagged.topic_alignment.topic": self.topic } },
+            { "$group": {
+                "_id": None,
+                "output": {
+                    "$sum": {
+                        "$divide": [
+                            "$tagged.topic_alignment.percentage",
+                            100
+                            ]
+                        
+                        }
+                    }
+                }
+             },
+            { "$project": { "_id": 0, "output": 1} }
+        ]
+        result = list(Initiatives.get_all().aggregate(*pipeline))
+        if not result:
+            return 0
+        return result[0]['output'] * self.multiply()
+
 
 
 class FootprintSumPointOneManager(FootprintSumManager):
@@ -49,7 +76,7 @@ class FootprintSumPointOneManager(FootprintSumManager):
                 'Pregunta a la Corporación RTVE con respuesta escrita',
                 ]
 
-    def multiply(self)j
+    def multiply(self):
         return 0.1
 
 

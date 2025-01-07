@@ -223,6 +223,7 @@ class ComputeFootprint:
                     log.error(f"Cannot generate footprint by group {d}: {e}")
 
         self.__normalize_scores(global_score)
+
         return [
                 FootprintByParliamentaryGroup(
                     id=g['id'],
@@ -256,15 +257,21 @@ class ComputeFootprint:
     def __normalize_scores(self, scores):
         max_score = max(score for score in scores.values())
         min_score = min(score for score in scores.values())
+        distance = max_score - min_score
+        if distance == 0:
+            distance = 1
         for key, score in scores.items():
-            normalized_score = 0 + (score - min_score) * (100 - 0) / (max_score - min_score)
+            normalized_score = (score - min_score) * 100 / distance
             scores[key] = round(normalized_score, 2)
 
     def __normalize_topic_scores(self, scores):
         max_score = max(item['score'] for item in scores)
         min_score = min(item['score'] for item in scores)
+        distance = max_score - min_score
+        if distance == 0:
+            distance = 1
         for item in scores:
-            normalized_score = 0 + (item['score'] - min_score) * (100 - 0) / (max_score - min_score)
+            normalized_score = (item['score'] - min_score) * 100 / distance
             item['score'] = round(normalized_score, 2)
 
     def __sort_scores(self, lst):
