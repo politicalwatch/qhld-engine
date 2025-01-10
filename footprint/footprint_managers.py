@@ -42,7 +42,7 @@ class FootprintSumManager(FootprintQueryManager):
         if not self.topic:
             return Initiatives.by_query(query).count() * self.multiply()
 
-        ipeline = [
+        pipeline = [
             { "$match": query },
             { "$unwind": "$tagged" },
             { "$unwind": "$tagged.topic_alignment" },
@@ -55,7 +55,6 @@ class FootprintSumManager(FootprintQueryManager):
                             "$tagged.topic_alignment.percentage",
                             100
                             ]
-                        
                         }
                     }
                 }
