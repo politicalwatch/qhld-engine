@@ -54,7 +54,7 @@ class ComputeFootprint:
             topic_footprint['deputies'] = list()
             with ThreadPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
                 future_to_deputy = {
-                        executor.submit(self.compute_by_topic, d, topic, 'deputy'): d
+                        executor.submit(self.__compute_by_topic, d, topic, 'deputy'): d
                         for d in self.deputies
                         }
                 for future in as_completed(future_to_deputy):
@@ -83,7 +83,7 @@ class ComputeFootprint:
             topic_footprint['parliamentarygroups'] = list()
             with ThreadPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
                 future_to_groups = {
-                        executor.submit(self.compute_by_topic, g, topic, 'parliamentarygroup'): g
+                        executor.submit(self.__compute_by_topic, g, topic, 'parliamentarygroup'): g
                         for g in self.parliamentarygroups
                         }
                 for future in as_completed(future_to_groups):
@@ -116,7 +116,7 @@ class ComputeFootprint:
         self.__save_footprint_by_parliamentarygroups()
         log.info("Footprint computation finished.")
 
-    def compute_by_topic(self, entity, topic, typeof):
+    def __compute_by_topic(self, entity, topic, typeof):
         score = 0
         entity_name = entity['name']
         topic_name = topic['name'] if topic else None
@@ -166,7 +166,7 @@ class ComputeFootprint:
         
         with ThreadPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
             future_to_deputy = {
-                    executor.submit(self.compute_by_topic, d, None, 'deputy'): d
+                    executor.submit(self.__compute_by_topic, d, None, 'deputy'): d
                     for d in self.deputies
                     }
             for future in as_completed(future_to_deputy):
@@ -212,7 +212,7 @@ class ComputeFootprint:
         
         with ThreadPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
             future_to_group = {
-                    executor.submit(self.compute_by_topic, g, None, 'parliamentarygroup'): g
+                    executor.submit(self.__compute_by_topic, g, None, 'parliamentarygroup'): g
                     for g in self.parliamentarygroups
                     }
             for future in as_completed(future_to_group):
