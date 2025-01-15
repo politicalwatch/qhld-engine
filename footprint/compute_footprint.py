@@ -163,7 +163,7 @@ class ComputeFootprint:
 
     def __initialize_footprint_by_deputies(self):
         global_score = dict()
-        
+
         with ThreadPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
             future_to_deputy = {
                     executor.submit(self.__compute_by_topic, d, None, 'deputy'): d
@@ -177,7 +177,7 @@ class ComputeFootprint:
                     log.error(f"Cannot generate footprint by deputy {d}: {e}")
 
         self.__normalize_scores(global_score)
-        
+
         return [
                 FootprintByDeputy(
                     id=d['id'],
@@ -209,7 +209,7 @@ class ComputeFootprint:
 
     def __initialize_footprint_by_parliamentarygroups(self):
         global_score = dict()
-        
+
         with ThreadPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
             future_to_group = {
                     executor.submit(self.__compute_by_topic, g, None, 'parliamentarygroup'): g
@@ -232,7 +232,6 @@ class ComputeFootprint:
                     topics=list())
                 for g in self.parliamentarygroups
                 ]
-        
 
     def __add_footprint_by_parliamentarygroup(self, group, topic, score):
         group_footprint = self.__get_group__footprint(group)
