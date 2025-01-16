@@ -64,7 +64,7 @@ class VoteExtractor():
         return cleaned[:len(cleaned) - 1]
 
     def extract_link(self, html):
-        regex = re.compile('<a[\sa-zA-Z\"\.=0-9_\/:]+\>JSON\<\/a\>')
+        regex = re.compile(r'<a[\sa-zA-Z\"\.=0-9_\/:]+\>JSON\<\/a\>')
         matches = regex.findall(html)
         tag = matches[0]
         start = tag.find('href="') + 6
