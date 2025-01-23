@@ -13,7 +13,10 @@ class CongressHeadersBuilder:
 
     def set_defaults(self):
         self.set_user_agent()
-        self.set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8")
+        self.set(
+            "Accept",
+            "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        )
         self.set("Accept-Language", "es-ES,es;q=0.8,en-US;q=0.5,en;q=0.3")
         self.set("Accept-Encoding", "gzip, deflate, br")
         self.set("DNT", "1")
@@ -38,21 +41,23 @@ class CongressHeadersBuilder:
 
     def for_web(self):
         self.set_user_agent()
-        self.set('Cookie', 'GUEST_LANGUAGE_ID=es_ES')
-        self.set('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8')
+        self.set("Cookie", "GUEST_LANGUAGE_ID=es_ES")
+        self.set(
+            "Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        )
         self.set("Host", "www.congreso.es")
-        self.set('Accept-Language', 'en-us')
-        self.set('Accept-Encoding', 'br, gzip, deflate')
+        self.set("Accept-Language", "en-us")
+        self.set("Accept-Encoding", "br, gzip, deflate")
         self.set("Connection", "keep-alive")
         return self.headers
 
     def for_pdf(self):
         self.set_user_agent()
-        self.set('Cookie', 'GUEST_LANGUAGE_ID=es_ES')
-        self.set('Accept', 'application/pdf;q=0.9,*/*;q=0.8')
+        self.set("Cookie", "GUEST_LANGUAGE_ID=es_ES")
+        self.set("Accept", "application/pdf;q=0.9,*/*;q=0.8")
         self.set("Host", "www.congreso.es")
-        self.set('Accept-Language', 'en-us')
-        self.set('Accept-Encoding', 'br, gzip, deflate')
+        self.set("Accept-Language", "en-us")
+        self.set("Accept-Encoding", "br, gzip, deflate")
         self.set("Connection", "keep-alive")
         return self.headers
 
@@ -66,25 +71,25 @@ class CongressUrlBuilder:
         self.url = "https://www.congreso.es/es/"
 
     def for_deputies(self):
-        return f'{self.url}busqueda-de-diputados?p_p_id=diputadomodule&p_p_lifecycle=2&p_p_state=normal&p_p_mode=view&p_p_resource_id=searchDiputados&p_p_cacheability=cacheLevelPage'
+        return f"{self.url}busqueda-de-diputados?p_p_id=diputadomodule&p_p_lifecycle=2&p_p_state=normal&p_p_mode=view&p_p_resource_id=searchDiputados&p_p_cacheability=cacheLevelPage"
 
     def for_deputy(self, code):
-        return f'{self.url}busqueda-de-diputados?p_p_id=diputadomodule&p_p_lifecycle=0&p_p_state=normal&p_p_mode=view&_diputadomodule_mostrarFicha=true&codParlamentario={code}&idLegislatura={int_to_roman(ID_LEGISLATURA)}&mostrarAgenda=false'
+        return f"{self.url}busqueda-de-diputados?p_p_id=diputadomodule&p_p_lifecycle=0&p_p_state=normal&p_p_mode=view&_diputadomodule_mostrarFicha=true&codParlamentario={code}&idLegislatura={int_to_roman(ID_LEGISLATURA)}&mostrarAgenda=false"
 
     def for_cookies(self):
-        return f'{self.url}/busqueda-de-diputados'
+        return f"{self.url}/busqueda-de-diputados"
 
     def for_initiative_totals(self):
-        return f'{self.url}indice-de-iniciativas?p_p_id=iniciativas&p_p_lifecycle=2&p_p_state=normal&p_p_mode=view&p_p_resource_id=cambiarLegislaturaIndice&p_p_cacheability=cacheLevelPage'
+        return f"{self.url}indice-de-iniciativas?p_p_id=iniciativas&p_p_lifecycle=2&p_p_state=normal&p_p_mode=view&p_p_resource_id=cambiarLegislaturaIndice&p_p_cacheability=cacheLevelPage"
 
     def for_initiative(self, reference):
         return f"{self.url}busqueda-de-iniciativas?p_p_id=iniciativas&p_p_lifecycle=0&p_p_state=normal&p_p_mode=view&_iniciativas_mode=mostrarDetalle&_iniciativas_legislatura={int_to_roman(ID_LEGISLATURA)}&_iniciativas_id={reference.replace('/', '%2F')}"
 
     def for_video(self, reference):
-        return f'https://www.congreso.es/web/guest/busqueda-de-intervenciones?p_p_id=intervenciones&p_p_lifecycle=2&p_p_state=normal&p_p_mode=view&p_p_resource_id=filtrarListado&p_p_cacheability=cacheLevelPage&_intervenciones_mode=view&_intervenciones_legislatura={int_to_roman(ID_LEGISLATURA)}&_intervenciones_id_iniciativa={reference}'
+        return f"https://www.congreso.es/web/guest/busqueda-de-intervenciones?p_p_id=intervenciones&p_p_lifecycle=2&p_p_state=normal&p_p_mode=view&p_p_resource_id=filtrarListado&p_p_cacheability=cacheLevelPage&_intervenciones_mode=view&_intervenciones_legislatura={int_to_roman(ID_LEGISLATURA)}&_intervenciones_id_iniciativa={reference}"
 
     def for_url(self, link):
-        if link.startswith('http'):
+        if link.startswith("http"):
             return link
         return f"{self.url}{link}"
 
@@ -129,7 +134,7 @@ class CongressApi(object):
     def get_deputies(self):
         url = self.url_builder.for_deputies()
         headers = CongressHeadersBuilder().for_api()
-        deputies_type = '2' if CURRENT_LEGISLATURE else '1'
+        deputies_type = "2" if CURRENT_LEGISLATURE else "1"
         data = f"_diputadomodule_idLegislatura={ID_LEGISLATURA}&_diputadomodule_genero=0&_diputadomodule_grupo=all&_diputadomodule_tipo={deputies_type}&_diputadomodule_nombre=&_diputadomodule_apellidos=&_diputadomodule_formacion=all&_diputadomodule_filtroProvincias=%5B%5D&_diputadomodule_nombreCircunscripcion="
         return self.post(url, headers, data)
 
@@ -166,9 +171,7 @@ class CongressApi(object):
     def get_video(self, reference, page):
         url = self.url_builder.for_video(reference)
         headers = CongressHeadersBuilder().for_api()
-        data = {
-            '_intervenciones_paginaActual': page
-        }
+        data = {"_intervenciones_paginaActual": page}
         return self.post(url, headers, data)
 
     def get_pdf(self, url):
@@ -199,24 +202,24 @@ class CongressApi(object):
 
     @staticmethod
     def test():
-        print('Getting cookies')
+        print("Getting cookies")
         api = CongressApi()
         api.get_cookies()
 
-        print('Getting deputies')
+        print("Getting deputies")
         api.get_deputies()
 
-        print('Getting single deputies')
-        api.get_deputy('267')
-        api.get_deputy('237')
+        print("Getting single deputies")
+        api.get_deputy("267")
+        api.get_deputy("237")
 
-        print('Getting initiative totals')
+        print("Getting initiative totals")
         api.get_initiative_totals()
 
-        print('Getting initiatives')
-        api.get_initiative('181/001810')
-        api.get_initiative('161/001542')
-        api.get_initiative('184/057540')
+        print("Getting initiatives")
+        api.get_initiative("181/001810")
+        api.get_initiative("161/001542")
+        api.get_initiative("184/057540")
 
 
-#CongressApi.test()
+# CongressApi.test()

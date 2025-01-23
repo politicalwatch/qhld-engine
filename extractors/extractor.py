@@ -3,17 +3,25 @@ from importlib import import_module as im
 from extractors.config import MODULE_EXTRACTOR
 
 
-class ExtractorTask():
-    task_namespace = 'extractors'
+class ExtractorTask:
+    task_namespace = "extractors"
 
     def __init__(self):
-        self.members_extractor = im('extractors.{}.members'.format(MODULE_EXTRACTOR)).MembersExtractor()
-        self.groups_extractor = im('extractors.{}.groups'.format(MODULE_EXTRACTOR)).GroupsExtractor()
-        self.initiatives_extractor = im('extractors.{}.initiatives'.format(MODULE_EXTRACTOR)).InitiativesExtractor()
+        self.members_extractor = im(
+            "extractors.{}.members".format(MODULE_EXTRACTOR)
+        ).MembersExtractor()
+        self.groups_extractor = im(
+            "extractors.{}.groups".format(MODULE_EXTRACTOR)
+        ).GroupsExtractor()
+        self.initiatives_extractor = im(
+            "extractors.{}.initiatives".format(MODULE_EXTRACTOR)
+        ).InitiativesExtractor()
         super().__init__()
 
     def run(self):
-        print("{task}(says: ready to extract data!".format(task=self.__class__.__name__))
+        print(
+            "{task}(says: ready to extract data!".format(task=self.__class__.__name__)
+        )
         self.members()
         self.calculate_composition_groups()
         self.initiatives()
@@ -69,6 +77,10 @@ class ExtractorTask():
     def single_interventions(self, reference):
         self.initiatives_extractor.all_references = [reference]
         self.initiatives_extractor.extract_videos()
+
+    def all_interventions_by_iniciative_type(self, type_code):
+        self.initiatives_extractor.extract_references_from_type(type_code)
+        self.initiatives_extractor.extract_interventions()
 
     def single_votes(self, reference):
         self.initiatives_extractor.all_references = [reference]
