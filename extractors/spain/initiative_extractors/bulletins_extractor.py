@@ -182,16 +182,24 @@ class NonExclusiveBulletinExtractor(InitiativeExtractor):
         output = self.extract_initiative_from_bulletin(cleanup_content)
 
         # Initiative is published with the Senate.
-        if output == [" (CD) "]:
+        if output == [""]:
             output = self.extract_senate_initiative(cleanup_content)
 
-        return output
+        return self.remove_page_references(output)
 
     def extract_initiative_from_bulletin(self, full_content):
         clean_content = self.clean_str_to_substr(full_content, "Página " + self.page)
         clean_content = self.clean_str_to_substr(
             clean_content, self.initiative["reference"]
         )
+
+        # Removes the line text left after the initiative reference (CD)
+        content_type_pos = clean_content.find("\n")
+
+        if content_type_pos == -1:
+            log.error("Initiative type not found")
+
+        clean_content = clean_content[content_type_pos:].strip()
 
         try:
             end_pos = re.search(self.INITIATIVE_REFERENCE_REGEX, clean_content).start()
@@ -200,6 +208,7 @@ class NonExclusiveBulletinExtractor(InitiativeExtractor):
             return clean_content.split("\n")
 
         content = clean_content[:end_pos]
+
         return content.split("\n")
 
     def extract_senate_initiative(self, full_content):
@@ -220,6 +229,13 @@ class NonExclusiveBulletinExtractor(InitiativeExtractor):
         content = clean_content[:end_pos]
 
         return content.split("\n")
+
+    def remove_page_references(self, clean_content):
+        return [
+            line
+            for line in clean_content
+            if line.strip() and not re.match(r"Página \d+", line.strip())
+        ]
 
     def cleanup_content(self, element):
         full_content = str(tostring(element))
