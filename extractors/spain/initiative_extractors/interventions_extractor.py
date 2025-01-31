@@ -1,7 +1,6 @@
-import math
+import csv
 import json
 import re
-import datetime
 import sys
 import regex
 import os
@@ -24,8 +23,9 @@ class InterventionsExtractor:
         self.regex_patterns = self.get_regex_for_interrupters()
         self.all_matches = {}
         self.sesion_matches = {}
+        self.cvs_file = 'sesions.csv'
 
-    def extract(self):
+    def extract(self):        
         print(f"Getting interventions from {self.initiative}")
         page = 1
         while True:
@@ -37,6 +37,8 @@ class InterventionsExtractor:
                 or "intervenciones_encontradas" not in interventions
             ):
                 break
+
+            print(f"Encontradas: {len(interventions['lista_intervenciones'])} intervenciones")
 
             # We order the interventions from the page
             interventions = sorted(
@@ -58,8 +60,7 @@ class InterventionsExtractor:
 
             # TODO: Check pagination on api, not working. Only processing first page (page += 1)
             break
-            sys.exit()
-        self.save_to_file("sesion.json", self.intervention_list)
+        # self.save_to_file("sesion.json", self.intervention_list)
 
     def get_sesion_speakers(self, interventions):
         for _, intervention in interventions:
@@ -76,24 +77,24 @@ class InterventionsExtractor:
     def process_intervention(self, intervention):
         if self.initiative not in self.intervention_list:
             self.intervention_list[self.initiative] = []
-        self.intervention_list[self.initiative].append(self._intervention(intervention))
+        data = self._intervention(intervention)
+        if data:
+            self.save_to_csv(self.initiative, data)
+        else:
+            print(f'Error en extracción de: {self.initiative}')
+        self.intervention_list[self.initiative].append(data)
 
     def find_all_matches(self):
         for key, pdf in self.pdfs.items():
             self.all_matches[key] = []
 
             for speaker, pattern in self.regex_patterns.items():
-                print(pattern)
                 matches = regex.finditer(pattern, pdf, regex.IGNORECASE)
                 self.all_matches[key].extend(matches)
-
-                for match in matches:
-                    print(match.group())
 
             self.all_matches[key] = sorted(
                 self.all_matches[key], key=lambda match: match.start()
             )
-            # print(self.all_matches)
 
     def _intervention(self, intervention):
         speaker_match = re.match(r"(.*)\s+\((.*)\)", intervention["orador"])
@@ -109,6 +110,10 @@ class InterventionsExtractor:
         if not self.sesion_matches:
             self.sesion_matches = self.all_matches[sesion_link_upd]
 
+        self.set_headers(intervention['pdia'])
+
+        # TODO: Si el vídeo contiene doble slash //, significa que el enlace no es
+        #       En esos casos, se puede recuperar el inicio y fin de intervención y extaraer del de la sesión completa esa extracto
         return {
             "speaker": speaker_name,
             "speaker_surname": speaker_surname,
@@ -123,32 +128,31 @@ class InterventionsExtractor:
         speech = ""
         left_matches = self.sesion_matches.copy()
         speaker_found = False
+        interruption = False # To manage last speaker cases
 
         sesion = self.pdfs[sesion_link]
 
         for match in self.sesion_matches:
             if not speaker_found:
                 if speaker_surname.lower() in match.group().lower():
-                    # print("Speaker found 1st time")
                     speech_start = match.end()
                     speaker_found = True
 
                 left_matches.remove(match)
             else:
-                if match.re.pattern in self.get_regex_for_interrupters().values():
-                    # print("Es interrupción")
+                if not interruption and match.re.pattern in self.get_regex_for_interrupters().values():
                     speech_end = match.start()
                     speech += sesion[speech_start:speech_end]
                     left_matches.remove(match)
+                    interruption = True
                     continue
 
                 if speaker_surname.lower() not in match.group().lower():
-                    # print("Siguiente speaker")
                     break
                 else:
-                    # print("Continua despues de interrupción")
                     speech_start = match.end()
                     left_matches.remove(match)
+                    interruption = False
 
         self.sesion_matches = left_matches.copy()
 
@@ -166,7 +170,7 @@ class InterventionsExtractor:
 
     def get_sesion(self, sesion_link):
         sesion = self.pdfs.get(sesion_link) or PDFExtractor(sesion_link).retrieve()
-        self.pdfs[sesion_link] = re.sub(r"\s+", " ", sesion)
+        self.pdfs[sesion_link] = re.sub(r"\s+", " ", sesion).replace("‑", "-").replace("–", "-").replace("—", "-")
 
     def is_same_document(self, current, next_):
         return (
@@ -175,12 +179,12 @@ class InterventionsExtractor:
 
     def clean_interventions(self, text):
         for removable_regex in self.get_regex_for_removables():
-            text = re.sub(removable_regex, "", text, flags=re.IGNORECASE | re.MULTILINE)
+            text = regex.sub(removable_regex, "", text, 0, flags=re.IGNORECASE | re.MULTILINE)
         return text
 
     def get_regex_for_speaker(self, speaker_name):
         speaker_name = re.sub(r"\s+", r"\\s+", speaker_name)
-        return rf"(La señora|El señor)\s+[a-zá-ú\s+]*[(]?{speaker_name}[)]?:"
+        return rf"(?<!\()(La señora|El señor)\s+[a-zá-ú\s+]*[(]?{speaker_name}[)]?:"
 
     def get_regex_for_interrupters(self):
         return {
@@ -210,17 +214,36 @@ class InterventionsExtractor:
     def set_headers(self, pdia):
         header_regex = (
             r"\s".join(pdia.split("#")[0].split("/")[-1].split(".")[0][::-1])
-            + r"\s*:\se\sv\sc\s?[a-zá-ú-0-9.\s+]*Pág\.\s+*\d*"
+            + r"\s*:\se\sv\sc\s?[a-zá-ú-0-9.\s+]*Pág\.\s+\d+"
         )
         if header_regex not in self.headers:
             self.headers.append(header_regex)
 
-    def save_to_file(self, filename, content):
-        updated_interventions = content
-        if os.path.exists(filename):
-            with open(filename, "r", encoding="utf-8") as file:
-                interventions = json.load(file)
-                updated_interventions = {**interventions, **content}
+    # def save_to_file(self, filename, content):
+    #     updated_interventions = content
+    #     if os.path.exists(filename):
+    #         with open(filename, "r", encoding="utf-8") as file:
+    #             interventions = json.load(file)
+    #             updated_interventions = {**interventions, **content}
 
-        with open(filename, "w", encoding="utf-8") as file:
-            json.dump(updated_interventions, file, indent=4, ensure_ascii=False)
+    #     with open(filename, "w", encoding="utf-8") as file:
+    #         json.dump(updated_interventions, file, indent=4, ensure_ascii=False)
+            
+    def save_to_csv(self, initiative_id, data):
+        file_exists = os.path.exists(self.cvs_file)
+
+        with open(self.cvs_file, mode='a', newline='', encoding='utf-8') as file:
+            writer = csv.writer(file)
+
+            if not file_exists:
+                writer.writerow(["initiative_id", "legislature", "speaker", "status", "error_desc", "video_link", "speech"])
+
+            writer.writerow([
+                initiative_id,
+                data.get("legislature", ""),
+                data.get("speaker", ""),
+                "",  # Campo status vacío
+                "",  # Campo error_desc vacío
+                data.get("video_link", ""),
+                data.get("speech", "").strip()  # Eliminar espacios extra en el discurso
+            ])

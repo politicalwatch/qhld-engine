@@ -76,7 +76,11 @@ class ExtractorTask:
 
     def single_interventions(self, reference):
         self.initiatives_extractor.all_references = [reference]
-        self.initiatives_extractor.extract_videos()
+        self.initiatives_extractor.extract_interventions() # cambiar a extract_videos
+
+    def all_iniciative_interventions(self, reference):
+        self.initiatives_extractor.all_references = [reference]
+        self.initiatives_extractor.extract_interventions()
 
     def all_interventions_by_iniciative_type(self, type_code):
         self.initiatives_extractor.extract_references_from_type(type_code)

@@ -107,6 +107,7 @@ def extract(args):
         "all-interventions": task.all_interventions,
         "single-initiative": task.single_initiatives,
         "single-intervention": task.single_interventions,
+        "all-iniciative-interventions": task.all_iniciative_interventions,
         "interventions-by-iniciative-type": task.all_interventions_by_iniciative_type,
         "single-vote": task.single_votes,
         "type-initiative": task.type_initiatives,

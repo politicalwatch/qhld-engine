@@ -7,16 +7,22 @@ from ...congress_api import CongressApi
 
 
 class PDFParser:
-    def __init__(self, file):
+    def __init__(self, file, format_output=True):
         self.file = file
+        self.format_output = format_output
 
     def extract(self):
         try:
             content = extract_text(self.file.name)
             content = content.strip()
-            content = content.replace("\f", " ").replace("\t", "").split("\n")
+            if self.format_output:
+                content = content.replace("\f", " ").replace("\t", "").split("\n")
+            else:
+                content = content.replace("\f", "")
+
             return content
         except Exception:
+
             return []
 
 
@@ -38,10 +44,11 @@ class PDFImageParser:
 class PDFExtractor:
     BASE_URL = "https://www.congreso.es"
 
-    def __init__(self, url, is_img=False):
+    def __init__(self, url, is_img=False, format_output=False):
         self.url = self.BASE_URL + url
         self.is_img = is_img
         self.api = CongressApi()
+        self.format_output = format_output
 
     def retrieve(self):
         response = self.api.get_pdf(self.url)
@@ -51,19 +58,19 @@ class PDFExtractor:
         try:
             with tempfile.NamedTemporaryFile(suffix=".pdf") as file:
                 file.write(bytes(response.content))
-                content = self.extract(file, self.is_img)
+                content = self.extract(file, self.is_img, self.format_output)
                 file.close()
         except KeyError as e:
             print(e)
             pass
         return content
 
-    def extract(self, pdf, is_img=False):
+    def extract(self, pdf, is_img=False, format_output=False):
         content = []
         if is_img:
             parser = PDFImageParser(pdf)
         else:
-            parser = PDFParser(pdf)
+            parser = PDFParser(pdf, format_output)
 
         try:
             content = parser.extract()
