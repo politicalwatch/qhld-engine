@@ -161,7 +161,8 @@ class InterventionsExtractor:
     def get_sesion_pdfs(self, interventions):
         for intervention in interventions:
             sesion_link = self.get_sesion_link(intervention)
-            self.get_sesion(sesion_link)
+            if sesion_link not in self.pdfs:
+                self.get_sesion(sesion_link)
 
     def get_sesion_link(self, intervention):
         legislature = intervention[1]["video_intervencion"]["legislatura"]
@@ -170,6 +171,11 @@ class InterventionsExtractor:
 
     def get_sesion(self, sesion_link):
         sesion = self.pdfs.get(sesion_link) or PDFExtractor(sesion_link).retrieve()
+        # Obtenemos solo la parte correspondiente a la iniciativa (en mismo diario de sesiones una misma persona puede hablar en varias)
+        pattern = rf"\(.*?Número de expediente .*?{self.initiative}"
+        matches = list(re.finditer(pattern, sesion))
+        if matches:
+            sesion = sesion[matches[-1].end():]
         self.pdfs[sesion_link] = re.sub(r"\s+", " ", sesion).replace("‑", "-").replace("–", "-").replace("—", "-")
 
     def is_same_document(self, current, next_):
@@ -202,7 +208,13 @@ class InterventionsExtractor:
         return speaker_name.split(",")[0]
 
     def get_regex_for_removables(self):
-        return self.headers + [r"[(]rumores[)].?", r"[(]aplausos[)].?", r"\n"]
+        return self.headers + [
+            r"[(]rumores[)].?",
+            r"[(]aplausos[)].?",
+            r"\n"
+            r"^\d+(?: \d+)* (?:Idem\.( )?)*",
+            r"\d+ En aplicación del punto Tercero\.7 del Acuerdo de la Mesa del Congreso de los Diputados relativo al régimen lingüístico de los debates en los órganos parlamentarios\. "
+        ]
 
     def retrieve_json(self, page):
         try:
