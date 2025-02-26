@@ -123,9 +123,9 @@ class FirstEBulletinExtractor(FirstBulletinExtractor):
 
 class NonExclusiveBulletinExtractor(InitiativeExtractor):
     BASE_URL = 'https://www.congreso.es'
-    PAGE_FIND_REGEX = 'Pág.:\s([0-9]+)'
-    HTML_STRIP_REGEX = '<[^>]+>'
-    INITIATIVE_REFERENCE_REGEX = '[0-9]{3}\/[0-9]{6}'
+    PAGE_FIND_REGEX = r'Pág.:\s([0-9]+)'
+    HTML_STRIP_REGEX = r'<[^>]+>'
+    INITIATIVE_REFERENCE_REGEX = r'[0-9]{3}\/[0-9]{6}'
 
     def extract_content(self):
         self.initiative['content'] = self.extract_bulletin_content()
@@ -214,7 +214,7 @@ class NonExclusiveBulletinExtractor(InitiativeExtractor):
         return haystack[pos:]
 
 class BulletinAndSenateExtractor(NonExclusiveBulletinExtractor):
-    SENATE_INITIATIVE_RE = '[0-9]{3}\/[0-9]{6} \(S\)'
+    SENATE_INITIATIVE_RE = r'[0-9]{3}\/[0-9]{6} \(S\)'
 
     def extract_initiative_from_bulletin(self, full_content):
         clean_content = self.clean_str_to_substr(full_content, 'Página ' + self.page)

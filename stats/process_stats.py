@@ -136,7 +136,7 @@ class GenerateStats(object):
 
             for topic in self.topics[kb]:
                 pipeline = [
-                    {'$match': {'tagged.topics': topic['name'], 'initiative_type': {'$nin': ['179', '184']}}},
+                    {'$match': {'tagged.topics': topic['name']}},
                     {'$unwind': '$author_parliamentarygroups'},
                     {'$group': {'_id': '$author_parliamentarygroups', 'initiatives': {'$sum': 1}}}, {'$sort': {'initiatives': -1}}
                     ]
@@ -173,7 +173,7 @@ class GenerateStats(object):
 
             for subtopic in self.subtopics[kb]:
                 pipeline = [
-                    {'$match': { 'tagged.tags.subtopic': subtopic, 'initiative_type': {'$nin': ['179', '184']}}},
+                    {'$match': { 'tagged.tags.subtopic': subtopic}},
                     {'$unwind': '$author_deputies'},
                     {'$group': {'_id': '$author_deputies', 'initiatives': {'$sum': 1}}}, {'$sort': {'initiatives': -1}},
                     {'$limit': 10}
@@ -193,7 +193,7 @@ class GenerateStats(object):
 
             for subtopic in self.subtopics[kb]:
                 pipeline = [
-                    {'$match': { 'tagged.tags.subtopic': subtopic, 'initiative_type': {'$nin': ['179', '184']}}},
+                    {'$match': { 'tagged.tags.subtopic': subtopic}},
                     {'$unwind': '$author_parliamentarygroups'},
                     {'$group': {'_id': '$author_parliamentarygroups', 'initiatives': {'$sum': 1}}}, {'$sort': {'initiatives': -1}}
                     ]
