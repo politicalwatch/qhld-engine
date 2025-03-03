@@ -20,7 +20,7 @@ class InterventionsExtractor:
         self.sesion = ""
         self.regex_removables = self.get_regex_for_removables()
         self.speakers = []
-        self.speaker_pattern = r"(El señor|La señora)\s+[a-zá-ú\s]+(\s\([a-zá-ú\s]+\))?:"
+        self.speaker_pattern = r"(El señor|La señora)\s+([a-zá-ú-\s]+)(\s\([a-zá-ú-\s]+\))?:"
         self.cvs_file = 'sesions.csv'
 
     def extract(self):        
@@ -87,7 +87,6 @@ class InterventionsExtractor:
         }
 
     def extract_speech(self, speaker_regex):
-        print("Extraemos speech de: " + speaker_regex)
         match_speaker = regex.search(speaker_regex, self.sesion, flags=re.IGNORECASE)
         if not match_speaker:
             return 'No encontrado orador'
@@ -100,7 +99,6 @@ class InterventionsExtractor:
 
         while self.is_interrupter(match_pattern):
             match_speaker = regex.search(self.speaker_pattern, self.sesion, flags=re.IGNORECASE)
-            print(regex.fullmatch(speaker_regex, match_speaker.group(0), flags=re.IGNORECASE) is None)
             if regex.fullmatch(speaker_regex, match_speaker.group(0), flags=re.IGNORECASE) is None:
                 break # No sigue hablando tras interrupción
             self.sesion = self.sesion[match_speaker.end():]
