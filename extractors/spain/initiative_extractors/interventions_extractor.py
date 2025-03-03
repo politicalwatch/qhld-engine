@@ -5,10 +5,9 @@ import sys
 import regex
 import os
 
-from tipi_data.utils import generate_id
 from ..congress_api import CongressApi
 from .utils.pdf_parsers import PDFExtractor
-
+from thefuzz import fuzz
 
 class InterventionsExtractor:
 
@@ -17,12 +16,11 @@ class InterventionsExtractor:
         self.api = CongressApi()
         self.url = "/public_oficiales/"
         self.intervention_list = {}
-        self.pdfs = {}
-        self.headers = []
+        self.sesions = {}
         self.sesion = ""
-        self.regex_patterns = self.get_regex_for_interrupters()
-        self.all_matches = {}
-        self.sesion_matches = {}
+        self.regex_removables = self.get_regex_for_removables()
+        self.speakers = []
+        self.speaker_pattern = r"(El señor|La señora)\s+[a-zá-ú\s]+(\s\([a-zá-ú\s]+\))?:"
         self.cvs_file = 'sesions.csv'
 
     def extract(self):        
@@ -38,67 +36,36 @@ class InterventionsExtractor:
             ):
                 break
 
-            print(f"Encontradas: {len(interventions['lista_intervenciones'])} intervenciones")
-
-            # We order the interventions from the page
             interventions = sorted(
-                interventions.get("lista_intervenciones", {}).items(),
+                (
+                    (k, v) for k, v in interventions.get("lista_intervenciones", {}).items()
+                    if "tipo_intervencion" not in v  # To exclude votes
+                ),
                 key=lambda x: int(x[1]["doc"]),
             )
-
-            # We create search regex and look for matches in sesion pdfs
-            self.get_sesion_speakers(interventions)
-            self.get_sesion_pdfs(interventions)
-            self.find_all_matches()
-
+            
+            self.get_speakers(interventions)
+            
             for _, intervention in interventions:
-                # To escape votes
-                if "tipo_intervencion" in intervention:
-                    continue
-
-                self.process_intervention(intervention)
-
-            # TODO: Check pagination on api, not working. Only processing first page (page += 1)
-            break
-        # self.save_to_file("sesion.json", self.intervention_list)
-
-    def get_sesion_speakers(self, interventions):
-        for _, intervention in interventions:
-            if "tipo_intervencion" in intervention:
-                continue
-            speaker = self.get_speaker_key(intervention)
-            regex_pattern = self.get_regex_for_speaker(speaker)
-            self.regex_patterns[speaker] = {}
-            if regex_pattern not in self.regex_patterns[speaker]:
-                self.regex_patterns[speaker] = regex_pattern
-
-        self.regex_patterns.update(self.get_regex_for_interrupters())
-
+                data = self.process_intervention(intervention)
+                if data:
+                    self.save_to_csv(self.initiative, data)
+                else:
+                    print(f'Error en extracción de: {self.initiative}')
+                if self.initiative not in self.intervention_list:
+                    self.intervention_list[self.initiative] = []
+                self.intervention_list[self.initiative].append(data)
+                
+            break ## Revisar paginación
+            
+            
     def process_intervention(self, intervention):
-        if self.initiative not in self.intervention_list:
-            self.intervention_list[self.initiative] = []
-        data = self._intervention(intervention)
-        if data:
-            self.save_to_csv(self.initiative, data)
-        else:
-            print(f'Error en extracción de: {self.initiative}')
-        self.intervention_list[self.initiative].append(data)
-
-    def find_all_matches(self):
-        for key, pdf in self.pdfs.items():
-            self.all_matches[key] = []
-
-            for speaker, pattern in self.regex_patterns.items():
-                matches = regex.finditer(pattern, pdf, regex.IGNORECASE)
-                self.all_matches[key].extend(matches)
-
-            self.all_matches[key] = sorted(
-                self.all_matches[key], key=lambda match: match.start()
-            )
-
-    def _intervention(self, intervention):
+        # A REVISAR LA SESIÓN GUARDADA ENTRE INTERVENCIONES E INICIATIVAS
+        if not self.sesion:
+            self.sesion = self.get_sesion(intervention)
+        speaker_regex = self.get_speaker_regex(intervention)
+        
         speaker_match = re.match(r"(.*)\s+\((.*)\)", intervention["orador"])
-
         if not speaker_match:
             return
 
@@ -106,11 +73,6 @@ class InterventionsExtractor:
         speaker_surname = speaker_name.split(",")[0]
         legislature = intervention["video_intervencion"]["legislatura"]
         sesion_link = f"{self.url}L{legislature}/{intervention['pdia']}"
-        sesion_link_upd = sesion_link.split("#")[0]
-        if not self.sesion_matches:
-            self.sesion_matches = self.all_matches[sesion_link_upd]
-
-        self.set_headers(intervention['pdia'])
 
         # TODO: Si el vídeo contiene doble slash //, significa que el enlace no es
         #       En esos casos, se puede recuperar el inicio y fin de intervención y extaraer del de la sesión completa esa extracto
@@ -121,126 +83,129 @@ class InterventionsExtractor:
             "legislature": legislature,
             "video_link": intervention["video_intervencion"]["enlace_descarga02"],
             "sesion_link": sesion_link,
-            "speech": self.extract_speech(speaker_surname, sesion_link_upd),
+            "speech": self.extract_speech(speaker_regex),
         }
 
-    def extract_speech(self, speaker_surname, sesion_link):
-        speech = ""
-        left_matches = self.sesion_matches.copy()
-        speaker_found = False
-        interruption = False # To manage last speaker cases
+    def extract_speech(self, speaker_regex):
+        print("Extraemos speech de: " + speaker_regex)
+        match_speaker = regex.search(speaker_regex, self.sesion, flags=re.IGNORECASE)
+        if not match_speaker:
+            return 'No encontrado orador'
+        self.sesion = self.sesion[match_speaker.end():]
+        match_pattern = regex.search(self.speaker_pattern, self.sesion, flags=re.IGNORECASE)
+        if not match_pattern:
+            return 'No encontrado fin'
+        speech = self.sesion[:match_pattern.start()]
+        self.sesion = self.sesion[match_pattern.end():]
 
-        sesion = self.pdfs[sesion_link]
-
-        for match in self.sesion_matches:
-            if not speaker_found:
-                if speaker_surname.lower() in match.group().lower():
-                    speech_start = match.end()
-                    speaker_found = True
-
-                left_matches.remove(match)
-            else:
-                if not interruption and match.re.pattern in self.get_regex_for_interrupters().values():
-                    speech_end = match.start()
-                    speech += sesion[speech_start:speech_end]
-                    left_matches.remove(match)
-                    interruption = True
-                    continue
-
-                if speaker_surname.lower() not in match.group().lower():
-                    break
-                else:
-                    speech_start = match.end()
-                    left_matches.remove(match)
-                    interruption = False
-
-        self.sesion_matches = left_matches.copy()
+        while self.is_interrupter(match_pattern):
+            match_speaker = regex.search(self.speaker_pattern, self.sesion, flags=re.IGNORECASE)
+            print(regex.fullmatch(speaker_regex, match_speaker.group(0), flags=re.IGNORECASE) is None)
+            if regex.fullmatch(speaker_regex, match_speaker.group(0), flags=re.IGNORECASE) is None:
+                break # No sigue hablando tras interrupción
+            self.sesion = self.sesion[match_speaker.end():]
+            match_pattern = regex.search(self.speaker_pattern, self.sesion, flags=re.IGNORECASE)
+            speech = speech + self.sesion[:match_pattern.start()]
+            self.sesion = self.sesion[match_pattern.start():]
 
         return self.clean_interventions(speech)
+    
+    def get_speaker_regex(self, intervention):
+        speaker_surname = intervention["orador"].split("(")[0].strip()
 
-    def get_sesion_pdfs(self, interventions):
-        for intervention in interventions:
-            sesion_link = self.get_sesion_link(intervention)
-            if sesion_link not in self.pdfs:
-                self.get_sesion(sesion_link)
+        if not speaker_surname:
+            return
+
+        speaker_surname = re.sub(r"\s+", r"\\s+", speaker_surname.split(",")[0])
+
+        return rf"(?<!\()(La señora|El señor)\s+[a-zá-ú\s+]*[(]?{speaker_surname}[)]?:"    
+    
+    def get_sesion(self, intervention):
+        sesion_link = self.get_sesion_link(intervention)
+        if sesion_link not in self.sesions:
+            return self.get_sesion_pdf(sesion_link)
+        
+        return self.sesions[sesion_link]
 
     def get_sesion_link(self, intervention):
-        legislature = intervention[1]["video_intervencion"]["legislatura"]
-        pdia = intervention[1]["pdia"].split("#")[0]
-        return f"{self.url}L{legislature}/{pdia}"
+        legislature = intervention["video_intervencion"]["legislatura"]
+        pdia = intervention["pdia"].split("#")[0]
 
-    def get_sesion(self, sesion_link):
-        sesion = self.pdfs.get(sesion_link) or PDFExtractor(sesion_link).retrieve()
-        # Obtenemos solo la parte correspondiente a la iniciativa (en mismo diario de sesiones una misma persona puede hablar en varias)
-        pattern = rf"\(.*?Número de expediente .*?{self.initiative}"
+        return f"{self.url}L{legislature}/{pdia}"
+    
+    def get_sesion_pdf(self, sesion_link):
+        sesion = self.sesions.get(sesion_link) or PDFExtractor(sesion_link).retrieve()
+        pattern = rf"\s\(Número\s+de\s+expediente\s{self.initiative}\)\.\s"
         matches = list(re.finditer(pattern, sesion))
+
         if matches:
             sesion = sesion[matches[-1].end():]
-        self.pdfs[sesion_link] = re.sub(r"\s+", " ", sesion).replace("‑", "-").replace("–", "-").replace("—", "-")
+        self.sesions[sesion_link] = re.sub(r"\s+", " ", sesion).replace("‑", "-").replace("–", "-").replace("—", "-")
+        # Fixing of typos on speakers surname
+        self.sesions[sesion_link] = self.fix_sesion_typos(self.sesions[sesion_link])
 
-    def is_same_document(self, current, next_):
-        return (
-            current["sesion_link"].split("#")[0] == next_["sesion_link"].split("#")[0]
-        )
-
+        return self.sesions[sesion_link]
+    
     def clean_interventions(self, text):
         for removable_regex in self.get_regex_for_removables():
             text = regex.sub(removable_regex, "", text, 0, flags=re.IGNORECASE | re.MULTILINE)
         return text
-
-    def get_regex_for_speaker(self, speaker_name):
-        speaker_name = re.sub(r"\s+", r"\\s+", speaker_name)
-        return rf"(?<!\()(La señora|El señor)\s+[a-zá-ú\s+]*[(]?{speaker_name}[)]?:"
-
-    def get_regex_for_interrupters(self):
-        return {
-            "presidente": r"(La señora presidenta|El señor presidente):",
-            "vicepresidente": r"(La señora VICEPRESIDENTA|El señor VICEPRESIDENTE)\s+?([a-zá-ú\s+]*[()])*:",
-        }
-
-    def get_speaker_key(self, intervention):
-        # speaker_match = re.match(r"(.*)\s+\((.*)\)", intervention["orador"])
-        speaker_name = intervention["orador"].split("(")[0].strip()
-
-        if not speaker_name:
-            return
-
-        return speaker_name.split(",")[0]
-
-    def get_regex_for_removables(self):
-        return self.headers + [
-            r"[(]rumores[)].?",
-            r"[(]aplausos[)].?",
-            r"\n"
-            r"^\d+(?: \d+)* (?:Idem\.( )?)*",
-            r"\d+ En aplicación del punto Tercero\.7 del Acuerdo de la Mesa del Congreso de los Diputados relativo al régimen lingüístico de los debates en los órganos parlamentarios\. "
-        ]
-
+    
+    def get_speakers(self, interventions):
+        for _, intervention in interventions:
+            name = intervention["orador"].split("(")[0].strip()
+            self.speakers.append(name.split(",")[0].strip().upper())
+    
     def retrieve_json(self, page):
         try:
             response = self.api.get_video(self.initiative, page)
             return response.json()
         except json.JSONDecodeError:
-            print(f"Error getting video for {self.initiative}")
+            print(f"Error getting video for {self.initiative}")    
+    
+    def is_interrupter(self, match):
+        match_text = match.group(0)  
+        interrupters_patterns = self.get_regex_for_interrupters().values()
 
-    def set_headers(self, pdia):
-        header_regex = (
-            r"\s".join(pdia.split("#")[0].split("/")[-1].split(".")[0][::-1])
-            + r"\s*:\se\sv\sc\s?[a-zá-ú-0-9.\s+]*Pág\.\s+\d+"
-        )
-        if header_regex not in self.headers:
-            self.headers.append(header_regex)
+        return any(regex.fullmatch(pattern, match_text, flags=regex.IGNORECASE) for pattern in interrupters_patterns)
+    
+    def get_next_interruption(self):
+        for pattern in self.get_regex_for_interrupters().values():
+            match = regex.search(pattern, self.sesion, flags=regex.IGNORECASE)
+            if match:
+                return match
 
-    # def save_to_file(self, filename, content):
-    #     updated_interventions = content
-    #     if os.path.exists(filename):
-    #         with open(filename, "r", encoding="utf-8") as file:
-    #             interventions = json.load(file)
-    #             updated_interventions = {**interventions, **content}
+        return None
+    
+    def get_regex_for_interrupters(self):
+        return {
+            "presidente": r"(La señora presidenta|El señor presidente):",
+            "vicepresidente": r"(La señora VICEPRESIDENTA|El señor VICEPRESIDENTE)\s+?([a-zá-ú\s+]*[()])*:",
+        }
+    
+    def get_regex_for_removables(self):
+        return [
+            r"[(]rumores[)].?",
+            r"[(]aplausos[)].?",
+            r"\n"
+            r"^\d+(?: \d+)* (?:Idem\.( )?)*",
+            r"\d+ En aplicación del punto Tercero\.7 del Acuerdo de la Mesa del Congreso de los Diputados relativo al régimen lingüístico de los debates en los órganos parlamentarios\. ",
+            r"\d+(\s\d+)*\s-\s?[A-Z\s]+\s-\s\d+(\s\d+)*\s-\s[A-Z\s]+\s[A-Z]+\s[A-Z]+\s?:\s?.*?DIARIO DE SESIONES DEL CONGRESO DE LOS DIPUTADOS.*?Pág\.\s?\d+\s"
+        ]
+        
+    def fix_sesion_typos(self, sesion, threshold=80):
+        matches = regex.finditer(self.speaker_pattern, sesion, flags=re.IGNORECASE)
+        for match in matches:
+            if self.is_interrupter(match):
+                continue
+            for speaker in self.speakers:
+                similarity = fuzz.ratio(match.group(2), speaker)
+                if similarity > threshold and similarity < 100:
+                    sesion = sesion.replace(match.group(2), speaker)
+                    break
 
-    #     with open(filename, "w", encoding="utf-8") as file:
-    #         json.dump(updated_interventions, file, indent=4, ensure_ascii=False)
-            
+        return sesion
+    
     def save_to_csv(self, initiative_id, data):
         file_exists = os.path.exists(self.cvs_file)
 
