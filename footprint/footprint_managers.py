@@ -42,25 +42,44 @@ class FootprintSumManager(FootprintQueryManager):
         if not self.topic:
             return Initiatives.by_query(query).count() * self.multiply()
 
-        pipeline = [
-            { "$match": query },
-            { "$unwind": "$tagged" },
-            { "$unwind": "$tagged.topic_alignment" },
-            { "$match": { "tagged.topic_alignment.topic": self.topic } },
-            { "$group": {
-                "_id": None,
-                "output": {
-                    "$sum": {
-                        "$divide": [
-                            "$tagged.topic_alignment.percentage",
-                            100
-                            ]
-                        }
+        pipeline = []
+        pipeline.append({ "$match": query })
+        pipeline.append({ "$unwind": "$tagged" })
+        pipeline.append({ "$unwind": "$tagged.topic_alignment" })
+        pipeline.append({ "$match": {
+                "tagged.topic_alignment.topic": self.topic }
+            })
+        pipeline.append({"$addFields": {
+            "percentage_fraction": { "$divide": [ "$tagged.topic_alignment.percentage", 100 ] }
+            }
+        })
+
+        def number_of_deputies():
+            return { "$size": "$author_deputies" } if self.typeof == 'deputy' else 1
+
+        pipeline.append({ "$addFields": {
+            "count_deputies": number_of_deputies()
+            }
+        })
+
+        pipeline.append({"$addFields": {
+            "weighted_percentage": {
+                "$cond": {
+                    "if": { "$gt": [ "$count_deputies", 0 ] },
+                    "then": { "$divide": [ "$percentage_fraction", "$count_deputies" ] },
+                    "else": 0
                     }
                 }
-             },
-            { "$project": { "_id": 0, "output": 1} }
-        ]
+            }
+        })
+
+        pipeline.append({ "$group": {
+                "_id": None,
+                "output": { "$sum": "$weighted_percentage" }
+                }
+        })
+        pipeline.append({ "$project": { "_id": 0, "output": 1} })
+
         result = list(Initiatives.get_all().aggregate(*pipeline))
         if not result:
             return 0
