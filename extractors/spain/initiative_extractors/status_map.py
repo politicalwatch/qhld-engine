@@ -33,7 +33,7 @@ STATUS_MAP = [
                 r'Aprobado con modificaciones',
                 r'Aprobado sin modificaciones',
                 r'Tramitado con propuesta de resolución',
-                r'Concluido desde',
+                r'Concluido',
                 r'Tramitado por completo sin',
                 ],
             'initiative_type': {
@@ -44,7 +44,7 @@ STATUS_MAP = [
             },
         {
                 'latest_history_items': [
-                    r'Concluido desde',
+                    r'Concluido',
                     r'Tramitado por completo sin',
                     ],
                 'initiative_type': {
