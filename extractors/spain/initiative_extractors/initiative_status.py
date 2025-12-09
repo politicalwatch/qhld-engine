@@ -19,7 +19,7 @@ def __any_match(regex_list, string):
     return False
 
 def get_status(history=list(), initiative_type=''):
-    if initiative_type == '070':
+    if initiative_type in ['070', '291', '294', '295', '299']:
         return 'Aprobada'
     if not history:
         return UNKNOWN
