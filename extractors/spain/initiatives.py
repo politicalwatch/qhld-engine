@@ -50,6 +50,7 @@ class InitiativesExtractor:
                 initiative_type = initiative_type[:-1]
             count = int(element.select_one('span').getText().strip('()'))
             self.totals_by_type[initiative_type] = count
+        log.info(self.totals_by_type)
 
     def extract(self):
         start_time = time.perf_counter()
