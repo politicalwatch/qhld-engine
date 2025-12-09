@@ -44,6 +44,7 @@ STATUS_MAP = [
             },
         {
                 'latest_history_items': [
+                    r'Concluido desde',
                     r'Tramitado por completo sin',
                     ],
                 'initiative_type': {
