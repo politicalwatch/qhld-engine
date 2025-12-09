@@ -29,41 +29,6 @@ STATUS_MAP = [
             'status': 'En tramitación'
             },
         {
-            'latest_history_items': [
-                r'Aprobado con modificaciones',
-                r'Aprobado sin modificaciones',
-                r'Tramitado con propuesta de resolución',
-                r'Concluido',
-                r'Tramitado por completo sin',
-                ],
-            'initiative_type': {
-                'includes': [],
-                'excludes': ['080', '170', '172', '178', '179', '180', '181', '184', '210', '212', '213', '214', '219']
-                },
-            'status': 'Aprobada'
-            },
-        {
-                'latest_history_items': [
-                    r'Concluido',
-                    r'Tramitado por completo sin',
-                    ],
-                'initiative_type': {
-                    'includes': ['170', '172', '178', '179', '180', '181', '184'],
-                    'excludes': []
-                    },
-                'status': 'Respondida'
-                },
-        {
-                'latest_history_items': [
-                    r'Tramitado por completo sin',
-                    ],
-                'initiative_type': {
-                    'includes': ['210', '212', '213', '214', '219'],
-                    'excludes': [],
-                    },
-                'status': 'Celebrada'
-                },
-        {
                 'latest_history_items': [
                     r'Convalidado',
                     ],
@@ -182,5 +147,50 @@ STATUS_MAP = [
                     'excludes': []
                     },
                 'status': 'Caducada'
+                },
+        {
+            'latest_history_items': [
+                r'Aprobado sin modificaciones',
+                ],
+            'initiative_type': {
+                'includes': ['080'],
+                'excludes': []
+                },
+            'status': 'Aprobada'
+            },
+        {
+            'latest_history_items': [
+                r'Aprobado con modificaciones',
+                r'Aprobado sin modificaciones',
+                r'Tramitado con propuesta de resolución',
+                r'Concluido',
+                r'Tramitado por completo sin',
+                ],
+            'initiative_type': {
+                'includes': [],
+                'excludes': ['080', '170', '172', '178', '179', '180', '181', '184', '210', '212', '213', '214', '219']
+                },
+            'status': 'Aprobada'
+            },
+        {
+                'latest_history_items': [
+                    r'Concluido',
+                    r'Tramitado por completo sin',
+                    ],
+                'initiative_type': {
+                    'includes': ['170', '172', '178', '179', '180', '181', '184'],
+                    'excludes': []
+                    },
+                'status': 'Respondida'
+                },
+        {
+                'latest_history_items': [
+                    r'Tramitado por completo sin',
+                    ],
+                'initiative_type': {
+                    'includes': ['210', '212', '213', '214', '219'],
+                    'excludes': [],
+                    },
+                'status': 'Celebrada'
                 },
         ]
