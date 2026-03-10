@@ -1,8 +1,8 @@
 beautifulsoup4==4.12.3
 cryptography==43.0.3
 cssselect==1.2.0
-git+https://github.com/politicalwatch/tipi-data.git
-git+https://github.com/politicalwatch/tipi-tasks.git
+git+https://github.com/politicalwatch/qhld-data.git
+git+https://github.com/politicalwatch/qhld-tasks.git
 ipdb==0.13.13
 pdf2image==1.17.0
 pdfminer.six==20240706
