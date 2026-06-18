@@ -5,7 +5,7 @@ echo "****************"
 echo "Start $3 at $(date)"
 
 cd $1
-source engineenv/bin/activate
+source .venv/bin/activate
 python $2
 
 echo "Finish $3 at $(date)"

@@ -76,7 +76,7 @@ blacklist
 .DS_Store
 
 # For production site
-engineenv
+.venv
 
 # Tipi Alerts
 local_config.py
