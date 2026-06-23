@@ -1,6 +1,6 @@
 import re
 
-from tipi_data.models.initiative import Initiative
+from tipi_data.repositories.initiatives import Initiatives
 
 
 def is_final_state(status):
@@ -25,7 +25,7 @@ def has_same_saved_status(initiative):
 
 def get_current_status(initiative_id):
     try:
-        initiative = Initiative.all.get(id=initiative_id)
+        initiative = Initiatives.get(initiative_id)
         return initiative['status']
     except Exception:
         return ''

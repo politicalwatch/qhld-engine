@@ -1,8 +1,11 @@
 import re
 
 import requests
+from tipi_data import DoesNotExist
 from tipi_data.models.deputy import Deputy
 from tipi_data.models.parliamentarygroup import ParliamentaryGroup
+from tipi_data.repositories.deputies import Deputies
+from tipi_data.repositories.parliamentarygroups import ParliamentaryGroups
 from tipi_data.utils import generate_id
 
 from logger import get_logger
@@ -50,7 +53,7 @@ class MembersExtractor:
                 url=remote_member['appURL'],
                 active=False
                 )
-        member.save()
+        Deputies.save(member)
         log.info("Parlamentario {} procesado".format(str(remote_member['idParlamentario'])))
 
     def __refresh_members(self):
@@ -60,7 +63,7 @@ class MembersExtractor:
                 self.__create_or_update(member)
 
     def __refresh_parliamentarygroups(self):
-        groups = Deputy.objects.distinct('parliamentarygroup')
+        groups = Deputies.distinct_parliamentarygroups()
         groups.remove('')
         for group in groups:
             pg = ParliamentaryGroup(
@@ -69,20 +72,18 @@ class MembersExtractor:
                     shortname=group,
                     active=True
                     )
-            pg.save()
+            ParliamentaryGroups.save(pg)
 
     def __update_active_members(self, chamber='S'):
         response = requests.get(ENDPOINT.format(method='parlamentario/camara/{}'.format(chamber)))
         if response.ok:
             for mp in response.json():
                 try:
-                    member = Deputy.objects.get(id=str(mp['idParlamentario']))
+                    member = Deputies.get(str(mp['idParlamentario']))
                     member.active = True
-                    member.save()
-                except Deputy.DoesNotExist:
+                    Deputies.save(member)
+                except DoesNotExist:
                     log.warning("Extracting members: Deputy does not exists with id {}".format(id))
-                except Deputy.MultipleObjectsReturned:
-                    log.warning("Extracting members: Multiple objects returned for id {}".format(id))
 
     def extract(self):
         self.__refresh_members()

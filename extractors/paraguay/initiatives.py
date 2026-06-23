@@ -12,6 +12,7 @@ from docx import Document
 from pptx import Presentation
 
 from tipi_data.models.initiative import Initiative
+from tipi_data.repositories.initiatives import Initiatives
 
 from logger import get_logger
 from extractors.config import LIMIT_DATE_TO_SYNC
@@ -67,7 +68,7 @@ class InitiativesExtractor:
 
     def __create_or_update(self, remote_initiative):
         try:
-            initiative = Initiative.all.get(id=str(remote_initiative["idProyecto"]))
+            initiative = Initiatives.get(str(remote_initiative["idProyecto"]))
             if self.__too_old_to_process(initiative):
                 return
         except Exception:
@@ -96,7 +97,7 @@ class InitiativesExtractor:
             initiative["extra"]["proponente"] = remote_initiative["iniciativa"]
             initiative["extra"]["ignored_attachments"] = list()
         self.__load_more_data(initiative)
-        initiative.save()
+        Initiatives.save(initiative)
         log.info("Iniciativa {} procesada".format(str(remote_initiative["idProyecto"])))
 
     def __load_more_data(self, initiative):
@@ -238,7 +239,7 @@ class InitiativesExtractor:
 
     def __has_content(self, initiative):
         try:
-            saved_initiative = Initiative.all.get(id=initiative.id)
+            saved_initiative = Initiatives.get(initiative.id)
         except Exception:
             saved_initiative = dict()
         return "content" in saved_initiative or "content" in initiative

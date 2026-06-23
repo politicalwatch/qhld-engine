@@ -1,4 +1,4 @@
-from tipi_data.models.initiative import Initiative
+from tipi_data.repositories.initiatives import Initiatives
 
 
 MIMETYPE_FILE_EXTENSIONS = {
@@ -22,7 +22,7 @@ ATTACHMENTS_WORKFLOW = [
 
 def get_current_phase(initiative_id):
     try:
-        initiative = Initiative.all.get(id=initiative_id)
+        initiative = Initiatives.get(initiative_id)
         return initiative['extra']['content_reference'], initiative['extra']['content_counter']
     except Exception:
         return '', 0
