@@ -40,7 +40,7 @@ class FootprintSumManager(FootprintQueryManager):
         query = self.parse_query(self.types(), self.topic, self.entity, self.typeof, self.status())
 
         if not self.topic:
-            return Initiatives.by_query(query).count() * self.multiply()
+            return Initiatives.count_by_query(query) * self.multiply()
 
         pipeline = []
         pipeline.append({ "$match": query })
@@ -80,7 +80,7 @@ class FootprintSumManager(FootprintQueryManager):
         })
         pipeline.append({ "$project": { "_id": 0, "output": 1} })
 
-        result = list(Initiatives.get_all().aggregate(*pipeline))
+        result = Initiatives.aggregate(pipeline)
         if not result:
             return 0
         return result[0]['output'] * self.multiply()

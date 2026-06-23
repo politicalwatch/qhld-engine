@@ -12,6 +12,7 @@ from tipi_data.repositories.knowledgebases import KnowledgeBases
 from tipi_data.repositories.topics import Topics
 from tipi_data.repositories.deputies import Deputies
 from tipi_data.repositories.parliamentarygroups import ParliamentaryGroups
+from tipi_data.repositories.footprints import Footprints
 
 from .footprint_managers import FootprintSumFourManager, \
         FootprintSumTenManager, \
@@ -64,7 +65,7 @@ class ComputeFootprint:
                     entity_keys=('parliamentarygroup', 'parliamentarygroups')
                     )
 
-            topic_footprint.save()
+            Footprints.save_topic(topic_footprint)
             log.info(f"{topic['name'].upper()}: footprint computed in {(datetime.now() - initial).seconds} seconds.")
 
         self.__save_footprint_by_deputies()
@@ -191,7 +192,7 @@ class ComputeFootprint:
     def __save_footprint_by_deputies(self):
         for fbd in self.footprint_by_deputies:
             fbd['topics'] = self.__sort_scores(fbd['topics'])
-            fbd.save()
+            Footprints.save_deputy(fbd)
 
     def __initialize_footprint_by_parliamentarygroups(self):
         global_score = dict()
@@ -237,7 +238,7 @@ class ComputeFootprint:
     def __save_footprint_by_parliamentarygroups(self):
         for fbpg in self.footprint_by_parliamentarygroups:
             fbpg['topics'] = self.__sort_scores(fbpg['topics'])
-            fbpg.save()
+            Footprints.save_parliamentarygroup(fbpg)
 
     def __normalize_scores(self, scores):
         max_score = max(score for score in scores.values())
