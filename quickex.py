@@ -143,7 +143,7 @@ def long_questions(args):
     for initiative in selected_initiatives:
         print(f"Copying tags to initiative {initiative['reference']} {initiative['id']}. {counter} out of {total}")
         initiative['tagged'] = tagged_initiative['tagged']
-        initiative.save()
+        Initiatives.save(initiative)
         counter += 1
 
 
