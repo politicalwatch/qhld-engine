@@ -38,4 +38,4 @@ class TotallityAmendments(BaseAmendments):
 
         amendment.set_justification(content)
         amendment.add_type('Enmienda a la totalidad de devolución')
-        amendment.save()
+        self.save(amendment)

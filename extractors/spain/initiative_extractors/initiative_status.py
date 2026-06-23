@@ -1,6 +1,6 @@
 import re
 
-from tipi_data.models.initiative import Initiative
+from tipi_data.repositories.initiatives import Initiatives
 
 from .status_map import STATUS_MAP
 
@@ -37,7 +37,7 @@ def get_status(history=list(), initiative_type=''):
 
 def __get_current_status(reference):
     try:
-        initiative = Initiative.objects.filter(reference=reference).first()
+        initiative = Initiatives.get_first_by_reference(reference)
         if 'status' not in initiative:
             return UNKNOWN
         return initiative['status']

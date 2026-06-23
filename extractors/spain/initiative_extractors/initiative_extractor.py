@@ -5,12 +5,13 @@ from lxml.html import document_fromstring
 from urllib.parse import urlparse, parse_qs
 
 from bs4 import BeautifulSoup
-from mongoengine.errors import DoesNotExist
 
+from tipi_data import DoesNotExist
 from tipi_data.models.initiative import Initiative
-from tipi_data.models.parliamentarygroup import ParliamentaryGroup
 from tipi_data.utils import generate_id
 from tipi_data.repositories.alerts import InitiativeAlerts
+from tipi_data.repositories.initiatives import Initiatives
+from tipi_data.repositories.parliamentarygroups import ParliamentaryGroups
 
 from logger import get_logger
 from alerts.settings import USE_ALERTS, REASONS
@@ -56,10 +57,8 @@ class InitiativeExtractor:
         self.node_tree = document_fromstring(self.response.text)
         self.soup = BeautifulSoup(self.response.text, 'lxml')
         try:
-            self.initiative = Initiative.objects.get(
-                    reference=self.get_reference(),
-                    initiative_type_alt__ne='Respuesta'
-                    )
+            self.initiative = Initiatives.get_one_non_answer_by_reference(
+                    self.get_reference())
             self.is_a_new_initiative = False
         except DoesNotExist:
             self.initiative = Initiative()
@@ -102,7 +101,7 @@ class InitiativeExtractor:
                 if task.has_amendments():
                     task.extract()
 
-            self.initiative.save()
+            Initiatives.save(self.initiative)
             if self.is_a_new_initiative and USE_ALERTS:
                 InitiativeAlerts.create_alert(self.initiative, REASONS['new'])
             log.info(f"Iniciativa {self.initiative['reference']} procesada")
@@ -186,9 +185,9 @@ class InitiativeExtractor:
             if re.search(normalize_name(deputy['name']), result.group()):
                 found_deputies.append(deputy['name'])
                 found_groups.append(
-                        ParliamentaryGroup.objects(
-                            shortname=deputy['parliamentarygroup']
-                            ).first()['name'])
+                        ParliamentaryGroups.get_by_shortname(
+                            deputy['parliamentarygroup']
+                            )['name'])
 
         self.initiative['author_deputies'] = found_deputies
         if not self.initiative['author_parliamentarygroups']:

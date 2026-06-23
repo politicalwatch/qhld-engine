@@ -8,6 +8,7 @@ from lxml.html import document_fromstring
 from logger import get_logger
 
 from tipi_data.models.deputy import Deputy
+from tipi_data.repositories.deputies import Deputies
 from tipi_data.utils import generate_slug
 
 
@@ -47,7 +48,7 @@ class DeputyExtractor:
         self.extract_dates()
         self.extract_from_text()
         self.extract_mail()
-        self.deputy.save()
+        Deputies.save(self.deputy)
         log.info(f"{self.deputy['name']} updated!")
 
     def __exists(self, attr):

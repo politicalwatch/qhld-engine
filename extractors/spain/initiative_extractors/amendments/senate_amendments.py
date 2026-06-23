@@ -64,7 +64,7 @@ class SenateAmendments(BaseAmendments):
         amendment.set_justification(justification)
         amendment.set_propossed_change(propossed_change)
         amendment.mark_as_senate()
-        amendment.save()
+        self.save(amendment)
 
     def process_authorship(self, amendment, item):
         if item == 'ENMIENDA':

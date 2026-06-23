@@ -3,7 +3,7 @@ from .bulletins_extractor import NonExclusiveBulletinExtractor
 from .utils.pdf_parsers import PDFExtractor
 from copy import deepcopy
 from .initiative_status import NOT_FINAL_STATUS, ON_PROCESS, is_final_status
-from tipi_data.models.initiative import Initiative
+from tipi_data.repositories.initiatives import Initiatives
 from tipi_data.utils import generate_id
 from logger import get_logger
 
@@ -22,9 +22,7 @@ class QuestionExtractor(InitiativeExtractor):
             self.initiative["content"] = self.retrieve_question()
 
         try:
-            answer = Initiative.objects.get(
-                reference=self.get_reference(), initiative_type_alt="Respuesta"
-            )
+            answer = Initiatives.get_answer_by_reference(self.get_reference())
 
             has_content = "content" in answer
             extract_answer = (not has_content) or (
@@ -53,14 +51,12 @@ class QuestionExtractor(InitiativeExtractor):
         if answer == []:
             return
         try:
-            answer_initiative = Initiative.objects.get(
-                reference=self.initiative["reference"], initiative_type_alt="Respuesta"
+            answer_initiative = Initiatives.get_answer_by_reference(
+                self.initiative["reference"]
             )
-            force = False
         except Exception:
             answer_initiative = deepcopy(self.initiative)
             answer_initiative["tagged"] = []
-            force = True
         answer_initiative["content"] = answer
         answer_initiative["initiative_type_alt"] = "Respuesta"
         answer_initiative["author_others"] = (
@@ -69,7 +65,7 @@ class QuestionExtractor(InitiativeExtractor):
         answer_initiative["author_deputies"] = []
         answer_initiative["author_parliamentarygroups"] = []
         answer_initiative["id"] = self.generate_answer_id(answer_initiative)
-        answer_initiative.save(force_insert=force)
+        Initiatives.save(answer_initiative)
 
     def retrieve_question(self):
         link = self.find_link(self.QUESTION)

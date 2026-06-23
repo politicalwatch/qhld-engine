@@ -34,7 +34,7 @@ class GroupsExtractor:
                 for party in g['parties']:
                     parties.append(party)
                 group['parties'] = parties
-                group.save()
+                ParliamentaryGroups.save(group)
                 log.info(f"{g['name']} loaded!")
             except Exception as e:
                 log.error(f'Cannot create parliamentary group {g["_id"]} "{e}"')
@@ -43,6 +43,6 @@ class GroupsExtractor:
         for group in ParliamentaryGroups.get_all():
             try:
                 group['composition'] = ParliamentaryGroups.get_composition(group['shortname'])
-                group.save()
+                ParliamentaryGroups.save(group)
             except Exception as e:
                 log.error(f'Cannot calculate composition for parliamentary group {group["_id"]} "{e}"')

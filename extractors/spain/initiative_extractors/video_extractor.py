@@ -4,6 +4,7 @@ from logger import get_logger
 
 from tipi_data.utils import generate_id
 from tipi_data.models.video import Video
+from tipi_data.repositories.videos import Videos
 
 from extractors.config import ID_LEGISLATURA
 from extractors.spain.utils import int_to_roman
@@ -51,7 +52,7 @@ class VideoExtractor():
             if 'orador' in json:
                 video['speaker'] = json['orador']
 
-            video.save()
+            Videos.save(video)
 
     def retrieve_json(self, page):
         try:

@@ -4,9 +4,9 @@ from logger import get_logger
 from bs4 import BeautifulSoup
 from concurrent.futures import as_completed
 
-from tipi_data.models.deputy import Deputy
-from tipi_data.models.parliamentarygroup import ParliamentaryGroup
-from tipi_data.models.place import Place
+from tipi_data.repositories.deputies import Deputies
+from tipi_data.repositories.parliamentarygroups import ParliamentaryGroups
+from tipi_data.repositories.places import Places
 from tipi_data.repositories.initiatives import Initiatives
 
 from .initiative_types import INITIATIVE_TYPES
@@ -29,9 +29,9 @@ class InitiativesExtractor:
         self.SAFETY_EXTRACTION_GAP = 3
         self.totals_by_type = dict()
         self.all_references = list()
-        self.deputies = Deputy.objects()
-        self.parliamentarygroups = ParliamentaryGroup.objects()
-        self.places = Place.objects()
+        self.deputies = Deputies.get_all()
+        self.parliamentarygroups = ParliamentaryGroups.get_all()
+        self.places = Places.get_all()
         self.grouped_deputies = GroupedDeputies()
         self.api = CongressApi()
 
@@ -102,8 +102,7 @@ class InitiativesExtractor:
 
     def extract_references_from_type(self, type_code):
         self.sync_totals()
-        initiatives = Initiatives.get_all().filter(
-                initiative_type=type_code).order_by('reference').only('reference', 'status')
+        initiatives = Initiatives.get_by_type_refs(type_code)
 
         last_references = {}
         totals = {}
@@ -152,7 +151,7 @@ class InitiativesExtractor:
 
     def extract_references(self):
         self.sync_totals()
-        initiatives = Initiatives.get_all_without_answers().order_by('reference').only('reference', 'status')
+        initiatives = Initiatives.get_non_answers_refs()
 
         last_references = {}
         totals = {}

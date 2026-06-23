@@ -1,12 +1,12 @@
-from tipi_data.models.deputy import Deputy
-from tipi_data.models.parliamentarygroup import ParliamentaryGroup
+from tipi_data.repositories.deputies import Deputies
+from tipi_data.repositories.parliamentarygroups import ParliamentaryGroups
 
 
 # Grouped deputies with name in correct order
 class GroupedDeputies:
     def __init__(self):
-        self.__deputies = Deputy.objects()
-        self.__parliamentarygroups = ParliamentaryGroup.objects()
+        self.__deputies = Deputies.get_all()
+        self.__parliamentarygroups = ParliamentaryGroups.get_all()
         self.grouped_deputies = self.__make_grouped_deputies()
 
     def get_deputies(self, groups=None):

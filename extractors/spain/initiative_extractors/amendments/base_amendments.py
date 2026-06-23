@@ -1,6 +1,7 @@
 import re
 
 from tipi_data.models.amendment import Amendment
+from tipi_data.repositories.amendments import Amendments
 from tipi_data.repositories.deputies import Deputies
 
 class BaseAmendments:
@@ -81,6 +82,9 @@ class BaseAmendments:
 
     def process_text(self, amendment, text_list):
         pass
+
+    def save(self, amendment):
+        Amendments.save(amendment)
 
     def should_skip(self, item):
         skipped = ['', '[**********página con cuadro**********]', 'Común', 'Podemos-En Comú Podem-Galicia en Común', '[...]\'', 'FIRMANTE:']

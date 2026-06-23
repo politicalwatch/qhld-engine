@@ -71,4 +71,4 @@ class PartialAmendments(BaseAmendments):
 
         amendment.set_justification(justification)
         amendment.set_propossed_change(propossed_change)
-        amendment.save()
+        self.save(amendment)

@@ -26,7 +26,7 @@ class VoteExtractor():
         self.tree = tree
         self.api = CongressApi()
         self.reference = reference
-        initiative = Initiatives.by_reference(reference).first()
+        initiative = Initiatives.get_first_by_reference(reference)
         self.title = initiative['title'] if initiative else ''
 
     def extract(self):
