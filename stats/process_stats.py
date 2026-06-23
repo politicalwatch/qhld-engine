@@ -1,9 +1,10 @@
 from os import environ as env
 from datetime import datetime, timedelta
 
-from tipi_data.models.stats import Stats
+from tipi_data.models.stats import Stats as StatsModel
+from tipi_data.repositories.stats import Stats
 from tipi_data.repositories.initiatives import Initiatives
-from tipi_data.models.initiative_type import InitiativeType
+from tipi_data.repositories.initiativetypes import InitiativeTypes
 from tipi_data.repositories.knowledgebases import KnowledgeBases
 from tipi_data.repositories.topics import Topics
 from tipi_data.repositories.footprints import Footprints
@@ -20,8 +21,8 @@ class GenerateStats(object):
 
         for kb in self.knowledgebases:
             self.topics[kb] = Topics.by_kb(kb)
-            self.subtopics[kb] = Topics.by_kb(kb).distinct('tags.subtopic')
-        self.stats = Stats()
+            self.subtopics[kb] = Topics.get_subtopics_by_kb(kb)
+        self.stats = StatsModel()
 
     def generate(self):
         self.overall()
@@ -36,17 +37,17 @@ class GenerateStats(object):
         self.by_week()
         self.topics_by_week()
 
-        Stats.objects().delete()
-        self.stats.save()
+        Stats.delete_all()
+        Stats.save(self.stats)
 
     def overall(self):
         self.stats['overall'] = {
-                'allinitiatives': Initiatives.get_all().count(),
+                'allinitiatives': Initiatives.count_by_query({}),
                 'topics': {},
                 'subtopics': {},
                 }
         for kb in self.knowledgebases:
-            self.stats['overall'][kb] = Initiatives.by_kb(kb).count()
+            self.stats['overall'][kb] = Initiatives.count_by_kb(kb)
             self.stats['overall']['topics'][kb] = list()
             self.stats['overall']['subtopics'][kb] = list()
 
@@ -55,7 +56,7 @@ class GenerateStats(object):
                     {'$match': {'tagged.tags.topic': topic.name}},
                     {'$group': {'_id': topic.name, 'initiatives': {'$sum': 1}}}
                 ]
-                results = Initiatives.by_kb(kb).aggregate(*pipeline)
+                results = Initiatives.aggregate_by_kb(kb, pipeline)
                 for item in results:
                     self.stats['overall']['topics'][kb].append(item)
 
@@ -64,7 +65,7 @@ class GenerateStats(object):
                     {'$match': {'tagged.tags.subtopic': subtopic}},
                     {'$group': {'_id': subtopic, 'initiatives': {'$sum': 1}}}
                     ]
-                results = Initiatives.by_kb(kb).aggregate(*pipeline)
+                results = Initiatives.aggregate_by_kb(kb, pipeline)
                 for item in results:
                     self.stats['overall']['subtopics'][kb].append(item)
             self.stats['overall']['subtopics'][kb].sort(key=lambda x: x['initiatives'], reverse=True)
@@ -83,25 +84,23 @@ class GenerateStats(object):
 
         self.stats['lastdays'] = dict()
         for gtk, gt in GROUPED_TYPES:
-            initiative_types = list(map(
-                lambda x: x.name,
-                InitiativeType.objects.filter(group=gt).only('name')))
+            initiative_types = InitiativeTypes.get_names_by_group(gt)
 
-            total = Initiatives.by_query({
+            total = Initiatives.count_by_query({
                 'initiative_type_alt': {
                     '$in': initiative_types},
                 'created': {
                     '$gt': TODAY - timedelta(days=DAYS_INTERVAL),
                     '$lte': TODAY},
-                }).count()
+                })
 
-            total_prev = Initiatives.by_query({
+            total_prev = Initiatives.count_by_query({
                 'initiative_type_alt': {
                     '$in': initiative_types},
                 'created': {
                     '$gt': TODAY - timedelta(days=DAYS_INTERVAL*2),
                     '$lte': TODAY - timedelta(days=DAYS_INTERVAL)},
-                }).count()
+                })
 
             trend = UP if total > total_prev else DOWN if total < total_prev else EQUAL
             self.stats['lastdays'][gtk] = {
@@ -122,7 +121,7 @@ class GenerateStats(object):
                     {'$sort': {'footprint': -1}},
                     {'$limit': 10}
                     ]
-                results = list(Footprints.get_all_deputies().aggregate(*pipeline))
+                results = Footprints.aggregate_deputies(pipeline)
                 if len(results) > 0:
                     self.stats['deputiesByTopics'][kb].append({
                         '_id': topic['name'],
@@ -140,7 +139,7 @@ class GenerateStats(object):
                     {'$unwind': '$author_parliamentarygroups'},
                     {'$group': {'_id': '$author_parliamentarygroups', 'initiatives': {'$sum': 1}}}, {'$sort': {'initiatives': -1}}
                     ]
-                results = list(Initiatives.by_kb(kb).aggregate(*pipeline))
+                results = list(Initiatives.aggregate_by_kb(kb, pipeline))
                 if len(results) > 0:
                     self.stats['parliamentarygroupsByTopics'][kb].append({
                         '_id': topic['name'],
@@ -158,7 +157,7 @@ class GenerateStats(object):
                     {'$group': {'_id': '$place', 'initiatives': {'$sum': 1}}}, {'$sort': {'initiatives': -1}},
                     {'$limit': 5}
                     ]
-                results = list(Initiatives.by_kb(kb).aggregate(*pipeline))
+                results = list(Initiatives.aggregate_by_kb(kb, pipeline))
 
                 if len(results) > 0:
                     self.stats['placesByTopics'][kb].append({
@@ -179,7 +178,7 @@ class GenerateStats(object):
                     {'$limit': 10}
                     ]
 
-                results = list(Initiatives.by_kb(kb).aggregate(*pipeline))
+                results = list(Initiatives.aggregate_by_kb(kb, pipeline))
                 if len(results) > 0:
                     self.stats['deputiesBySubtopics'][kb].append({
                         '_id': subtopic,
@@ -198,7 +197,7 @@ class GenerateStats(object):
                     {'$group': {'_id': '$author_parliamentarygroups', 'initiatives': {'$sum': 1}}}, {'$sort': {'initiatives': -1}}
                     ]
 
-                results = list(Initiatives.by_kb(kb).aggregate(*pipeline))
+                results = list(Initiatives.aggregate_by_kb(kb, pipeline))
                 if len(results) > 0:
                     self.stats['parliamentarygroupsBySubtopics'][kb].append({
                         '_id': subtopic,
@@ -217,7 +216,7 @@ class GenerateStats(object):
                     {'$limit': 5}
                     ]
 
-                results = list(Initiatives.by_kb(kb).aggregate(*pipeline))
+                results = list(Initiatives.aggregate_by_kb(kb, pipeline))
                 if len(results) > 0:
                     self.stats['placesBySubtopics'][kb].append({
                         '_id': subtopic,
@@ -234,7 +233,7 @@ class GenerateStats(object):
             {'$project': {'week': '$_id', 'initiatives': 1, '_id': 0}},
             {'$sort': {'week': 1}}
             ]
-        results = list(Initiatives.get_all().aggregate(*pipeline))
+        results = Initiatives.aggregate(pipeline)
         if len(results) > 0:
             results = self.__generate_remaining_weeks(start_date, end_date, results)
             self.stats['byWeek'] = results
@@ -254,7 +253,7 @@ class GenerateStats(object):
                     {'$project': {'week': '$_id', 'initiatives': 1, '_id': 0}},
                     {'$sort': {'week': 1}}
                     ]
-                results = list(Initiatives.by_kb(kb).aggregate(*pipeline))
+                results = list(Initiatives.aggregate_by_kb(kb, pipeline))
                 if len(results) > 0:
                     results = self.__generate_remaining_weeks(start_date, end_date, results)
                     self.stats['topicsByWeek'][kb].append({
