@@ -66,7 +66,7 @@ class TagInitiatives:
 
             calculate_single_topic_alignment(initiative, False)
 
-            initiative.save()
+            Initiatives.save(initiative)
 
             if initiative.has_tags() and USE_ALERTS and send_alerts:
                 InitiativeAlerts.create_alert(initiative, REASONS['published'])
@@ -172,7 +172,7 @@ class TagInitiatives:
                 for tag in kb.tags:
                     if tag.topic == topic and tag.tag == old_tag:
                         tag.tag = new_tag
-            initiative.save()
+            Initiatives.save(initiative)
 
     def merge_tags(self, old_tags, new_tags):
         for new_tag in new_tags:
@@ -204,7 +204,7 @@ class TagInitiatives:
                 for tag in result_tags:
                     amendment.add_propossed_change_tag(tag['knowledgebase'], tag['topic'], tag['subtopic'], tag['tag'], tag['times'])
 
-            amendment.save()
+            Amendments.save(amendment)
         except Exception as e:
             log.error(f"Error tagging {amendment['id']}: {e}")
 

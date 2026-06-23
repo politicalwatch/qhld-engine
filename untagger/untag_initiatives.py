@@ -10,16 +10,14 @@ class UntagInitiatives:
 
     def untag_all(self):
         log.info('Untagging all initiatives')
-        initiatives = Initiatives.get_all()
-        initiatives.update(unset__tagged=1)
-        for initiative in initiatives:
+        Initiatives.unset_tagged_all()
+        for initiative in Initiatives.get_all():
             calculate_single_topic_alignment(initiative, True)
 
     def by_kb(self, kb):
         log.info(f'Untagging knowledge base "{kb}"')
-        initiatives = Initiatives.get_all()
-        initiatives.update(pull__tagged__knowledgebase=kb)
-        for initiative in initiatives:
+        Initiatives.pull_tagged_by_kb(kb)
+        for initiative in Initiatives.get_all():
             calculate_single_topic_alignment(initiative, True)
 
     def by_topic(self, topic):
@@ -32,7 +30,7 @@ class UntagInitiatives:
                 kb.topics = [t for t in kb.topics if t != topic]
                 kb.tags = [t for t in kb.tags if t.topic != topic]
             calculate_single_topic_alignment(initiative, False)
-            initiative.save()
+            Initiatives.save(initiative)
 
     def by_tag(self, topic, tag):
         log.info(f'Untagging tag "{tag}" from topic "{topic}"')
@@ -42,11 +40,10 @@ class UntagInitiatives:
                 kb.tags = [t for t in kb.tags if t.topic != topic or t.tag != tag]
                 kb.topics = list({t.topic for t in kb.tags})
             calculate_single_topic_alignment(initiative, False)
-            initiative.save()
+            Initiatives.save(initiative)
 
     def by_reference(self, reference):
         log.info(f'Untagging initiative "{reference}"')
-        initiatives = Initiatives.by_reference(reference)
-        initiatives.update(unset__tagged=1)
-        for initiative in initiatives:
+        Initiatives.unset_tagged_by_reference(reference)
+        for initiative in Initiatives.by_reference(reference):
             calculate_single_topic_alignment(initiative, True)

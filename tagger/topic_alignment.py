@@ -5,6 +5,7 @@ import multiprocessing
 
 from tqdm import tqdm
 
+from tipi_data import DoesNotExist
 from tipi_data.models.initiative import Initiative, TopicAlignment
 from tipi_data.repositories.initiatives import Initiatives
 
@@ -15,7 +16,7 @@ def calculate_topic_alignment(id: Optional[str] = None):
     else:
         try:
             calculate_single_topic_alignment(Initiatives.get(id=id))
-        except Initiative.DoesNotExist:
+        except DoesNotExist:
             print(f"Initiative with id {id} not found")
 
 
@@ -28,7 +29,7 @@ def calculate_all_topic_alignments():
     num_cores = multiprocessing.cpu_count()
     with ProcessPoolExecutor(max_workers=num_cores) as pool:
         initiatives = Initiatives.by_query(query)
-        with tqdm(total=initiatives.count()) as progress:
+        with tqdm(total=len(initiatives)) as progress:
             futures = []
             for initiative in initiatives:
                 future = pool.submit(calculate_single_topic_alignment, initiative)
@@ -60,7 +61,7 @@ def calculate_single_topic_alignment(initiative: Initiative, needs_to_be_saved: 
                     reverse=True)
                 
         if needs_to_be_saved:
-            initiative.save()
+            Initiatives.save(initiative)
 
     except Exception as e:
         print(e)
