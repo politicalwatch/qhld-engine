@@ -21,7 +21,19 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["ipdb==0.13.13"]
+dev = [
+    "ipdb==0.13.13",
+    "pytest==9.1.1",
+    "testcontainers[mongodb]==4.14.2",
+]
+
+[tool.pytest.ini_options]
+# Listed unit-first so the fast no-infra tests run before the container-backed ones.
+testpaths = ["tests/unit", "tests/integration"]
+markers = [
+    "unit: no-infra tests; run anywhere with no Mongo/Docker. Filter with `-m unit`.",
+    "integration: need a throwaway Mongo (testcontainers); auto-skip when Docker is unavailable. Filter with `-m integration`.",
+]
 
 [tool.uv.sources]
 qhld-data  = { git = "https://github.com/politicalwatch/qhld-data.git", tag = "v2.0.0" }
