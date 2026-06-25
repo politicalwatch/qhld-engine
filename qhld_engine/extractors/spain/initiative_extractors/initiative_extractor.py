@@ -61,7 +61,9 @@ class InitiativeExtractor:
                     self.get_reference())
             self.is_a_new_initiative = False
         except DoesNotExist:
-            self.initiative = Initiative()
+            # id is required by the pydantic model; it is derived from the
+            # reference and set in extract(), so start with a placeholder.
+            self.initiative = Initiative(id="")
             self.is_a_new_initiative = True
         except Exception as e:
             log.error('An error occurred trying to get the initiative')

@@ -72,7 +72,9 @@ class InitiativesExtractor:
             if self.__too_old_to_process(initiative):
                 return
         except Exception:
-            initiative = Initiative()
+            # id is required by the pydantic model; it is set just below from
+            # the remote payload, so start with a placeholder.
+            initiative = Initiative(id="")
         initiative["id"] = str(remote_initiative["idProyecto"])
         initiative["reference"] = str(remote_initiative["expedienteCamara"])
         initiative["title"] = remote_initiative["acapite"]

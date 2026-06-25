@@ -40,7 +40,7 @@ class VideoExtractor():
         for intervention_key in interventions:
             json = interventions[intervention_key]
 
-            video = Video()
+            video = Video(id="")
             video['link'] = json['video_intervencion']['enlace_descarga02']
             video['id'] = self.generate_id(video['link'])
             video['reference'] = self.reference

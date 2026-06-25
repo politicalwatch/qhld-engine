@@ -22,10 +22,9 @@ class DeputyExtractor:
         self.response = response
         self.groups = list(map(lambda x: x["shortname"], parliamentarygroups))
         self.node_tree = document_fromstring(response.text)
-        try:
-            self.deputy = Deputy(name=self.get_text_by_css(".nombre-dip"))
-        except Exception:
-            self.deputy = Deputy()
+        # id is required by the pydantic model; it is derived from the scraped
+        # name and set in extract(), so start with a placeholder.
+        self.deputy = Deputy(id="", name=self.get_text_by_css(".nombre-dip"))
 
     def extract(self):
         self.deputy["name"] = self.get_text_by_css(".nombre-dip")

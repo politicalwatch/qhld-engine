@@ -35,7 +35,9 @@ class BaseAmendments:
 
     def create_amendment(self, text):
         text_list = text.split('\n')
-        amendment = Amendment(bulletin_name=self.name, reference=self.reference)
+        # id is required by the pydantic model; it is set via set_id() in the
+        # subclasses' process_text(), so start with a placeholder.
+        amendment = Amendment(id="", bulletin_name=self.name, reference=self.reference)
         amendment.mark_as_congress()
 
         self.process_text(amendment, text_list)

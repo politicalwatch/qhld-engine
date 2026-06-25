@@ -24,8 +24,7 @@ class GroupsExtractor:
     def __save(self, groups):
         for g in groups:
             try:
-                group = ParliamentaryGroup()
-                group['id'] = g['_id']
+                group = ParliamentaryGroup(id=g['_id'])
                 group['name'] = g['name']
                 group['shortname'] = g['shortname']
                 group['composition'] = ParliamentaryGroups.get_composition(g['shortname'])
