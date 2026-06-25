@@ -9,7 +9,7 @@ import pytest
 from tipi_data.models.initiative import Initiative, Tag, Tagged
 from tipi_data.repositories.initiatives import Initiatives
 
-from tagger.tag_initiatives import TagInitiatives
+from qhld_engine.tagger.tag_initiatives import TagInitiatives
 
 pytestmark = pytest.mark.integration
 

@@ -4,7 +4,7 @@ import hashlib
 
 import pytest
 
-from utils import generateId
+from qhld_engine.utils import generateId
 
 pytestmark = pytest.mark.unit
 

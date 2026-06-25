@@ -8,13 +8,13 @@ logic for Paraguay. The DB-touching helpers in the same modules (e.g.
 
 import pytest
 
-from extractors.spain.utils import int_to_roman
-from extractors.spain.initiative_extractors.initiative_status import (
+from qhld_engine.extractors.spain.utils import int_to_roman
+from qhld_engine.extractors.spain.initiative_extractors.initiative_status import (
     get_status,
     is_final_status,
 )
-from extractors.paraguay.initiatives_status import is_final_state
-from extractors.paraguay.initiatives_attachments import get_next_phase
+from qhld_engine.extractors.paraguay.initiatives_status import is_final_state
+from qhld_engine.extractors.paraguay.initiatives_attachments import get_next_phase
 
 pytestmark = pytest.mark.unit
 

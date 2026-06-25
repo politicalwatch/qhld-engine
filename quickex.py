@@ -1,12 +1,12 @@
 import sys
 
-from extractors.extractor import ExtractorTask
-from tagger.tag_initiatives import TagInitiatives
-from untagger.untag_initiatives import UntagInitiatives
-from tagger.topic_alignment import calculate_topic_alignment
-from alerts.send_alerts import SendAlerts
-from stats.process_stats import GenerateStats
-from footprint.compute_footprint import ComputeFootprint
+from qhld_engine.extractors.extractor import ExtractorTask
+from qhld_engine.tagger.tag_initiatives import TagInitiatives
+from qhld_engine.untagger.untag_initiatives import UntagInitiatives
+from qhld_engine.tagger.topic_alignment import calculate_topic_alignment
+from qhld_engine.alerts.send_alerts import SendAlerts
+from qhld_engine.stats.process_stats import GenerateStats
+from qhld_engine.footprint.compute_footprint import ComputeFootprint
 from tipi_data.repositories.initiatives import Initiatives
 from tipi_data.repositories.alerts import InitiativeAlerts
 

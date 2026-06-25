@@ -8,7 +8,7 @@ name-mangled attribute since it's a private method.
 
 import pytest
 
-from tagger.tag_initiatives import TagInitiatives
+from qhld_engine.tagger.tag_initiatives import TagInitiatives
 
 pytestmark = pytest.mark.unit
 

@@ -11,7 +11,7 @@ import pytest
 
 from tipi_data.models.initiative import Initiative, Tag, Tagged
 
-from tagger.topic_alignment import calculate_single_topic_alignment
+from qhld_engine.tagger.topic_alignment import calculate_single_topic_alignment
 
 pytestmark = pytest.mark.unit
 
