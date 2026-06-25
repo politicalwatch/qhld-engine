@@ -94,7 +94,7 @@ class InitiativesExtractor:
         initiative["updated"] = self.__parse_date(
             remote_initiative["fechaIngresoExpediente"]
         )
-        if "extra" not in initiative or initiative.extra == {}:
+        if not initiative.extra:
             initiative["extra"] = dict()
             initiative["extra"]["proponente"] = remote_initiative["iniciativa"]
             initiative["extra"]["ignored_attachments"] = list()
@@ -243,13 +243,13 @@ class InitiativesExtractor:
         try:
             saved_initiative = Initiatives.get(initiative.id)
         except Exception:
-            saved_initiative = dict()
-        return "content" in saved_initiative or "content" in initiative
+            saved_initiative = None
+        return (saved_initiative is not None and len(saved_initiative.content) > 0) or len(
+            initiative.content
+        ) > 0
 
     def __untag(self, initiative):
-        initiative["topics"] = []
-        initiative["tags"] = []
-        initiative["tagged"] = False
+        initiative.untag()
 
     def __parse_date(self, str_date):
         split_date = str_date.split("/")
