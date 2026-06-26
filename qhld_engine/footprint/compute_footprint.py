@@ -48,9 +48,10 @@ class ComputeFootprint:
             log.info(f"{topic['name'].upper()}: Computing footprint...")
             initial = datetime.now()
 
-            topic_footprint = FootprintByTopic()
-            topic_footprint['id'] = topic['id']
-            topic_footprint['name'] = topic['name']
+            # MongoModel.id is a required field with no default (pydantic), so the
+            # old empty-construct-then-assign pattern raises _id-required. Set it
+            # at construction, like the deputy/group footprints below.
+            topic_footprint = FootprintByTopic(id=topic['id'], name=topic['name'])
 
             self.__compute_topic_by_entity(
                     topic,
@@ -207,7 +208,7 @@ class ComputeFootprint:
                 try:
                     global_score[g['id']] = float(future.result())
                 except Exception as e:
-                    log.error(f"Cannot generate footprint by group {d}: {e}")
+                    log.error(f"Cannot generate footprint by group {g}: {e}")
 
         self.__normalize_scores(global_score)
 
