@@ -36,8 +36,8 @@ markers = [
 ]
 
 [tool.uv.sources]
-qhld-data  = { git = "https://github.com/politicalwatch/qhld-data.git", tag = "v2.0.0" }
-qhld-tasks = { git = "https://github.com/politicalwatch/qhld-tasks.git", tag = "v2.0.0" }
+qhld-data  = { git = "https://github.com/politicalwatch/qhld-data.git", tag = "v2.0.1" }
+qhld-tasks = { git = "https://github.com/politicalwatch/qhld-tasks.git", tag = "v2.0.1" }
 
 [tool.uv]
 package = false
