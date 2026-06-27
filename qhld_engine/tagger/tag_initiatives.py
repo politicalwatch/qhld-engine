@@ -10,7 +10,8 @@ from tipi_data.repositories.tags import Tags
 from tipi_data.repositories.alerts import InitiativeAlerts
 
 from qhld_engine.logger import get_logger
-from qhld_engine.alerts.settings import USE_ALERTS, REASONS
+from qhld_engine.alerts.settings import REASONS
+from qhld_engine.infrastructure.config.settings import get_settings
 from qhld_engine.tagger.topic_alignment import calculate_single_topic_alignment
 
 
@@ -68,7 +69,7 @@ class TagInitiatives:
 
             Initiatives.save(initiative)
 
-            if initiative.has_tags() and USE_ALERTS and send_alerts:
+            if initiative.has_tags() and get_settings().use_alerts and send_alerts:
                 InitiativeAlerts.create_alert(initiative, REASONS['published'])
 
         except Exception as e:

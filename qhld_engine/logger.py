@@ -1,5 +1,6 @@
 import logging
-import os
+
+from qhld_engine.infrastructure.config.settings import get_settings
 
 
 def get_logger(name):
@@ -8,6 +9,6 @@ def get_logger(name):
         '%(asctime)s : %(levelname)s : %(name)s : %(message)s'
         ))
     log = logging.getLogger(name)
-    log.setLevel(os.environ.get("LOGLEVEL", "INFO"))
+    log.setLevel(get_settings().loglevel)
     log.addHandler(handler)
     return log

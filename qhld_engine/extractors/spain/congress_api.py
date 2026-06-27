@@ -2,7 +2,7 @@ import requests
 from requests.structures import CaseInsensitiveDict
 from requests_futures.sessions import FuturesSession
 
-from qhld_engine.extractors.config import ID_LEGISLATURA, CURRENT_LEGISLATURE
+from qhld_engine.infrastructure.config.settings import get_settings
 from .utils import int_to_roman
 
 
@@ -69,7 +69,7 @@ class CongressUrlBuilder:
         return f'{self.url}busqueda-de-diputados?p_p_id=diputadomodule&p_p_lifecycle=2&p_p_state=normal&p_p_mode=view&p_p_resource_id=searchDiputados&p_p_cacheability=cacheLevelPage'
 
     def for_deputy(self, code):
-        return f'{self.url}busqueda-de-diputados?p_p_id=diputadomodule&p_p_lifecycle=0&p_p_state=normal&p_p_mode=view&_diputadomodule_mostrarFicha=true&codParlamentario={code}&idLegislatura={int_to_roman(ID_LEGISLATURA)}&mostrarAgenda=false'
+        return f'{self.url}busqueda-de-diputados?p_p_id=diputadomodule&p_p_lifecycle=0&p_p_state=normal&p_p_mode=view&_diputadomodule_mostrarFicha=true&codParlamentario={code}&idLegislatura={int_to_roman(get_settings().id_legislatura)}&mostrarAgenda=false'
 
     def for_cookies(self):
         return f'{self.url}/busqueda-de-diputados'
@@ -78,10 +78,10 @@ class CongressUrlBuilder:
         return f'{self.url}indice-de-iniciativas?p_p_id=iniciativas&p_p_lifecycle=2&p_p_state=normal&p_p_mode=view&p_p_resource_id=cambiarLegislaturaIndice&p_p_cacheability=cacheLevelPage'
 
     def for_initiative(self, reference):
-        return f"{self.url}busqueda-de-iniciativas?p_p_id=iniciativas&p_p_lifecycle=0&p_p_state=normal&p_p_mode=view&_iniciativas_mode=mostrarDetalle&_iniciativas_legislatura={int_to_roman(ID_LEGISLATURA)}&_iniciativas_id={reference.replace('/', '%2F')}"
+        return f"{self.url}busqueda-de-iniciativas?p_p_id=iniciativas&p_p_lifecycle=0&p_p_state=normal&p_p_mode=view&_iniciativas_mode=mostrarDetalle&_iniciativas_legislatura={int_to_roman(get_settings().id_legislatura)}&_iniciativas_id={reference.replace('/', '%2F')}"
 
     def for_video(self, reference):
-        return f'https://www.congreso.es/web/guest/busqueda-de-intervenciones?p_p_id=intervenciones&p_p_lifecycle=2&p_p_state=normal&p_p_mode=view&p_p_resource_id=filtrarListado&p_p_cacheability=cacheLevelPage&_intervenciones_mode=view&_intervenciones_legislatura={int_to_roman(ID_LEGISLATURA)}&_intervenciones_id_iniciativa={reference}'
+        return f'https://www.congreso.es/web/guest/busqueda-de-intervenciones?p_p_id=intervenciones&p_p_lifecycle=2&p_p_state=normal&p_p_mode=view&p_p_resource_id=filtrarListado&p_p_cacheability=cacheLevelPage&_intervenciones_mode=view&_intervenciones_legislatura={int_to_roman(get_settings().id_legislatura)}&_intervenciones_id_iniciativa={reference}'
 
     def for_url(self, link):
         if link.startswith('http'):
@@ -129,8 +129,9 @@ class CongressApi(object):
     def get_deputies(self):
         url = self.url_builder.for_deputies()
         headers = CongressHeadersBuilder().for_api()
-        deputies_type = '2' if CURRENT_LEGISLATURE else '1'
-        data = f"_diputadomodule_idLegislatura={ID_LEGISLATURA}&_diputadomodule_genero=0&_diputadomodule_grupo=all&_diputadomodule_tipo={deputies_type}&_diputadomodule_nombre=&_diputadomodule_apellidos=&_diputadomodule_formacion=all&_diputadomodule_filtroProvincias=%5B%5D&_diputadomodule_nombreCircunscripcion="
+        settings = get_settings()
+        deputies_type = '2' if settings.current_legislature else '1'
+        data = f"_diputadomodule_idLegislatura={settings.id_legislatura}&_diputadomodule_genero=0&_diputadomodule_grupo=all&_diputadomodule_tipo={deputies_type}&_diputadomodule_nombre=&_diputadomodule_apellidos=&_diputadomodule_formacion=all&_diputadomodule_filtroProvincias=%5B%5D&_diputadomodule_nombreCircunscripcion="
         return self.post(url, headers, data)
 
     def get_deputy(self, code):
@@ -141,7 +142,7 @@ class CongressApi(object):
     def get_initiative_totals(self):
         url = self.url_builder.for_initiative_totals()
         headers = CongressHeadersBuilder().for_api()
-        data = f"_iniciativas_legislatura={ID_LEGISLATURA}+"
+        data = f"_iniciativas_legislatura={get_settings().id_legislatura}+"
         return self.post(url, headers, data)
 
     def get_initiative(self, reference):

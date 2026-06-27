@@ -14,12 +14,12 @@ from tipi_data.repositories.initiatives import Initiatives
 from tipi_data.repositories.parliamentarygroups import ParliamentaryGroups
 
 from qhld_engine.logger import get_logger
-from qhld_engine.alerts.settings import USE_ALERTS, REASONS
+from qhld_engine.alerts.settings import REASONS
+from qhld_engine.infrastructure.config.settings import get_settings
 from .amendment_extractor import AmendmentExtractor
 from .initiative_status import get_status, is_final_status
 from .video_extractor import VideoExtractor
 from .vote_extractor import VoteExtractor
-from ...config import AMENDMENTS_FEATURE
 from ..congress_api import CongressApi
 
 
@@ -79,6 +79,7 @@ class InitiativeExtractor:
         self.extract()
 
     def extract(self):
+        settings = get_settings()
         try:
             check = self.soup.select_one('.entradilla-iniciativa')
             if check is None:
@@ -95,16 +96,16 @@ class InitiativeExtractor:
             if previous_content != self.initiative['content']:
                 self.untag()
             else:
-                if is_final_status(self.initiative['status']) and USE_ALERTS:
+                if is_final_status(self.initiative['status']) and settings.use_alerts:
                     InitiativeAlerts.create_alert(self.initiative, REASONS['finished'])
 
-            if AMENDMENTS_FEATURE and AmendmentExtractor.can_have_amendments(self.initiative['initiative_type']):
+            if settings.amendments_feature and AmendmentExtractor.can_have_amendments(self.initiative['initiative_type']):
                 task = AmendmentExtractor(self.initiative, self.soup, self.node_tree)
                 if task.has_amendments():
                     task.extract()
 
             Initiatives.save(self.initiative)
-            if self.is_a_new_initiative and USE_ALERTS:
+            if self.is_a_new_initiative and settings.use_alerts:
                 InitiativeAlerts.create_alert(self.initiative, REASONS['new'])
             log.info(f"Iniciativa {self.initiative['reference']} procesada")
         except Exception as e:

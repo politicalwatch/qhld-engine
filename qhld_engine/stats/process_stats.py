@@ -1,4 +1,3 @@
-from os import environ as env
 from datetime import datetime, timedelta
 
 from tipi_data.models.stats import Stats as StatsModel
@@ -9,7 +8,7 @@ from tipi_data.repositories.knowledgebases import KnowledgeBases
 from tipi_data.repositories.topics import Topics
 from tipi_data.repositories.footprints import Footprints
 
-from qhld_engine.extractors.config import MODULE_EXTRACTOR
+from qhld_engine.infrastructure.config.settings import get_settings
 
 
 class GenerateStats(object):
@@ -26,7 +25,7 @@ class GenerateStats(object):
 
     def generate(self):
         self.overall()
-        if MODULE_EXTRACTOR == 'spain':
+        if get_settings().module_extractor == 'spain':
             self.last_days()
         self.deputies_by_topics()
         self.deputies_by_subtopics()
@@ -224,8 +223,9 @@ class GenerateStats(object):
                     })
 
     def by_week(self):
-        start_date = env.get('LEGISLATURE_START_DATE', '')
-        end_date = env.get('LEGISLATURE_END_DATE', '')
+        settings = get_settings()
+        start_date = settings.legislature_start_date
+        end_date = settings.legislature_end_date
         pipeline = [
             {'$match': {'created': {'$exists': True, '$gte': self.__convert_to_date(start_date)}}},
             {'$project': {'yearWeek': {'$dateToString': {'format': '%G-%V', 'date': '$created' }}}},
@@ -239,8 +239,9 @@ class GenerateStats(object):
             self.stats['byWeek'] = results
 
     def topics_by_week(self):
-        start_date = env.get('LEGISLATURE_START_DATE', '')
-        end_date = env.get('LEGISLATURE_END_DATE', '')
+        settings = get_settings()
+        start_date = settings.legislature_start_date
+        end_date = settings.legislature_end_date
         self.stats['topicsByWeek'] = {}
         for kb in self.knowledgebases:
             self.stats['topicsByWeek'][kb] = list()

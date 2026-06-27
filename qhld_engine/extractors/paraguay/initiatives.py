@@ -15,7 +15,7 @@ from tipi_data.models.initiative import Initiative
 from tipi_data.repositories.initiatives import Initiatives
 
 from qhld_engine.logger import get_logger
-from qhld_engine.extractors.config import LIMIT_DATE_TO_SYNC
+from qhld_engine.infrastructure.config.settings import get_settings
 from .initiatives_status import has_finished
 from .api import ENDPOINT
 from .legislative_period import LegislativePeriod
@@ -237,7 +237,7 @@ class InitiativesExtractor:
             date_format = "%Y-%m-%d"
             return datetime.strptime(dt, date_format)
 
-        return frmt(str(initiative["updated"]).split(" ")[0]) < frmt(LIMIT_DATE_TO_SYNC)
+        return frmt(str(initiative["updated"]).split(" ")[0]) < frmt(get_settings().limit_date_to_sync)
 
     def __has_content(self, initiative):
         try:

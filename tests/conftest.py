@@ -21,9 +21,27 @@ Tiers:
 
 import os
 
+import pytest
+
 os.environ.setdefault("MONGO_SKIP_INDEX_INIT", "1")
 os.environ.setdefault("MONGO_HOST", "localhost")
 os.environ.setdefault("MONGO_PORT", "47019")
 os.environ.setdefault("MONGO_USER", "qhld")
 os.environ.setdefault("MONGO_PASSWORD", "qhld")
 os.environ.setdefault("MONGO_DB_NAME", "qhlddb_test")
+
+
+@pytest.fixture(autouse=True)
+def _reset_settings_cache():
+    """Clear the ``get_settings`` lru_cache around every test.
+
+    ``Settings`` is read once and memoised, so without this a test that uses
+    ``monkeypatch.setenv`` would either see a stale cached value or leak its
+    override into later tests. Clearing before and after keeps each test
+    isolated from the others (and from whatever ``.env`` happens to contain).
+    """
+    from qhld_engine.infrastructure.config.settings import get_settings
+
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()

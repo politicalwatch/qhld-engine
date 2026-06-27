@@ -6,7 +6,6 @@ from tipi_data.utils import generate_id
 from tipi_data.models.video import Video
 from tipi_data.repositories.videos import Videos
 
-from qhld_engine.extractors.config import ID_LEGISLATURA
 from qhld_engine.extractors.spain.utils import int_to_roman
 from ..congress_api import CongressApi
 

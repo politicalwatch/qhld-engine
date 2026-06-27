@@ -1,15 +1,16 @@
 from importlib import import_module as im
 
-from qhld_engine.extractors.config import MODULE_EXTRACTOR
+from qhld_engine.infrastructure.config.settings import get_settings
 
 
 class ExtractorTask():
     task_namespace = 'extractors'
 
     def __init__(self):
-        self.members_extractor = im('qhld_engine.extractors.{}.members'.format(MODULE_EXTRACTOR)).MembersExtractor()
-        self.groups_extractor = im('qhld_engine.extractors.{}.groups'.format(MODULE_EXTRACTOR)).GroupsExtractor()
-        self.initiatives_extractor = im('qhld_engine.extractors.{}.initiatives'.format(MODULE_EXTRACTOR)).InitiativesExtractor()
+        module = get_settings().module_extractor
+        self.members_extractor = im('qhld_engine.extractors.{}.members'.format(module)).MembersExtractor()
+        self.groups_extractor = im('qhld_engine.extractors.{}.groups'.format(module)).GroupsExtractor()
+        self.initiatives_extractor = im('qhld_engine.extractors.{}.initiatives'.format(module)).InitiativesExtractor()
         super().__init__()
 
     def run(self):
