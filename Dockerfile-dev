@@ -19,4 +19,7 @@ RUN touch /var/log/cron.log
 
 ENV PATH="/app/.venv/bin:$PATH"
 
-CMD ["/bin/sh", "-c", "tail -f /var/log/cron.log"]
+# Source is mounted at runtime (compose volume), so install the project on
+# startup — this creates the `qhld` console script in the
+# anonymous /app/.venv volume every time the container comes up.
+CMD ["/bin/sh", "-c", "uv sync --locked && tail -f /var/log/cron.log"]

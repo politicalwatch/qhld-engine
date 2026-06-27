@@ -17,6 +17,10 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 COPY . /app
 
+# Install the project itself so the `qhld` console script lands on PATH.
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked --no-dev
+
 RUN touch /var/log/cron.log
 
 ENV PATH="/app/.venv/bin:$PATH"
