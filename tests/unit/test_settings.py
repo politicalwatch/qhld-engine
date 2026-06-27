@@ -43,7 +43,22 @@ def test_id_legislatura_coerced_to_int():
     assert settings.id_legislatura == 15
 
 
-def test_defaults():
+def test_defaults(monkeypatch):
+    # _env_file=None only ignores the .env *file*; pydantic-settings still reads
+    # os.environ. The qhld-engine container injects these as real env vars
+    # (ID_LEGISLATURA=15, etc.), so clear them to test the genuine defaults.
+    for key in (
+        "MODULE_EXTRACTOR",
+        "ID_LEGISLATURA",
+        "CURRENT_LEGISLATURE",
+        "AMENDMENTS_FEATURE",
+        "USE_ALERTS",
+        "LIMIT_DATE_TO_SYNC",
+        "LOGLEVEL",
+        "LEGISLATURE_START_DATE",
+        "LEGISLATURE_END_DATE",
+    ):
+        monkeypatch.delenv(key, raising=False)
     settings = Settings(_env_file=None)
     assert settings.module_extractor == "spain"
     assert settings.id_legislatura == 0
