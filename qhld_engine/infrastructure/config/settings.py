@@ -31,6 +31,21 @@ class Settings(BaseSettings):
     redis_db_check: int = 0
     redis_db_denylist: int = 1
 
+    # LLM — first hexagonal AI-feature scaffolding (parliamentary-speech analysis).
+    # Field names mirror vinculante so the infrastructure/llm adapters work unchanged.
+    llm_provider: str = "anthropic"
+    llm_model: str = "claude-sonnet-4-6"
+    llm_temperature: float = 0.0
+    anthropic_api_key: str = ""
+    openai_api_key: str = ""
+    google_api_key: str = ""
+    mistral_api_key: str = ""
+    ollama_base_url: str = "http://host.docker.internal:11434"
+
+    # Embeddings
+    embedding_provider: str = "openai"
+    embedding_model: str = "text-embedding-3-small"
+
 
 @lru_cache
 def get_settings() -> Settings:
