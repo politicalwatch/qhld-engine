@@ -52,6 +52,8 @@ def test_execute_segments_and_saves_a_speech(monkeypatch):
     monkeypatch.setattr(mod, "CongressApi", lambda: _FakeApi())
     monkeypatch.setattr(mod, "PDFExtractor", _FakePDF)
     monkeypatch.setattr(mod.Speeches, "save", lambda speech: saved.append(speech))
+    # patch the detector so the test never loads py3langid and is deterministic
+    monkeypatch.setattr(mod, "detect", lambda text: "es")
 
     mod.ExtractSpeeches().execute(["161/000123"])
 
@@ -68,5 +70,9 @@ def test_execute_segments_and_saves_a_speech(monkeypatch):
     assert speech.session_name == "Pleno"
     assert speech.video_link == "http://v/3.mp4"
     assert speech.session_link == "/public_oficiales/L15/CONG-1"  # anchor stripped
-    assert speech.speech == "Hola."
+    # a monolingual Spanish speech is stored as a single original block
+    assert [(b.lang, b.text, b.original) for b in speech.speech] == [
+        ("es", "Hola.", True)
+    ]
+    assert speech.original_language == "es"
     assert speech.id  # deterministic id was generated

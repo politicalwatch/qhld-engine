@@ -26,6 +26,7 @@ dependencies = [
     "langchain-mistralai==1.1.5",
     "qhld-data",
     "qhld-tasks",
+    "py3langid==0.3.0",
 ]
 
 [project.scripts]

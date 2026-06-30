@@ -6,8 +6,10 @@ README.md): the intervention API JSON and the raw Diario de Sesiones text.
 
 This locks in the current behavior over real input — a co-official-language
 parliamentarian and a role-based government speaker — so any change to segmentation
-shows up here. The per-speech lengths are golden values: update them deliberately
-when the extraction logic intentionally changes.
+or the language split shows up here. It drives the *real* py3langid detector (no
+stub), validating the Galician/Spanish separation on real data. The per-block
+lengths are golden values: update them deliberately when the logic intentionally
+changes.
 """
 
 import json
@@ -71,23 +73,39 @@ def test_extract_speeches_172_000001(monkeypatch, capture):
     assert by_order[2].group is None
     assert by_order[2].role == "Ministra de Inclusión, Seguridad Social y Migraciones"
 
-    # languages differ: the diputado speaks Galician, the minister Spanish
-    assert by_order[1].speech.startswith("Grazas, señora presidenta")
-    assert by_order[2].speech.startswith("Muchas gracias, presidente")
+    # The diputado's turn is published bilingual and is split into two blocks: the
+    # full Galician original (as delivered) followed by its full Spanish
+    # interpretation. The minister speaks only Spanish → a single original block.
+    rego = by_order[1].speech
+    assert by_order[1].original_language == "gl"
+    assert [(b.lang, b.original) for b in rego] == [("gl", True), ("es", False)]
+    assert rego[0].text.startswith("Grazas, señora presidenta")
+    assert rego[1].text.startswith("Gracias, señora presidenta")
+    assert rego[1].text.rstrip().endswith("Muchas gracias.")
 
-    # The diputado's turn is published bilingual: the full Galician original
-    # ("...Moito obrigado.") followed by its full Spanish interpretation
-    # ("...Muchas gracias."). Both must be present — the uppercase SPEAKER_PATTERN
-    # stops the speech truncating at a mid-speech "el señor <Apellido>" mention.
-    assert "Moito obrigado" in by_order[1].speech
-    assert by_order[1].speech.rstrip().endswith("Muchas gracias.")
+    minister = by_order[2].speech
+    assert by_order[2].original_language == "es"
+    assert [(b.lang, b.original) for b in minister] == [("es", True)]
+    assert minister[0].text.startswith("Muchas gracias, presidente")
 
-    # boundaries are correct: the minister's *reply* (a separate intervention) is
-    # NOT swallowed into the diputado's turn.
-    assert "He escuchado con mucha atención, señor Rego" not in by_order[1].speech
+    # the second diputado turn is also bilingual; the second minister turn Spanish
+    assert [(b.lang, b.original) for b in by_order[3].speech] == [("gl", True), ("es", False)]
+    assert [(b.lang, b.original) for b in by_order[4].speech] == [("es", True)]
 
-    # golden lengths — update deliberately if segmentation changes
-    assert [len(by_order[i].speech) for i in (1, 2, 3, 4)] == [21252, 9596, 7573, 3688]
+    # the Galician original carries no Spanish bleed: the boundary is clean and the
+    # minister's *reply* (a separate intervention) is not swallowed into the turn.
+    assert "Muchas gracias" not in rego[0].text
+    assert "He escuchado con mucha atención, señor Rego" not in rego[0].text
+    assert "He escuchado con mucha atención, señor Rego" not in rego[1].text
+
+    # golden per-block lengths — update deliberately if the logic changes
+    block_lengths = {i: [len(b.text) for b in by_order[i].speech] for i in (1, 2, 3, 4)}
+    assert block_lengths == {
+        1: [10410, 10841],
+        2: [9596],
+        3: [3734, 3838],
+        4: [3688],
+    }
 
     # common fields
     assert all(s.reference == "172/000001" for s in saved)

@@ -18,13 +18,15 @@ from collections import OrderedDict
 
 from qhld_engine.logger import get_logger
 from qhld_engine.domain.speeches import segmentation
+from qhld_engine.domain.speeches.language_split import split_languages
+from qhld_engine.infrastructure.language import detect
 from qhld_engine.extractors.spain.congress_api import CongressApi
 from qhld_engine.extractors.spain.initiative_extractors.utils.pdf_parsers import (
     PDFExtractor,
 )
 
 from tipi_data.utils import generate_id
-from tipi_data.models.speech import Speech
+from tipi_data.models.speech import Speech, SpeechText
 from tipi_data.repositories.speeches import Speeches
 
 
@@ -75,6 +77,11 @@ class ExtractSpeeches:
         text = segmenter.next_speech(speaker_regex)
         if text is None:
             log.warning(f"Speaker heading not found for {reference}")
+            original_language, blocks = None, []
+        else:
+            original_language, parts = split_languages(text, detect)
+            blocks = [SpeechText(lang=lang, text=t, original=orig)
+                      for lang, t, orig in parts]
 
         video = intervention["video_intervencion"]
         order = int(intervention["doc"])
@@ -91,7 +98,8 @@ class ExtractSpeeches:
             session_name=intervention.get("sesion", {}).get("nombre_sesion"),
             video_link=video.get("enlace_descarga02"),
             session_link=session_link,
-            speech=text,
+            speech=blocks,
+            original_language=original_language,
         )
         Speeches.save(speech)
 
