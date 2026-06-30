@@ -1192,7 +1192,7 @@ requires-dist = [
     { name = "python-docx", specifier = "==1.1.2" },
     { name = "python-pptx", specifier = "==1.0.2" },
     { name = "qhld-data", git = "https://github.com/politicalwatch/qhld-data.git?tag=v2.0.1" },
-    { name = "qhld-tasks", git = "https://github.com/politicalwatch/qhld-tasks.git?tag=v2.0.1" },
+    { name = "qhld-tasks", git = "https://github.com/politicalwatch/qhld-tasks.git?tag=v2.0.2" },
     { name = "requests-futures", specifier = "==1.0.2" },
     { name = "thefuzz", specifier = "==0.22.1" },
     { name = "tqdm", specifier = "==4.67.1" },
