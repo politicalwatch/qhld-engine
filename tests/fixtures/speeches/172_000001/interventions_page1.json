@@ -1,0 +1,295 @@
+{
+  "legislatura": "XV",
+  "paginaActual": 1,
+  "intervenciones_encontradas": "4",
+  "paginacion": {
+    "opdef": "Y",
+    "url_base": "/wc/servidorCGI",
+    "query": "(172/000001*.EXPE.)",
+    "docs_ini": "1",
+    "cmd": "VERLST",
+    "fmt": "INTTZLUS.fmt",
+    "docorder": "FIFO",
+    "docs_fin": "4",
+    "base": "IT15"
+  },
+  "lista_intervenciones": {
+    "intervencion1": {
+      "enlace_detalle_intervencion": {
+        "piece": "ITA5",
+        "docr": "1",
+        "formato": "INTTZD1S.fmt",
+        "query": "(172/000001*.EXPE.)",
+        "cmd": "VERDOC",
+        "url": "/wc/servidorCGI",
+        "base": "IT15"
+      },
+      "fecha": "20231213",
+      "iniciativa": {
+        "tipo": "Interpelación urgente.",
+        "enlace_expediente": {
+          "id_documento": "2023121300040001200002099p02381720000010000726566",
+          "piece": "ITA5",
+          "formato": "INITZLSS.fmt",
+          "cmd": "VERLST",
+          "id_iniciativa": "172/000001/0000",
+          "url": "/wc/servidorCGI",
+          "base": "IT15"
+        },
+        "autores": {
+          "autor01": {
+            "idLegislatura": "ITA5",
+            "enlace": "/wc/composicionGrupo",
+            "orden": "1",
+            "nombre": "Grupo Parlamentario Mixto",
+            "idGrupo": "209"
+          }
+        },
+        "organo": "400",
+        "cini": "172 C 172/000001",
+        "objeto_iniciativa": "Interpelación urgente a la Ministra de Inclusión, Seguridad Social y Migraciones relativa a la aplicación de coeficientes reductores para la jubilación de las personas trabajadoras del sector de la extracción y la transformación de la piedra (granito y pizarra principalmente) y el reconocimiento de la incapacidad permanente con el diagnóstico de la silicosis."
+      },
+      "legislatura": "XV",
+      "cargo_orador": "Diputado",
+      "sesion": {
+        "videos_fase": {
+          "fin01": "11:57:00",
+          "legislatura": "15",
+          "url01": "15_000400_012_0_24414_726566.wmv",
+          "enlace_descarga": "https://static.congreso.es/audiovisual/video/leg15/400/15_000400_012/cortes/15_000400_012_0_24414_726565.mp4",
+          "enlace_emision": "https://app.congreso.es/v1/15726565I",
+          "secuencia": "12",
+          "inicio01": "112338",
+          "id01": "726565",
+          "organo": "400"
+        },
+        "nombre_sesion": "Pleno",
+        "idsesion": "12",
+        "fase1": "Debate"
+      },
+      "orador": "Rego Candamil, Néstor (GMx)",
+      "edia": "(DSCD-15-PL-13.CODI.)#(Página40)",
+      "pdia": "CONG/DS/PL/DSCD-15-PL-13.PDF#page=40",
+      "doc": "1",
+      "formato_doc": "PUWTZDTS.fmt",
+      "video_intervencion": {
+        "fin01": "11:37:13",
+        "legislatura": "15",
+        "enlace_descarga02": "https://static.congreso.es/audiovisual/video/leg15/400/15_000400_012/cortes/15_000400_012_0_24414_726566.mp4",
+        "url01": "15_000400_012_0_24414_726566.wmv",
+        "secuencia": "12",
+        "enlace_emision02": "https://app.congreso.es/v1/15726566I",
+        "inicio01": "11:24:43",
+        "id01": "726566",
+        "organo": "400"
+      }
+    },
+    "intervencion2": {
+      "enlace_detalle_intervencion": {
+        "piece": "ITA5",
+        "docr": "2",
+        "formato": "INTTZD1S.fmt",
+        "query": "(172/000001*.EXPE.)",
+        "cmd": "VERDOC",
+        "url": "/wc/servidorCGI",
+        "base": "IT15"
+      },
+      "fecha": "20231213",
+      "iniciativa": {
+        "enlace_expediente": {
+          "id_documento": "2023121300040001200002099n00261720000010000726567",
+          "piece": "ITA5",
+          "formato": "INITZLSS.fmt",
+          "cmd": "VERLST",
+          "id_iniciativa": "172/000001/0000",
+          "url": "/wc/servidorCGI",
+          "base": "IT15"
+        },
+        "autores": {
+          "autor01": {
+            "idLegislatura": "ITA5",
+            "enlace": "/wc/composicionGrupo",
+            "orden": "1",
+            "nombre": "Grupo Parlamentario Mixto",
+            "idGrupo": "209"
+          }
+        },
+        "organo": "400",
+        "cini": "172 C 172/000001",
+        "objeto_iniciativa": "Interpelación urgente a la Ministra de Inclusión, Seguridad Social y Migraciones relativa a la aplicación de coeficientes reductores para la jubilación de las personas trabajadoras del sector de la extracción y la transformación de la piedra (granito y pizarra principalmente) y el reconocimiento de la incapacidad permanente con el diagnóstico de la silicosis."
+      },
+      "legislatura": "XV",
+      "cargo_orador": "Ministra de Inclusión, Seguridad Social y Migraciones",
+      "sesion": {
+        "videos_fase": {
+          "fin01": "11:57:00",
+          "legislatura": "15",
+          "url01": "15_000400_012_0_24414_726567.wmv",
+          "enlace_descarga": "https://static.congreso.es/audiovisual/video/leg15/400/15_000400_012/cortes/15_000400_012_0_24414_726565.mp4",
+          "enlace_emision": "https://app.congreso.es/v1/15726565I",
+          "secuencia": "12",
+          "inicio01": "112338",
+          "id01": "726565",
+          "organo": "400"
+        },
+        "nombre_sesion": "Pleno",
+        "idsesion": "12",
+        "fase1": "Debate"
+      },
+      "orador": "Saiz Delgado, Elma",
+      "edia": "(DSCD-15-PL-13.CODI.)#(Página45)",
+      "pdia": "CONG/DS/PL/DSCD-15-PL-13.PDF#page=45",
+      "doc": "2",
+      "formato_doc": "PUWTZDTS.fmt",
+      "video_intervencion": {
+        "fin01": "11:46:50",
+        "legislatura": "15",
+        "enlace_descarga02": "https://static.congreso.es/audiovisual/video/leg15/400/15_000400_012/cortes/15_000400_012_0_24414_726567.mp4",
+        "url01": "15_000400_012_0_24414_726567.wmv",
+        "secuencia": "12",
+        "enlace_emision02": "https://app.congreso.es/v1/15726567I",
+        "inicio01": "11:37:31",
+        "id01": "726567",
+        "organo": "400"
+      }
+    },
+    "intervencion3": {
+      "enlace_detalle_intervencion": {
+        "piece": "ITA5",
+        "docr": "3",
+        "formato": "INTTZD1S.fmt",
+        "query": "(172/000001*.EXPE.)",
+        "cmd": "VERDOC",
+        "url": "/wc/servidorCGI",
+        "base": "IT15"
+      },
+      "fecha": "20231213",
+      "iniciativa": {
+        "enlace_expediente": {
+          "id_documento": "2023121300040001200002099p02381720000010000726572",
+          "piece": "ITA5",
+          "formato": "INITZLSS.fmt",
+          "cmd": "VERLST",
+          "id_iniciativa": "172/000001/0000",
+          "url": "/wc/servidorCGI",
+          "base": "IT15"
+        },
+        "autores": {
+          "autor01": {
+            "idLegislatura": "ITA5",
+            "enlace": "/wc/composicionGrupo",
+            "orden": "1",
+            "nombre": "Grupo Parlamentario Mixto",
+            "idGrupo": "209"
+          }
+        },
+        "organo": "400",
+        "cini": "172 C 172/000001",
+        "objeto_iniciativa": "Interpelación urgente a la Ministra de Inclusión, Seguridad Social y Migraciones relativa a la aplicación de coeficientes reductores para la jubilación de las personas trabajadoras del sector de la extracción y la transformación de la piedra (granito y pizarra principalmente) y el reconocimiento de la incapacidad permanente con el diagnóstico de la silicosis."
+      },
+      "legislatura": "XV",
+      "cargo_orador": "Diputado",
+      "sesion": {
+        "videos_fase": {
+          "fin01": "11:57:00",
+          "legislatura": "15",
+          "url01": "15_000400_012_0_24414_726572.wmv",
+          "enlace_descarga": "https://static.congreso.es/audiovisual/video/leg15/400/15_000400_012/cortes/15_000400_012_0_24414_726565.mp4",
+          "enlace_emision": "https://app.congreso.es/v1/15726565I",
+          "secuencia": "12",
+          "inicio01": "112338",
+          "id01": "726565",
+          "organo": "400"
+        },
+        "nombre_sesion": "Pleno",
+        "idsesion": "12",
+        "fase1": "Debate"
+      },
+      "orador": "Rego Candamil, Néstor (GMx)",
+      "edia": "(DSCD-15-PL-13.CODI.)#(Página46)",
+      "pdia": "CONG/DS/PL/DSCD-15-PL-13.PDF#page=46",
+      "doc": "3",
+      "formato_doc": "PUWTZDTS.fmt",
+      "video_intervencion": {
+        "fin01": "11:53:01",
+        "legislatura": "15",
+        "enlace_descarga02": "https://static.congreso.es/audiovisual/video/leg15/400/15_000400_012/cortes/15_000400_012_0_24414_726572.mp4",
+        "url01": "15_000400_012_0_24414_726572.wmv",
+        "secuencia": "12",
+        "enlace_emision02": "https://app.congreso.es/v1/15726572I",
+        "inicio01": "11:47:58",
+        "id01": "726572",
+        "organo": "400"
+      }
+    },
+    "intervencion4": {
+      "enlace_detalle_intervencion": {
+        "piece": "ITA5",
+        "docr": "4",
+        "formato": "INTTZD1S.fmt",
+        "query": "(172/000001*.EXPE.)",
+        "cmd": "VERDOC",
+        "url": "/wc/servidorCGI",
+        "base": "IT15"
+      },
+      "fecha": "20231213",
+      "iniciativa": {
+        "enlace_expediente": {
+          "id_documento": "2023121300040001200002099n00261720000010000726573",
+          "piece": "ITA5",
+          "formato": "INITZLSS.fmt",
+          "cmd": "VERLST",
+          "id_iniciativa": "172/000001/0000",
+          "url": "/wc/servidorCGI",
+          "base": "IT15"
+        },
+        "autores": {
+          "autor01": {
+            "idLegislatura": "ITA5",
+            "enlace": "/wc/composicionGrupo",
+            "orden": "1",
+            "nombre": "Grupo Parlamentario Mixto",
+            "idGrupo": "209"
+          }
+        },
+        "organo": "400",
+        "cini": "172 C 172/000001",
+        "objeto_iniciativa": "Interpelación urgente a la Ministra de Inclusión, Seguridad Social y Migraciones relativa a la aplicación de coeficientes reductores para la jubilación de las personas trabajadoras del sector de la extracción y la transformación de la piedra (granito y pizarra principalmente) y el reconocimiento de la incapacidad permanente con el diagnóstico de la silicosis."
+      },
+      "legislatura": "XV",
+      "cargo_orador": "Ministra de Inclusión, Seguridad Social y Migraciones",
+      "sesion": {
+        "videos_fase": {
+          "fin01": "11:57:00",
+          "legislatura": "15",
+          "url01": "15_000400_012_0_24414_726573.wmv",
+          "enlace_descarga": "https://static.congreso.es/audiovisual/video/leg15/400/15_000400_012/cortes/15_000400_012_0_24414_726565.mp4",
+          "enlace_emision": "https://app.congreso.es/v1/15726565I",
+          "secuencia": "12",
+          "inicio01": "112338",
+          "id01": "726565",
+          "organo": "400"
+        },
+        "nombre_sesion": "Pleno",
+        "idsesion": "12",
+        "fase1": "Debate"
+      },
+      "orador": "Saiz Delgado, Elma",
+      "edia": "(DSCD-15-PL-13.CODI.)#(Página48)",
+      "pdia": "CONG/DS/PL/DSCD-15-PL-13.PDF#page=48",
+      "doc": "4",
+      "formato_doc": "PUWTZDTS.fmt",
+      "video_intervencion": {
+        "fin01": "11:56:52",
+        "legislatura": "15",
+        "enlace_descarga02": "https://static.congreso.es/audiovisual/video/leg15/400/15_000400_012/cortes/15_000400_012_0_24414_726573.mp4",
+        "url01": "15_000400_012_0_24414_726573.wmv",
+        "secuencia": "12",
+        "enlace_emision02": "https://app.congreso.es/v1/15726573I",
+        "inicio01": "11:53:24",
+        "id01": "726573",
+        "organo": "400"
+      }
+    }
+  }
+}
