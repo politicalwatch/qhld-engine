@@ -63,6 +63,11 @@ def interventions():
     _task().interventions()
 
 
+@app.command("speeches")
+def speeches():
+    _task().speeches()
+
+
 @app.command("all-initiatives")
 def all_initiatives():
     _task().all_initiatives()
@@ -83,6 +88,11 @@ def all_interventions():
     _task().all_interventions()
 
 
+@app.command("all-speeches")
+def all_speeches():
+    _task().all_speeches()
+
+
 @app.command("single-initiative")
 def single_initiative(reference: str):
     _task().single_initiatives(reference)
@@ -91,6 +101,11 @@ def single_initiative(reference: str):
 @app.command("single-intervention")
 def single_intervention(reference: str):
     _task().single_interventions(reference)
+
+
+@app.command("single-speech")
+def single_speech(reference: str):
+    _task().single_speeches(reference)
 
 
 @app.command("single-vote")
@@ -113,6 +128,11 @@ def type_interventions(type_code: str):
     _task().type_interventions(type_code)
 
 
+@app.command("type-speeches")
+def type_speeches(type_code: str):
+    _task().type_speeches(type_code)
+
+
 @app.command("type-votes")
 def type_votes(type_code: str):
     _task().type_votes(type_code)
@@ -131,6 +151,11 @@ def type_all_references(type_code: str):
 @app.command("type-all-interventions")
 def type_all_interventions(type_code: str):
     _task().type_all_interventions(type_code)
+
+
+@app.command("type-all-speeches")
+def type_all_speeches(type_code: str):
+    _task().type_all_speeches(type_code)
 
 
 @app.command("type-all-votes")

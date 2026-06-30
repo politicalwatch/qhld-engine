@@ -43,6 +43,10 @@ class ExtractorTask():
         self.initiatives_extractor.extract_references()
         self.initiatives_extractor.extract_videos()
 
+    def speeches(self):
+        self.initiatives_extractor.extract_references()
+        self._extract_speeches(self.initiatives_extractor.all_references)
+
     def references(self):
         self.initiatives_extractor.extract_references()
         print(self.initiatives_extractor.all_references)
@@ -59,6 +63,10 @@ class ExtractorTask():
         self.initiatives_extractor.extract_all_references()
         self.initiatives_extractor.extract_videos()
 
+    def all_speeches(self):
+        self.initiatives_extractor.extract_all_references()
+        self._extract_speeches(self.initiatives_extractor.all_references)
+
     def all_references(self):
         self.initiatives_extractor.extract_all_references()
         print(self.initiatives_extractor.all_references)
@@ -70,6 +78,9 @@ class ExtractorTask():
     def single_interventions(self, reference):
         self.initiatives_extractor.all_references = [reference]
         self.initiatives_extractor.extract_videos()
+
+    def single_speeches(self, reference):
+        self._extract_speeches([reference])
 
     def single_votes(self, reference):
         self.initiatives_extractor.all_references = [reference]
@@ -87,6 +98,10 @@ class ExtractorTask():
         self.initiatives_extractor.extract_references_from_type(type_code)
         self.initiatives_extractor.extract_videos()
 
+    def type_speeches(self, type_code):
+        self.initiatives_extractor.extract_references_from_type(type_code)
+        self._extract_speeches(self.initiatives_extractor.all_references)
+
     def type_votes(self, type_code):
         self.initiatives_extractor.extract_references_from_type(type_code)
         self.initiatives_extractor.extract_votes()
@@ -102,6 +117,14 @@ class ExtractorTask():
     def type_all_interventions(self, type_code):
         self.initiatives_extractor.extract_all_references_from_type(type_code)
         self.initiatives_extractor.extract_videos()
+
+    def type_all_speeches(self, type_code):
+        self.initiatives_extractor.extract_all_references_from_type(type_code)
+        self._extract_speeches(self.initiatives_extractor.all_references)
+
+    def _extract_speeches(self, references):
+        from qhld_engine.application.speeches.extract_speeches import ExtractSpeeches
+        ExtractSpeeches().execute(references)
 
     def type_all_votes(self, type_code):
         self.initiatives_extractor.extract_all_references_from_type(type_code)
