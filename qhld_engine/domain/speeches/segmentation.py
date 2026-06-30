@@ -17,11 +17,19 @@ from thefuzz import fuzz
 
 
 # A speaker heading. Two shapes occur in the Diario:
-#   - parliamentarians: "El señor PÉREZ GARCÍA:" / "La señora LÓPEZ (Grupo ...):"
+#   - parliamentarians: "El señor PÉREZ GARCÍA:" / "La señora LÓPEZ MORENO:"
 #   - government/role:   "La señora MINISTRA DE X, Y Y Z (Saiz Delgado):"
-# Group 2 is the name/role (allowing commas for role titles); group 3 the optional
-# trailing parenthetical (a group or, for government, the surname).
-SPEAKER_PATTERN = r"(El señor|La señora)\s+([^:()]+?)(\s*\([^)]*\))?:"
+# Group 2 is the name/role; group 3 the optional trailing parenthetical (the
+# surname, for government speakers).
+#
+# Crucially the name/role is matched as UPPERCASE-only (no lowercase letters):
+# the Diario prints real speaker names/roles in caps, while a speech that merely
+# *mentions* a colleague ("...ese es el señor Tellado, que...") is mixed case. The
+# uppercase constraint is what tells the two apart — without it, such a mention
+# plus any downstream colon (e.g. a page-header footer "...- D C S D :") forms a
+# bogus heading that truncates the speech. MUST be matched WITHOUT re.IGNORECASE,
+# or the uppercase character classes would match lowercase too and reopen the bug.
+SPEAKER_PATTERN = r"(El señor|La señora)\s+([A-ZÁÀÉÈÍÏÓÒÚÜÇÑ][^:()a-zß-ÿ]*?)(\s*\([^)]*\))?:"
 
 # The chair interrupting a speaker.
 INTERRUPTER_PATTERNS = (
@@ -91,7 +99,7 @@ def normalize_session_text(raw, reference):
 
 def fix_speaker_typos(text, surnames, threshold=80):
     """Repair OCR/transcription typos in speaker surnames against the known list."""
-    for match in re.finditer(SPEAKER_PATTERN, text, flags=re.IGNORECASE):
+    for match in re.finditer(SPEAKER_PATTERN, text):
         if is_interrupter(match.group(0)):
             continue
         for surname in surnames:
@@ -148,7 +156,7 @@ class SpeechSegmenter:
         text). Chair interruptions are skipped; the speaker's resumed text is kept."""
         speech = ""
         while True:
-            heading = re.search(SPEAKER_PATTERN, self._text[pos:], flags=re.IGNORECASE)
+            heading = re.search(SPEAKER_PATTERN, self._text[pos:])
             if not heading:
                 return speech + self._text[pos:], len(self._text)
 
@@ -158,7 +166,7 @@ class SpeechSegmenter:
 
             if is_interrupter(heading.group(0)):
                 resume = re.search(
-                    SPEAKER_PATTERN, self._text[after_heading:], flags=re.IGNORECASE)
+                    SPEAKER_PATTERN, self._text[after_heading:])
                 if resume and re.fullmatch(
                         speaker_regex, resume.group(0), flags=re.IGNORECASE):
                     # Same speaker resumes: skip the chair's heading + text and the

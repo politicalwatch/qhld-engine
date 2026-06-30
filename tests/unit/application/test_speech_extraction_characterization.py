@@ -75,12 +75,19 @@ def test_extract_speeches_172_000001(monkeypatch, capture):
     assert by_order[1].speech.startswith("Grazas, señora presidenta")
     assert by_order[2].speech.startswith("Muchas gracias, presidente")
 
-    # boundaries are correct: the minister's reply is NOT swallowed into the
-    # diputado's turn (the regression the broadened SPEAKER_PATTERN fixed)
-    assert "Muchas gracias, presidente" not in by_order[1].speech
+    # The diputado's turn is published bilingual: the full Galician original
+    # ("...Moito obrigado.") followed by its full Spanish interpretation
+    # ("...Muchas gracias."). Both must be present — the uppercase SPEAKER_PATTERN
+    # stops the speech truncating at a mid-speech "el señor <Apellido>" mention.
+    assert "Moito obrigado" in by_order[1].speech
+    assert by_order[1].speech.rstrip().endswith("Muchas gracias.")
+
+    # boundaries are correct: the minister's *reply* (a separate intervention) is
+    # NOT swallowed into the diputado's turn.
+    assert "He escuchado con mucha atención, señor Rego" not in by_order[1].speech
 
     # golden lengths — update deliberately if segmentation changes
-    assert [len(by_order[i].speech) for i in (1, 2, 3, 4)] == [11020, 9596, 7573, 3688]
+    assert [len(by_order[i].speech) for i in (1, 2, 3, 4)] == [21252, 9596, 7573, 3688]
 
     # common fields
     assert all(s.reference == "172/000001" for s in saved)

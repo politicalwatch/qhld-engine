@@ -91,9 +91,11 @@ def test_clean_speech_removes_stage_directions():
 
 
 def test_fix_speaker_typos_corrects_near_match():
-    fixed = segmentation.fix_speaker_typos("La señora GARClA: Hola.", ["GARCIA"])
-    assert "GARCIA" in fixed
-    assert "GARClA" not in fixed
+    # Diario headings are uppercase; a realistic transcription typo (here a
+    # dropped accent) stays uppercase and is normalised to the known surname.
+    fixed = segmentation.fix_speaker_typos("La señora GARCIA: Hola.", ["GARCÍA"])
+    assert "GARCÍA" in fixed
+    assert "señora GARCIA:" not in fixed
 
 
 # --- SpeechSegmenter ----------------------------------------------------------
@@ -108,7 +110,7 @@ def test_two_consecutive_speakers_each_extracted():
 def test_chair_interruption_with_resume_is_stitched():
     text = (
         "El señor PEREZ: Parte uno. "
-        "La señora presidenta: Silencio, por favor. "
+        "La señora PRESIDENTA: Silencio, por favor. "
         "El señor PEREZ: Parte dos. "
         "La señora GARCIA: Fin."
     )
@@ -125,7 +127,7 @@ def test_chair_interruption_with_resume_is_stitched():
 def test_chair_interruption_without_resume_ends_speech():
     text = (
         "El señor PEREZ: Solo una parte. "
-        "La señora presidenta: Se levanta la sesión. "
+        "La señora PRESIDENTA: Se levanta la sesión. "
         "La señora GARCIA: Otra cosa."
     )
     seg = segmentation.SpeechSegmenter(text)
@@ -137,3 +139,22 @@ def test_chair_interruption_without_resume_ends_speech():
 def test_missing_speaker_heading_returns_none():
     seg = segmentation.SpeechSegmenter("La señora GARCIA: Hola.")
     assert seg.next_speech(_regex("Perez, J (G)")) is None
+
+
+def test_mid_speech_colleague_mention_does_not_truncate():
+    # A speaker naming a colleague mid-sentence ("...el señor Tellado...") followed
+    # later by a stray colon (here a page-header footer) must NOT be read as a new
+    # speaker heading. Mentions are mixed-case; real headings are uppercase. Without
+    # the uppercase constraint this truncated the speech at the mention.
+    text = (
+        "El señor PEREZ: Sigo con mi argumento. Ese es el señor Tellado, ese es "
+        "el Partido Popular, al que los intereses de la gente y "
+        "3 1 - L P : DIARIO DE SESIONES no le importan nada. Y concluyo aquí. "
+        "La señora GARCIA: Mi turno."
+    )
+    seg = segmentation.SpeechSegmenter(text)
+    speech = seg.next_speech(_regex("Perez, J (G)"))
+    assert "el señor Tellado" in speech
+    assert "Y concluyo aquí." in speech  # not cut off at the mention
+    assert "Mi turno" not in speech       # and it stops at the real next heading
+    assert seg.next_speech(_regex("Garcia, A (G)")) == "Mi turno."
