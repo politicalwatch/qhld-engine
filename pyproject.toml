@@ -54,8 +54,11 @@ markers = [
 ]
 
 [tool.uv.sources]
-qhld-data  = { git = "https://github.com/politicalwatch/qhld-data.git", tag = "v2.0.1" }
-qhld-tasks = { git = "https://github.com/politicalwatch/qhld-tasks.git", tag = "v2.0.1" }
+# DEV (TFM speeches branch): qhld-data + qhld-tasks pinned to the paired
+# `feat/parliamentary-speech-analysis` branch (resolvable in the Docker build,
+# unlike a local path). Revert both to tag pins before merge.
+qhld-data  = { git = "https://github.com/politicalwatch/qhld-data.git", branch = "feat/parliamentary-speech-analysis" }
+qhld-tasks = { git = "https://github.com/politicalwatch/qhld-tasks.git", branch = "feat/parliamentary-speech-analysis" }
 
 [tool.uv]
 package = true
