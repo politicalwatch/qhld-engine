@@ -32,7 +32,11 @@ def test_execute_segments_and_saves_a_speech(monkeypatch):
                 },
                 "pdia": "CONG-1#anchor",
                 "fecha": 20240115,
-                "sesion": {"nombre_sesion": "Pleno"},
+                "sesion": {
+                    "nombre_sesion": "Pleno",
+                    "idsesion": "12",
+                    "videos_fase": {"enlace_descarga": "http://v/full.mp4"},
+                },
             }
         },
     }
@@ -49,17 +53,33 @@ def test_execute_segments_and_saves_a_speech(monkeypatch):
             return "El señor PEREZ: Hola. La señora GARCIA: Adiós."
 
     saved = []
+    saved_sessions = []
     monkeypatch.setattr(mod, "CongressApi", lambda: _FakeApi())
     monkeypatch.setattr(mod, "PDFExtractor", _FakePDF)
     monkeypatch.setattr(mod.Speeches, "save", lambda speech: saved.append(speech))
+    monkeypatch.setattr(mod.Sessions, "save", lambda s: saved_sessions.append(s))
     # patch the detector so the test never loads py3langid and is deterministic
     monkeypatch.setattr(mod, "detect", lambda text: "es")
 
     mod.ExtractSpeeches().execute(["161/000123"])
 
+    # the sitting that hosts the debate is upserted with API metadata + a roster
+    assert len(saved_sessions) == 1
+    session = saved_sessions[0]
+    assert session.session_link == "/public_oficiales/L15/CONG-1"
+    assert session.name == "Pleno"
+    assert session.code == "CONG-1"  # filename stem of the session link
+    assert session.congress_session_id == "12"
+    assert session.legislature == "15"
+    assert session.date == 20240115
+    assert session.video_link == "http://v/full.mp4"
+    assert session.references == ["161/000123"]
+
     assert len(saved) == 1
     speech = saved[0]
     assert speech.reference == "161/000123"
+    # the speech links to its sitting via the session document's id
+    assert speech.session_id == session.id
     assert speech.speaker == "Perez, Juan"
     assert speech.speaker_surname == "Perez"
     assert speech.group == "GP Socialista"

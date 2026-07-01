@@ -14,6 +14,7 @@ directly; a source port would only be introduced if a second country needed one.
 
 import json
 import math
+import os
 from collections import OrderedDict
 
 from qhld_engine.logger import get_logger
@@ -26,7 +27,9 @@ from qhld_engine.extractors.spain.initiative_extractors.utils.pdf_parsers import
 )
 
 from tipi_data.utils import generate_id
+from tipi_data.models.session import Session
 from tipi_data.models.speech import Speech, SpeechText
+from tipi_data.repositories.sessions import Sessions
 from tipi_data.repositories.speeches import Speeches
 
 
@@ -60,13 +63,41 @@ class ExtractSpeeches:
             if not raw:
                 log.warning(f"No session text for {reference} at {session_link}")
                 continue
+            session_id = generate_id(session_link)
+            self._save_session(items[0], session_link, session_id, reference)
             text = segmentation.normalize_session_text(raw, reference)
             text = segmentation.fix_speaker_typos(text, surnames)
             segmenter = segmentation.SpeechSegmenter(text)
             for intervention in items:
-                self._extract_one(intervention, session_link, segmenter, reference)
+                self._extract_one(
+                    intervention, session_link, session_id, segmenter, reference)
 
-    def _extract_one(self, intervention, session_link, segmenter, reference):
+    def _save_session(self, intervention, session_link, session_id, reference):
+        """Upsert the sitting that hosts this debate. Metadata is taken from any of
+        the sitting's interventions (identical across them); ``references`` carries
+        only this run's reference and is accumulated by the repository."""
+        sesion = intervention.get("sesion", {})
+        video = intervention.get("video_intervencion", {})
+        videos_fase = sesion.get("videos_fase", {})
+        session = Session(
+            id=session_id,
+            legislature=str(video["legislatura"]) if video.get("legislatura") else None,
+            session_link=session_link,
+            name=sesion.get("nombre_sesion"),
+            code=self._session_code(session_link),
+            congress_session_id=sesion.get("idsesion"),
+            date=intervention.get("fecha"),
+            video_link=videos_fase.get("enlace_descarga"),
+            references=[reference],
+        )
+        Sessions.save(session)
+
+    def _session_code(self, session_link):
+        """The canonical Diario document code = the PDF filename stem, e.g.
+        ``/public_oficiales/L15/CONG/DS/PL/DSCD-15-PL-13.PDF`` -> ``DSCD-15-PL-13``."""
+        return os.path.splitext(os.path.basename(session_link))[0]
+
+    def _extract_one(self, intervention, session_link, session_id, segmenter, reference):
         speaker, group, surname = segmentation.parse_speaker(intervention["orador"])
         if speaker is None:
             log.warning(
@@ -88,6 +119,7 @@ class ExtractSpeeches:
         speech = Speech(
             id=generate_id(reference, session_link, str(order)),
             reference=reference,
+            session_id=session_id,
             speaker=speaker,
             speaker_surname=surname,
             group=group,

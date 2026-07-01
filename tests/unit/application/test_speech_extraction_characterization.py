@@ -52,14 +52,26 @@ def test_extract_speeches_172_000001(monkeypatch, capture):
             return raw_text
 
     saved = []
+    saved_sessions = []
     monkeypatch.setattr(mod, "CongressApi", lambda: _FakeApi())
     monkeypatch.setattr(mod, "PDFExtractor", _FakePDF)
     monkeypatch.setattr(mod.Speeches, "save", lambda speech: saved.append(speech))
+    monkeypatch.setattr(mod.Sessions, "save", lambda s: saved_sessions.append(s))
 
     mod.ExtractSpeeches().execute(["172/000001"])
 
     # one session PDF fetched, for the expected link
     assert seen_links == [expected_link]
+
+    # the sitting is upserted once, carrying the full-session video + a roster, and
+    # every speech of the sitting links back to it via the session document id
+    assert len(saved_sessions) == 1
+    session = saved_sessions[0]
+    assert session.name == "Pleno"
+    assert session.code == "DSCD-15-PL-13"
+    assert session.references == ["172/000001"]
+    assert session.video_link  # full-session video captured from videos_fase
+    assert all(s.session_id == session.id for s in saved)
 
     # all four interventions persisted, in document order
     assert [s.order for s in saved] == [1, 2, 3, 4]
