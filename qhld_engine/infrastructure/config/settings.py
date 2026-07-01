@@ -46,6 +46,22 @@ class Settings(BaseSettings):
     embedding_provider: str = "openai"
     embedding_model: str = "text-embedding-3-small"
 
+    # Qdrant vector store (semantic speech search). Host defaults to the
+    # docker-compose service name; ":memory:" selects qdrant-client's in-process
+    # mode (used by the Docker-free tests).
+    qdrant_host: str = "qdrant"
+    qdrant_port: int = 6333
+    qdrant_grpc_port: int = 6334
+    qdrant_prefer_grpc: bool = False
+    # Empty -> the index/search services derive a per-model collection name
+    # (speeches__<provider>__<model>__<dim>); set to force a fixed name.
+    qdrant_collection: str = ""
+
+    # Speech chunking (passage granularity for embeddings). Char-budgeted rather
+    # than token-based so it stays provider/tokenizer-agnostic.
+    speech_chunk_chars: int = 1200
+    speech_chunk_overlap: int = 150
+
 
 @lru_cache
 def get_settings() -> Settings:
