@@ -1,0 +1,17 @@
+[
+  {"id": "T1", "dimension": "topical", "query": "financiación autonómica", "filters": {}, "expected_refs": ["172/000006", "172/000007"], "notes": "known-good anchor (Montero/Hacienda vs Bravo/PP)"},
+  {"id": "T2", "dimension": "topical", "query": "política de vivienda y precio del alquiler", "filters": {}, "expected_refs": ["210/000046"], "notes": "Ministra de Vivienda comparecencia"},
+  {"id": "T3", "dimension": "topical", "query": "acogida e integración de personas migrantes", "filters": {}, "expected_refs": ["210/000016"], "notes": "Ministra de Inclusión, Seg. Social y Migraciones"},
+  {"id": "T4", "dimension": "topical", "query": "defensa del campo y los agricultores españoles", "filters": {}, "expected_refs": ["173/000007"], "notes": "moción (VOX) sobre el campo"},
+  {"id": "T5", "dimension": "topical", "query": "situación del Delta del Ebro y gestión del agua", "filters": {}, "expected_refs": ["172/000014"], "notes": "Cruset (JxCAT); also a ca debate"},
+  {"id": "X1", "dimension": "crosslingual", "query": "peajes y gestión de la autopista AP-9 en Galicia", "filters": {}, "lang": "gl", "expected_refs": ["172/000034"], "notes": "Rego Candamil (BNG), gl"},
+  {"id": "X2", "dimension": "crosslingual", "query": "coeficientes reductores para la jubilación anticipada", "filters": {}, "lang": "gl", "expected_refs": ["172/000001"], "notes": "Rego Candamil (BNG), gl"},
+  {"id": "X3", "dimension": "crosslingual", "query": "desarrollo de la Ley de Memoria Democrática", "filters": {}, "lang": "ca", "expected_refs": ["172/000005"], "notes": "Álvaro Vidal (ERC), ca"},
+  {"id": "X4", "dimension": "crosslingual", "query": "condiciones de vida y emancipación de los jóvenes", "filters": {}, "lang": "eu", "expected_refs": ["173/000028"], "notes": "Vaquero Montero (PNV), eu"},
+  {"id": "X5", "dimension": "crosslingual", "query": "retribución del permiso parental de cuidados", "filters": {}, "lang": "eu", "expected_refs": ["173/000081"], "notes": "Fullaondo (EH Bildu), eu"},
+  {"id": "X6", "dimension": "crosslingual", "query": "destinar fondos del plan de rearme a la educación pública", "filters": {}, "lang": "eu", "expected_refs": ["173/000103"], "notes": "Fullaondo (EH Bildu), eu"},
+  {"id": "N1", "dimension": "propername", "query": "AP-9", "filters": {}, "expected_refs": ["172/000034"], "notes": "short alphanumeric code"},
+  {"id": "N2", "dimension": "propername", "query": "Von der Leyen", "filters": {}, "expected_refs": ["173/000007"], "notes": "foreign proper name"},
+  {"id": "N3", "dimension": "propername", "query": "Ley 20/2022 de Memoria Democrática", "filters": {}, "expected_refs": ["172/000005"], "notes": "law citation/number"},
+  {"id": "N4", "dimension": "propername", "query": "Javier Maroto", "filters": {}, "expected_refs": ["173/000106"], "notes": "person name mentioned in passing"}
+]
