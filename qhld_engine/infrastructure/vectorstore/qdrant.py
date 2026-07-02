@@ -7,7 +7,12 @@ selects qdrant-client's in-process mode, which lets the tests run with no Docker
 
 from qdrant_client import QdrantClient, models
 
-from qhld_engine.domain.ports.vector_store import SearchHit, VectorPoint, VectorStorePort
+from qhld_engine.domain.ports.vector_store import (
+    SearchHit,
+    SpeechGroup,
+    VectorPoint,
+    VectorStorePort,
+)
 from qhld_engine.infrastructure.config.settings import Settings
 from .factory import _register
 
@@ -85,6 +90,48 @@ class QdrantAdapter(VectorStorePort):
             SearchHit(id=str(point.id), score=point.score, payload=point.payload or {})
             for point in response.points
         ]
+
+    def search_grouped(
+        self,
+        name: str,
+        vector: list[float],
+        group_by: str,
+        limit: int,
+        group_size: int,
+        filters: dict | None = None,
+        exclude: set | None = None,
+    ) -> list[SpeechGroup]:
+        must = [self._condition(key, value) for key, value in (filters or {}).items()]
+        must_not = (
+            [models.FieldCondition(key=group_by, match=models.MatchAny(any=list(exclude)))]
+            if exclude
+            else []
+        )
+        query_filter = (
+            models.Filter(must=must or None, must_not=must_not or None)
+            if (must or must_not)
+            else None
+        )
+        response = self.client.query_points_groups(
+            collection_name=name,
+            group_by=group_by,
+            query=vector,
+            limit=limit,
+            group_size=group_size,
+            query_filter=query_filter,
+            with_payload=True,
+        )
+        groups = []
+        for group in response.groups:
+            highlights = [
+                SearchHit(id=str(p.id), score=p.score, payload=p.payload or {})
+                for p in group.hits
+            ]
+            top_score = highlights[0].score if highlights else 0.0
+            groups.append(
+                SpeechGroup(
+                    speech_id=str(group.id), score=top_score, highlights=highlights))
+        return groups
 
     @staticmethod
     def _condition(key: str, value) -> models.FieldCondition:

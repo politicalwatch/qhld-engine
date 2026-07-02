@@ -11,7 +11,14 @@ app = typer.Typer(help="Semantic search over parliamentary speeches.")
 @app.command("speeches")
 def speeches(
     query: str = typer.Argument(..., help="Natural-language query."),
-    k: int = typer.Option(10, "--k", help="Number of results."),
+    k: int = typer.Option(
+        10, "--k", help="Number of results (passages, or speeches with --grouped)."),
+    grouped: bool = typer.Option(
+        False, "--grouped",
+        help="Return distinct speeches, each with its top matching passages as "
+             "highlights, instead of individual passages."),
+    highlights: int = typer.Option(
+        3, "--highlights", help="Max highlight passages per speech (with --grouped)."),
     group: str | None = typer.Option(None, "--group", help="Filter by parliamentary group."),
     legislature: str | None = typer.Option(None, "--legislature", help="Filter by legislature."),
     lang: str | None = typer.Option(None, "--lang", help="Filter by language (es/ca/eu/gl)."),
@@ -26,17 +33,43 @@ def speeches(
         "lang": lang,
         "speaker": speaker,
     }
-    hits = SearchSpeeches().search(query, k=k, filters=filters)
+    service = SearchSpeeches()
+    if grouped:
+        _print_grouped(
+            service.search_grouped(query, page_size=k, highlights=highlights, filters=filters))
+    else:
+        _print_hits(service.search(query, k=k, filters=filters))
+
+
+def _snippet(payload, length=240):
+    text = (payload.get("text") or "").strip().replace("\n", " ")
+    return text[:length] + "…" if len(text) > length else text
+
+
+def _print_hits(hits):
     if not hits:
         typer.echo("No results.")
         return
     for hit in hits:
         payload = hit.payload
-        speaker_line = payload.get("speaker") or "?"
+        speaker = payload.get("speaker") or "?"
         group_line = payload.get("group") or payload.get("role") or "-"
-        snippet = (payload.get("text") or "").strip().replace("\n", " ")
-        if len(snippet) > 240:
-            snippet = snippet[:240] + "…"
         typer.echo(
-            f"[{hit.score:.3f}] {speaker_line} ({group_line}) "
-            f"· {payload.get('reference')} · {payload.get('lang')}\n    {snippet}\n")
+            f"[{hit.score:.3f}] {speaker} ({group_line}) "
+            f"· {payload.get('reference')} · {payload.get('lang')}\n    {_snippet(payload)}\n")
+
+
+def _print_grouped(groups):
+    if not groups:
+        typer.echo("No results.")
+        return
+    for group in groups:
+        head = group.highlights[0].payload if group.highlights else {}
+        speaker = head.get("speaker") or "?"
+        group_line = head.get("group") or head.get("role") or "-"
+        typer.echo(
+            f"[{group.score:.3f}] {speaker} ({group_line}) · {head.get('reference')} "
+            f"· {len(group.highlights)} passage(s)")
+        for hit in group.highlights:
+            typer.echo(f"    · [{hit.score:.3f}] {hit.payload.get('lang')}  {_snippet(hit.payload, 200)}")
+        typer.echo("")

@@ -3,7 +3,7 @@
 import pytest
 
 from qhld_engine.application.search.search_speeches import SearchSpeeches
-from qhld_engine.domain.ports.vector_store import SearchHit
+from qhld_engine.domain.ports.vector_store import SearchHit, SpeechGroup
 from qhld_engine.infrastructure.config.settings import Settings
 
 pytestmark = pytest.mark.unit
@@ -53,3 +53,46 @@ def test_none_filters_are_dropped():
     service.search("hola", filters={"group": "GMx", "lang": None, "speaker": None})
 
     assert store.searched[3] == {"group": "GMx"}
+
+
+class _GroupStore:
+    def __init__(self):
+        self.called = None
+
+    def search_grouped(self, name, vector, group_by, limit, group_size,
+                       filters=None, exclude=None):
+        self.called = dict(
+            name=name, group_by=group_by, limit=limit, group_size=group_size,
+            filters=filters, exclude=exclude)
+        return [SpeechGroup(
+            speech_id="A", score=0.9,
+            highlights=[SearchHit(id="p1", score=0.9, payload={"speech_id": "A"})])]
+
+
+def test_search_grouped_passes_params_and_drops_none_filters():
+    store = _GroupStore()
+    service = SearchSpeeches(settings=_settings(), embedder=_FakeEmbedder(), store=store)
+
+    groups = service.search_grouped(
+        "q", page_size=5, highlights=2,
+        filters={"lang": "gl", "group": None}, exclude={"X"})
+
+    call = store.called
+    assert call["name"] == "speeches__ollama__qwen3_embedding_0_6b__3"
+    assert call["group_by"] == "speech_id"
+    assert call["limit"] == 5          # page_size → number of speeches
+    assert call["group_size"] == 2     # highlights per speech
+    assert call["filters"] == {"lang": "gl"}  # None dropped
+    assert call["exclude"] == {"X"}
+    assert groups[0].speech_id == "A"
+    assert groups[0].highlights[0].id == "p1"
+
+
+def test_search_grouped_no_filters_or_cursor_pass_none():
+    store = _GroupStore()
+    service = SearchSpeeches(settings=_settings(), embedder=_FakeEmbedder(), store=store)
+
+    service.search_grouped("q")
+
+    assert store.called["filters"] is None
+    assert store.called["exclude"] is None

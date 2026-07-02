@@ -77,3 +77,52 @@ def test_distinct_values_returns_unique_payload_values(adapter):
 def test_distinct_values_empty_collection(adapter):
     adapter.ensure_collection("c", 3)
     assert adapter.distinct_values("c", "speech_id") == set()
+
+
+def test_search_grouped_returns_speeches_with_capped_highlights(adapter):
+    adapter.ensure_collection("c", 3)
+    adapter.upsert("c", [
+        _point({"speech_id": "A", "lang": "es"}),
+        _point({"speech_id": "A", "lang": "es"}),
+        _point({"speech_id": "A", "lang": "es"}),
+        _point({"speech_id": "B", "lang": "es"}),
+    ])
+    groups = adapter.search_grouped(
+        "c", [0.1, 0.2, 0.3], group_by="speech_id", limit=10, group_size=2)
+
+    by_id = {g.speech_id: g for g in groups}
+    assert set(by_id) == {"A", "B"}
+    assert len(by_id["A"].highlights) == 2      # 3 passages, capped at group_size
+    assert len(by_id["B"].highlights) == 1
+    assert by_id["A"].score == by_id["A"].highlights[0].score
+
+
+def test_search_grouped_limit_gives_stable_speech_count(adapter):
+    adapter.ensure_collection("c", 3)
+    adapter.upsert("c", [_point({"speech_id": s}) for s in ["A", "B", "C"]])
+    groups = adapter.search_grouped(
+        "c", [0.1, 0.2, 0.3], group_by="speech_id", limit=2, group_size=3)
+    assert len(groups) == 2  # number of speeches == limit, regardless of passages
+
+
+def test_search_grouped_exclude_paginates(adapter):
+    adapter.ensure_collection("c", 3)
+    adapter.upsert("c", [_point({"speech_id": s}) for s in ["A", "B", "C"]])
+    first = adapter.search_grouped(
+        "c", [0.1, 0.2, 0.3], group_by="speech_id", limit=2, group_size=1)
+    seen = {g.speech_id for g in first}
+    nxt = adapter.search_grouped(
+        "c", [0.1, 0.2, 0.3], group_by="speech_id", limit=2, group_size=1, exclude=seen)
+    assert {g.speech_id for g in nxt}.isdisjoint(seen)  # load-more returns new speeches
+
+
+def test_search_grouped_applies_exact_filter(adapter):
+    adapter.ensure_collection("c", 3)
+    adapter.upsert("c", [
+        _point({"speech_id": "A", "lang": "es"}),
+        _point({"speech_id": "B", "lang": "gl"}),
+    ])
+    groups = adapter.search_grouped(
+        "c", [0.1, 0.2, 0.3], group_by="speech_id", limit=10, group_size=3,
+        filters={"lang": "gl"})
+    assert [g.speech_id for g in groups] == ["B"]

@@ -12,6 +12,7 @@ import pytest
 from typer.testing import CliRunner
 
 from qhld_engine.cli import app
+from qhld_engine.domain.ports.vector_store import SearchHit, SpeechGroup
 
 pytestmark = pytest.mark.unit
 
@@ -172,6 +173,37 @@ def test_topic_alignment_without_id(monkeypatch):
     result = runner.invoke(app, ["topic-alignment"])
     assert result.exit_code == 0, result.output
     fn.assert_called_once_with(None)
+
+
+# --- search ----------------------------------------------------------------
+
+def test_search_default_is_passage_level(monkeypatch):
+    svc = _patch_class(
+        monkeypatch, "qhld_engine.application.search.search_speeches.SearchSpeeches")
+    svc.search.return_value = []
+    result = runner.invoke(app, ["search", "speeches", "financiación autonómica", "--k", "7"])
+    assert result.exit_code == 0, result.output
+    svc.search.assert_called_once_with(
+        "financiación autonómica", k=7,
+        filters={"group": None, "legislature": None, "lang": None, "speaker": None})
+    svc.search_grouped.assert_not_called()  # --grouped absent → passage path (baseline A/B)
+
+
+def test_search_grouped_flag_calls_grouped(monkeypatch):
+    svc = _patch_class(
+        monkeypatch, "qhld_engine.application.search.search_speeches.SearchSpeeches")
+    svc.search_grouped.return_value = [
+        SpeechGroup(speech_id="A", score=0.8, highlights=[
+            SearchHit(id="p1", score=0.8, payload={
+                "speaker": "X", "reference": "172/000001", "lang": "gl", "text": "hola"})])]
+    result = runner.invoke(app, [
+        "search", "speeches", "q", "--grouped", "--k", "5", "--highlights", "2", "--lang", "gl"])
+    assert result.exit_code == 0, result.output
+    svc.search_grouped.assert_called_once_with(
+        "q", page_size=5, highlights=2,
+        filters={"group": None, "legislature": None, "lang": "gl", "speaker": None})
+    svc.search.assert_not_called()
+    assert "172/000001" in result.output
 
 
 # --- debug -----------------------------------------------------------------

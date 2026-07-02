@@ -25,6 +25,15 @@ class SearchHit:
     payload: dict = field(default_factory=dict)
 
 
+@dataclass
+class SpeechGroup:
+    """A speech-level search result: the speech id, its best passage score, and
+    its top matching passages as highlights (most-relevant first)."""
+    speech_id: str
+    score: float
+    highlights: list[SearchHit] = field(default_factory=list)
+
+
 class VectorStorePort(Protocol):
     def ensure_collection(self, name: str, dim: int) -> None:
         """Create the collection with vector size ``dim`` if it does not exist."""
@@ -48,4 +57,20 @@ class VectorStorePort(Protocol):
     ) -> list[SearchHit]:
         """Return the ``k`` nearest points, optionally filtered by exact payload
         matches given as ``{key: value}``."""
+        ...
+
+    def search_grouped(
+        self,
+        name: str,
+        vector: list[float],
+        group_by: str,
+        limit: int,
+        group_size: int,
+        filters: dict | None = None,
+        exclude: set | None = None,
+    ) -> list["SpeechGroup"]:
+        """Return the ``limit`` best groups (by payload ``group_by``), each with up
+        to ``group_size`` passages as highlights. ``filters`` are exact payload
+        matches; ``exclude`` is a set of ``group_by`` values to omit — used as a
+        stateless pagination cursor ("load more" = re-query excluding seen ids)."""
         ...
