@@ -38,6 +38,11 @@ class VectorStorePort(Protocol):
         """Delete every point whose payload ``key`` equals ``value``."""
         ...
 
+    def distinct_values(self, name: str, key: str) -> set:
+        """The set of distinct values the payload ``key`` takes across the
+        collection — used to skip already-indexed items on an incremental run."""
+        ...
+
     def search(
         self, name: str, vector: list[float], k: int, filters: dict | None = None
     ) -> list[SearchHit]:

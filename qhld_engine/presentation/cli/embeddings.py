@@ -20,7 +20,18 @@ def _service():
 def index(
     reference: str | None = typer.Option(
         None, "--reference", "-r",
-        help="Index only this initiative's speeches; omit to index all speeches."),
+        help="Index only this initiative's speeches (always re-indexed); "
+             "omit to index the whole corpus."),
+    index_all: bool = typer.Option(
+        False, "--all",
+        help="Re-index every speech, not just those missing from the collection. "
+             "Needed after chunking or embedding-model config changes; slow "
+             "(embeds the whole corpus). By default only new speeches are indexed."),
 ):
-    """Index speech passages into the vector store (all speeches, or one reference)."""
-    _service().execute([reference] if reference else None)
+    """Index speech passages into the vector store.
+
+    By default this is incremental: only speeches not already present in the
+    target (per-model) collection are embedded. Use ``--all`` to force a full
+    re-index, or ``--reference`` to (re)index a single initiative's speeches.
+    """
+    _service().execute([reference] if reference else None, incremental=not index_all)

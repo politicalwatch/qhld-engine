@@ -44,9 +44,25 @@ class IndexSpeeches:
         self.collection = collection_name(self.settings, self.dim)
         self.store.ensure_collection(self.collection, self.dim)
 
-    def execute(self, references=None):
-        speeches = (
-            Speeches.by_references(references) if references else Speeches.all())
+    def execute(self, references=None, incremental=True):
+        # Drain the Mongo cursor into memory before the slow embed/upsert loop.
+        # Iterating a live cursor while embedding each speech keeps it open for the
+        # whole run and trips MongoDB's idle-cursor timeout (CursorNotFound) on a
+        # full-corpus index. The drain itself is fast (find + validate, no embedding).
+        if references:
+            # A targeted re-index is always forced: the caller named these specific
+            # references, typically because their text was just re-extracted.
+            speeches = list(Speeches.by_references(references))
+        else:
+            speeches = list(Speeches.all())
+            if incremental:
+                indexed = self.store.distinct_values(self.collection, "speech_id")
+                total = len(speeches)
+                speeches = [s for s in speeches if s.id not in indexed]
+                log.info(
+                    f"Incremental: {len(speeches)} of {total} speeches not yet in "
+                    f"{self.collection} (pass --all to re-index the whole corpus)")
+        log.info(f"Indexing {len(speeches)} speeches into {self.collection}")
         for speech in speeches:
             self._index_speech(speech)
 

@@ -62,3 +62,18 @@ def test_upsert_empty_is_a_noop(adapter):
     adapter.ensure_collection("c", 3)
     adapter.upsert("c", [])  # must not raise
     assert adapter.search("c", [0.1, 0.2, 0.3], k=5) == []
+
+
+def test_distinct_values_returns_unique_payload_values(adapter):
+    adapter.ensure_collection("c", 3)
+    adapter.upsert("c", [
+        _point({"speech_id": "a", "lang": "es"}),
+        _point({"speech_id": "a", "lang": "gl"}),  # same speech, second block
+        _point({"speech_id": "b", "lang": "es"}),
+    ])
+    assert adapter.distinct_values("c", "speech_id") == {"a", "b"}
+
+
+def test_distinct_values_empty_collection(adapter):
+    adapter.ensure_collection("c", 3)
+    assert adapter.distinct_values("c", "speech_id") == set()

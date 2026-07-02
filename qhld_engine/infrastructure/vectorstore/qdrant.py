@@ -49,6 +49,24 @@ class QdrantAdapter(VectorStorePort):
             points_selector=models.Filter(must=[self._condition(key, value)]),
         )
 
+    def distinct_values(self, name: str, key: str) -> set:
+        values = set()
+        offset = None
+        while True:
+            records, offset = self.client.scroll(
+                collection_name=name,
+                with_payload=[key],
+                with_vectors=False,
+                limit=1000,
+                offset=offset,
+            )
+            for record in records:
+                if record.payload and key in record.payload:
+                    values.add(record.payload[key])
+            if offset is None:
+                break
+        return values
+
     def search(
         self, name: str, vector: list[float], k: int, filters: dict | None = None
     ) -> list[SearchHit]:

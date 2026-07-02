@@ -39,9 +39,10 @@ class _FakeEmbedder:
 
 
 class _FakeStore:
-    def __init__(self):
+    def __init__(self, indexed=()):
         self.calls = []
         self.upserts = []
+        self.indexed = set(indexed)
 
     def ensure_collection(self, name, dim):
         self.calls.append(("ensure", name, dim))
@@ -52,6 +53,10 @@ class _FakeStore:
     def upsert(self, name, points):
         self.calls.append(("upsert", name, points))
         self.upserts.append((name, points))
+
+    def distinct_values(self, name, key):
+        self.calls.append(("distinct", name, key))
+        return set(self.indexed)
 
 
 def _bilingual_speech():
@@ -137,3 +142,55 @@ def test_collection_override_is_respected():
         store=store,
     )
     assert service.collection == "my_speeches"
+
+
+def _speech(sid):
+    speech = _bilingual_speech()
+    speech.id = sid
+    return speech
+
+
+def _upserted_speech_ids(store):
+    return {p.payload["speech_id"] for _, points in store.upserts for p in points}
+
+
+def test_incremental_default_skips_already_indexed(monkeypatch):
+    store = _FakeStore(indexed={"sid1"})
+    monkeypatch.setattr(
+        mod.Speeches, "all", lambda: [_speech("sid1"), _speech("sid2")], raising=False)
+
+    service = IndexSpeeches(settings=_settings(), embedder=_FakeEmbedder(), store=store)
+    service.execute()  # no references, incremental default
+
+    # only the not-yet-indexed speech is embedded
+    assert _upserted_speech_ids(store) == {"sid2"}
+    # the already-indexed one is skipped entirely (not even deleted)
+    assert ("delete", service.collection, "speech_id", "sid1") not in store.calls
+    assert ("distinct", service.collection, "speech_id") in store.calls
+
+
+def test_index_all_reindexes_everything(monkeypatch):
+    store = _FakeStore(indexed={"sid1", "sid2"})
+    monkeypatch.setattr(
+        mod.Speeches, "all", lambda: [_speech("sid1"), _speech("sid2")], raising=False)
+
+    service = IndexSpeeches(settings=_settings(), embedder=_FakeEmbedder(), store=store)
+    service.execute(incremental=False)
+
+    # every speech is re-indexed despite already being present
+    assert _upserted_speech_ids(store) == {"sid1", "sid2"}
+    # the indexed set is not even consulted
+    assert not any(c[0] == "distinct" for c in store.calls)
+
+
+def test_targeted_reference_is_always_forced(monkeypatch):
+    """`-r` re-indexes the named references even when they are already present."""
+    store = _FakeStore(indexed={"sid1"})
+    monkeypatch.setattr(
+        mod.Speeches, "by_references", lambda refs: [_speech("sid1")], raising=False)
+
+    service = IndexSpeeches(settings=_settings(), embedder=_FakeEmbedder(), store=store)
+    service.execute(["172/000001"])  # incremental default, but references given
+
+    assert _upserted_speech_ids(store) == {"sid1"}
+    assert not any(c[0] == "distinct" for c in store.calls)
