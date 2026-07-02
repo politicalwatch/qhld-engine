@@ -3,9 +3,11 @@
 from uuid import uuid4
 
 import pytest
+from qdrant_client.http.exceptions import ResponseHandlingException
 
 from qhld_engine.domain.ports.vector_store import VectorPoint
 from qhld_engine.infrastructure.config.settings import Settings
+from qhld_engine.infrastructure.vectorstore import qdrant as qdrant_mod
 from qhld_engine.infrastructure.vectorstore.qdrant import QdrantAdapter
 
 pytestmark = pytest.mark.unit
@@ -126,3 +128,27 @@ def test_search_grouped_applies_exact_filter(adapter):
         "c", [0.1, 0.2, 0.3], group_by="speech_id", limit=10, group_size=3,
         filters={"lang": "gl"})
     assert [g.speech_id for g in groups] == ["B"]
+
+
+def test_retry_recovers_after_transient_disconnect(adapter, monkeypatch):
+    monkeypatch.setattr(qdrant_mod.time, "sleep", lambda *_: None)
+    calls = {"n": 0}
+
+    def flaky():
+        calls["n"] += 1
+        if calls["n"] < 3:
+            raise ResponseHandlingException(Exception("Server disconnected"))
+        return "ok"
+
+    assert adapter._retry(flaky) == "ok"
+    assert calls["n"] == 3  # failed twice, succeeded on the third
+
+
+def test_retry_raises_after_max_attempts(adapter, monkeypatch):
+    monkeypatch.setattr(qdrant_mod.time, "sleep", lambda *_: None)
+
+    def always_down():
+        raise ResponseHandlingException(Exception("down"))
+
+    with pytest.raises(ResponseHandlingException):
+        adapter._retry(always_down)
