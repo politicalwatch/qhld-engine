@@ -1,0 +1,71 @@
+{
+  "today": "2026-07-03",
+  "queries": [
+    {"id": "P1", "dimension": "topic", "query": "financiación autonómica",
+     "gold": {}, "gold_topic": "financiación autonómica"},
+    {"id": "P2", "dimension": "topic", "query": "debates sobre vivienda pública",
+     "gold": {}, "gold_topic": "vivienda pública"},
+
+    {"id": "P3", "dimension": "speaker", "query": "intervenciones de María Jesús Montero sobre financiación autonómica",
+     "gold": {"speaker": "Montero Cuadrado, María Jesús"}, "gold_topic": "financiación autonómica"},
+    {"id": "P4", "dimension": "speaker", "query": "qué ha dicho Santiago Abascal sobre inmigración",
+     "gold": {"speaker": "Abascal Conde, Santiago"}, "gold_topic": "inmigración"},
+    {"id": "P5", "dimension": "speaker", "query": "intervenciones de Pedro Sánchez",
+     "gold": {"speaker": "Sánchez Pérez-Castejón, Pedro"}, "gold_topic": ""},
+    {"id": "P6", "dimension": "speaker", "query": "discursos de Yolanda Díaz sobre reforma laboral",
+     "gold": {"speaker": "Díaz Pérez, Yolanda"}, "gold_topic": "reforma laboral"},
+
+    {"id": "P7", "dimension": "speaker+date", "query": "intervenciones de María Jesús Montero sobre financiación autonómica del último año",
+     "gold": {"speaker": "Montero Cuadrado, María Jesús", "date": {"gte": 20250703, "lte": 20260703}},
+     "gold_topic": "financiación autonómica"},
+    {"id": "P8", "dimension": "speaker+date", "query": "intervenciones de Pedro Sánchez en los últimos tres meses",
+     "gold": {"speaker": "Sánchez Pérez-Castejón, Pedro", "date": {"gte": 20260403, "lte": 20260703}},
+     "gold_topic": ""},
+
+    {"id": "P9", "dimension": "title", "query": "qué dijo la ministra de defensa sobre el rearme",
+     "gold": {"role": "Ministra de Defensa"}, "gold_topic": "rearme"},
+    {"id": "P10", "dimension": "title", "query": "intervenciones de la ministra de sanidad sobre salud mental",
+     "gold": {"role": "Ministra de Sanidad"}, "gold_topic": "salud mental"},
+    {"id": "P11", "dimension": "title", "query": "qué ha dicho el presidente del gobierno sobre los presupuestos",
+     "gold": {"role": "Presidente del Gobierno"}, "gold_topic": "presupuestos"},
+
+    {"id": "P12", "dimension": "group", "query": "intervenciones del PSOE sobre vivienda",
+     "gold": {"group": "GS"}, "gold_topic": "vivienda"},
+    {"id": "P13", "dimension": "group", "query": "qué ha dicho el PP sobre fiscalidad",
+     "gold": {"group": "GP"}, "gold_topic": "fiscalidad"},
+    {"id": "P14", "dimension": "group", "query": "intervenciones del Grupo Socialista sobre educación",
+     "gold": {"group": "GS"}, "gold_topic": "educación"},
+    {"id": "P15", "dimension": "group", "query": "discursos de Vox sobre seguridad",
+     "gold": {"group": "GVOX"}, "gold_topic": "seguridad"},
+
+    {"id": "P16", "dimension": "group+date", "query": "intervenciones del PP sobre economía en 2024",
+     "gold": {"group": "GP", "date": {"gte": 20240101, "lte": 20241231}}, "gold_topic": "economía"},
+
+    {"id": "P17", "dimension": "lang", "query": "intervenciones en gallego sobre pesca",
+     "gold": {"lang": "gl"}, "gold_topic": "pesca"},
+    {"id": "P18", "dimension": "lang", "query": "qué se ha dicho en catalán sobre financiación",
+     "gold": {"lang": "ca"}, "gold_topic": "financiación"},
+
+    {"id": "P19", "dimension": "title+date", "query": "intervenciones de la ministra de defensa sobre el rearme en los últimos seis meses",
+     "gold": {"role": "Ministra de Defensa", "date": {"gte": 20260103, "lte": 20260703}},
+     "gold_topic": "rearme"},
+
+    {"id": "H1", "dimension": "hard-speaker", "query": "abascal inmigración",
+     "gold": {"speaker": "Abascal Conde, Santiago"}, "gold_topic": "inmigración"},
+    {"id": "H2", "dimension": "hard-speaker", "query": "qué ha dicho tellado sobre los presupuestos",
+     "gold": {"speaker": "Tellado Filgueira, Miguel"}, "gold_topic": "presupuestos"},
+    {"id": "H3", "dimension": "hard-group", "query": "intervenciones de los socialistas sobre vivienda",
+     "gold": {"group": "GS"}, "gold_topic": "vivienda"},
+    {"id": "H4", "dimension": "hard-group", "query": "qué han dicho los populares sobre fiscalidad",
+     "gold": {"group": "GP"}, "gold_topic": "fiscalidad"},
+    {"id": "H5", "dimension": "hard-title", "query": "intervenciones del ministro de agricultura sobre la sequía",
+     "gold": {"role": "Ministro de Agricultura, Pesca y Alimentación"}, "gold_topic": "sequía"},
+    {"id": "H6", "dimension": "hard-date", "query": "intervenciones de Pedro Sánchez el año pasado",
+     "gold": {"speaker": "Sánchez Pérez-Castejón, Pedro", "date": {"gte": 20250101, "lte": 20251231}},
+     "gold_topic": ""},
+    {"id": "H7", "dimension": "hard-group", "query": "de qué ha hablado Vox sobre inmigración recientemente",
+     "gold": {"group": "GVOX"}, "gold_topic": "inmigración"},
+    {"id": "H8", "dimension": "hard-group", "query": "qué opina el psoe sobre la amnistía",
+     "gold": {"group": "GS"}, "gold_topic": "amnistía"}
+  ]
+}

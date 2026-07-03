@@ -47,6 +47,15 @@ dev = [
     "pytest==9.1.1",
     "testcontainers[mongodb]==4.14.2",
 ]
+# Baseline/eval-only tooling for the LLM-vs-rule-based query-parser comparison
+# (thesis). NOT on the product path — the rule-based parser lazy-imports these, so
+# production images built without this group never carry spaCy or the ~560MB model.
+# Re-run the comparison with `uv sync --group eval`.
+eval = [
+    "spacy>=3.8,<3.9",
+    "dateparser>=1.2,<2",
+    "es-core-news-lg @ https://github.com/explosion/spacy-models/releases/download/es_core_news_lg-3.8.0/es_core_news_lg-3.8.0-py3-none-any.whl",
+]
 
 [tool.pytest.ini_options]
 # Listed unit-first so the fast no-infra tests run before the container-backed ones.

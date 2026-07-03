@@ -46,6 +46,57 @@ def ab(
             _print_report(model, reranker, rows, hit_at, verbose)
 
 
+@app.command("parse")
+def parse(
+    parsers: str = typer.Option(
+        "llm,rule_based", "--parsers",
+        help="Comma-separated query parsers to compare ('llm', 'rule_based')."),
+    queryset: str = typer.Option(None, "--queryset", help="Path to a parse query-set JSON."),
+    verbose: bool = typer.Option(False, "--verbose", help="Dump predicted vs gold per query."),
+):
+    """Compare query parsers on the frozen parse set: per-slot P/R/F1, exact-match,
+    topic overlap and mean latency (LLM structured-output vs spaCy+dateparser)."""
+    from qhld_engine.application.evaluation.parse_benchmark import RunParseBenchmark
+
+    runner = RunParseBenchmark(queryset) if queryset else RunParseBenchmark()
+    typer.echo(
+        f"Parse query set: {len(runner.queries)} queries · today={runner.today.isoformat()} "
+        f"· parsers={_split(parsers)}")
+    for name in _split(parsers):
+        rows = runner.run(name)
+        _print_parse_report(name, rows, verbose)
+
+
+def _print_parse_report(name, rows, verbose):
+    from qhld_engine.domain.evaluation import parse_scoring
+
+    report = parse_scoring.score(rows)
+    typer.echo(f"\n=== parser: {name} ===")
+    if verbose:
+        for row in rows:
+            ok = "✓" if not any(
+                parse_scoring.slot_counts(row["pred_filters"], row["gold"], s)[1:] != (0, 0)
+                for s in parse_scoring.SLOTS) else "✗"
+            typer.echo(f"  {ok} {row['id']} {row['query']!r}")
+            typer.echo(f"      gold: {row['gold']}  topic={row.get('gold_topic')!r}")
+            typer.echo(f"      pred: {row['pred_filters']}  topic={row['pred_topic']!r}")
+    typer.echo(f"{'slot':<13}{'P':>7}{'R':>7}{'F1':>7}   tp/fp/fn")
+    for slot, m in report["slots"].items():
+        if m["tp"] + m["fp"] + m["fn"] == 0:
+            typer.echo(f"{slot:<13}{'n/a':>7}{'n/a':>7}{'n/a':>7}   (no cases)")
+            continue
+        typer.echo(
+            f"{slot:<13}{m['precision']:>7}{m['recall']:>7}{m['f1']:>7}   "
+            f"{m['tp']}/{m['fp']}/{m['fn']}")
+    micro = report["micro"]
+    typer.echo(
+        f"{'MICRO':<13}{micro['precision']:>7}{micro['recall']:>7}{micro['f1']:>7}   "
+        f"{micro['tp']}/{micro['fp']}/{micro['fn']}")
+    typer.echo(
+        f"  exact-match={report['exact_match']}  topic-F1={report['topic_f1']}  "
+        f"mean-latency={report['mean_latency']}s")
+
+
 def _print_report(model, reranker, rows, hit_at, verbose):
     from qhld_engine.domain.evaluation import scoring
 

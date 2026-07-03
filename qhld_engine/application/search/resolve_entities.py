@@ -29,6 +29,15 @@ _SPEAKER_THRESHOLD = 90
 _ROLE_THRESHOLD = 70      # "ministra de economía" ⊆ the full official title
 _GROUP_THRESHOLD = 80
 
+# Map the many ways a language can be named (or mis-coded by an LLM: "Gallego",
+# "cat") to the ISO code stored in the payload ``lang``. Payload uses es/ca/gl/eu.
+_LANG_ALIASES = {
+    "es": "es", "spa": "es", "castellano": "es", "español": "es", "espanol": "es",
+    "ca": "ca", "cat": "ca", "catalán": "ca", "catalan": "ca", "català": "ca",
+    "gl": "gl", "gal": "gl", "gallego": "gl", "galego": "gl",
+    "eu": "eu", "eus": "eu", "euskera": "eu", "euskara": "eu", "vasco": "eu", "vascuence": "eu",
+}
+
 
 @dataclass
 class Resolution:
@@ -58,11 +67,20 @@ class EntityResolver:
         if parsed.group_or_party:
             self._resolve_group(result, parsed.group_or_party)
         self._resolve_dates(result, parsed)
-        for passthrough in ("lang", "legislature"):
-            value = getattr(parsed, passthrough)
-            if value:
-                result.filters[passthrough] = value
+        if parsed.lang:
+            self._resolve_lang(result, parsed.lang)
+        if parsed.legislature:
+            result.filters["legislature"] = parsed.legislature
         return result
+
+    def _resolve_lang(self, result, raw):
+        code = _LANG_ALIASES.get(raw.strip().lower())
+        if code:
+            result.filters["lang"] = code
+            if code != raw:
+                result.notes.append(f"lang: '{raw}' → '{code}'")
+        else:
+            result.notes.append(f"lang: '{raw}' unresolved — not filtered")
 
     def _resolve_fuzzy(self, result, payload_key, raw, distinct_key, scorer, threshold):
         choices = [v for v in self._distinct(distinct_key) if v]

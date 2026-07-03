@@ -76,5 +76,17 @@ def test_lang_and_legislature_pass_through(resolver):
     assert r.filters["legislature"] == "15"
 
 
+def test_lang_names_and_variants_normalize_to_iso_code(resolver):
+    # LLMs often emit the language name or an off-code ("Gallego", "cat").
+    assert resolver.resolve(ParsedQuery(semantic_query="x", lang="Gallego")).filters["lang"] == "gl"
+    assert resolver.resolve(ParsedQuery(semantic_query="x", lang="cat")).filters["lang"] == "ca"
+    assert resolver.resolve(ParsedQuery(semantic_query="x", lang="euskera")).filters["lang"] == "eu"
+
+
+def test_unknown_lang_is_not_filtered(resolver):
+    r = resolver.resolve(ParsedQuery(semantic_query="x", lang="klingon"))
+    assert "lang" not in r.filters
+
+
 def test_no_filters_when_nothing_extracted(resolver):
     assert resolver.resolve(ParsedQuery(semantic_query="financiación")).filters == {}

@@ -30,5 +30,7 @@ def create_query_parser_from_env(settings: Settings | None = None) -> QueryParse
     return _PROVIDERS[provider](s)
 
 
-# Trigger adapter self-registration.
-from qhld_engine.infrastructure.queryparsing import llm  # noqa: E402, F401
+# Trigger adapter self-registration. rule_based has no heavy module-level imports
+# (spaCy/dateparser are lazy inside parse), so this stays cheap even without the
+# optional 'eval' dependency group installed.
+from qhld_engine.infrastructure.queryparsing import llm, rule_based  # noqa: E402, F401
