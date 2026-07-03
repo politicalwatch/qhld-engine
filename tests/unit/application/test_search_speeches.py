@@ -96,3 +96,73 @@ def test_search_grouped_no_filters_or_cursor_pass_none():
 
     assert store.called["filters"] is None
     assert store.called["exclude"] is None
+
+
+class _WideStore:
+    """Returns a fixed pool regardless of k, recording the k it was asked for."""
+
+    def __init__(self, pool):
+        self.pool = pool
+        self.k = None
+
+    def search(self, name, vector, k, filters=None):
+        self.k = k
+        return self.pool
+
+
+class _FakeReranker:
+    def __init__(self):
+        self.call = None
+
+    def rerank(self, query, hits, k):
+        self.call = (query, list(hits), k)
+        # reverse the pool and rescore, then trim — a visible reordering
+        rescored = [SearchHit(id=h.id, score=float(i), payload=h.payload)
+                    for i, h in enumerate(reversed(hits))]
+        return rescored[:k]
+
+
+def test_search_overfetches_and_reranks_when_reranker_set():
+    pool = [SearchHit(id=f"p{i}", score=1.0 - i / 10, payload={"text": f"t{i}"}) for i in range(6)]
+    store = _WideStore(pool)
+    reranker = _FakeReranker()
+    service = SearchSpeeches(
+        settings=_settings(), embedder=_FakeEmbedder(), store=store, reranker=reranker)
+
+    hits = service.search("q", k=3)
+
+    assert store.k == 50                      # over-fetched to reranker_top_n, not k
+    assert reranker.call[0] == "q" and reranker.call[2] == 3
+    assert [h.id for h in hits] == ["p5", "p4", "p3"]  # reranker's reversed top-3
+
+
+def test_reranker_none_by_default_keeps_baseline():
+    service = SearchSpeeches(settings=_settings(), embedder=_FakeEmbedder(), store=_FakeStore())
+    assert service.reranker is None           # noop provider => no reranking
+
+
+def test_search_grouped_reranks_highlights_and_resorts():
+    hi_a = [SearchHit(id="a1", score=0.5, payload={"text": "x"}),
+            SearchHit(id="a2", score=0.4, payload={"text": "y"})]
+    hi_b = [SearchHit(id="b1", score=0.9, payload={"text": "z"})]
+
+    class _Store:
+        def search_grouped(self, name, vector, group_by, limit, group_size,
+                           filters=None, exclude=None):
+            # A ranked first by the bi-encoder, B second
+            return [SpeechGroup(speech_id="A", score=0.5, highlights=hi_a),
+                    SpeechGroup(speech_id="B", score=0.9, highlights=hi_b)]
+
+    class _Promote:
+        # Gives group B a higher reranked score so it should overtake A
+        def rerank(self, query, hits, k):
+            score = 9.0 if hits[0].id == "b1" else 1.0
+            return [SearchHit(id=hits[0].id, score=score, payload=hits[0].payload)]
+
+    service = SearchSpeeches(
+        settings=_settings(), embedder=_FakeEmbedder(), store=_Store(), reranker=_Promote())
+
+    groups = service.search_grouped("q", page_size=2, highlights=1)
+
+    assert [g.speech_id for g in groups] == ["B", "A"]  # rerank promoted B
+    assert groups[0].score == 9.0                        # group score = best highlight

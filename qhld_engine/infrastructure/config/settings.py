@@ -62,6 +62,13 @@ class Settings(BaseSettings):
     speech_chunk_chars: int = 1200
     speech_chunk_overlap: int = 150
 
+    # Cross-encoder reranker (retrieval Lever 1). "noop" leaves bi-encoder order
+    # untouched (the clean baseline); any other provider over-fetches
+    # reranker_top_n passages and reorders them on (query, passage) relevance.
+    reranker_provider: str = "noop"
+    reranker_model: str = ""
+    reranker_top_n: int = 50
+
 
 @lru_cache
 def get_settings() -> Settings:

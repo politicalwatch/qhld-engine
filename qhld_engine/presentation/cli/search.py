@@ -23,9 +23,14 @@ def speeches(
     legislature: str | None = typer.Option(None, "--legislature", help="Filter by legislature."),
     lang: str | None = typer.Option(None, "--lang", help="Filter by language (es/ca/eu/gl)."),
     speaker: str | None = typer.Option(None, "--speaker", help="Filter by speaker."),
+    reranker: str | None = typer.Option(
+        None, "--reranker",
+        help="Cross-encoder model to rerank results (e.g. BAAI/bge-reranker-v2-m3); "
+             "omit for bi-encoder order only."),
 ):
     """Search speeches semantically and print the ranked hits."""
     from qhld_engine.application.search.search_speeches import SearchSpeeches
+    from qhld_engine.infrastructure.config.settings import get_settings
 
     filters = {
         "group": group,
@@ -33,7 +38,11 @@ def speeches(
         "lang": lang,
         "speaker": speaker,
     }
-    service = SearchSpeeches()
+    settings = get_settings()
+    if reranker:
+        settings = settings.model_copy(
+            update={"reranker_provider": "cross_encoder", "reranker_model": reranker})
+    service = SearchSpeeches(settings=settings)
     if grouped:
         _print_grouped(
             service.search_grouped(query, page_size=k, highlights=highlights, filters=filters))

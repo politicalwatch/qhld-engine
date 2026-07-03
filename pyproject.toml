@@ -28,6 +28,7 @@ dependencies = [
     "qhld-tasks",
     "py3langid==0.3.0",
     "qdrant-client==1.18.0",
+    "sentence-transformers>=3.3.0",
 ]
 
 [project.scripts]
