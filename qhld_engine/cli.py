@@ -10,7 +10,7 @@ free.
 import typer
 
 from qhld_engine.presentation.cli import (
-    debug, embeddings, extractor, search, tagger, untagger,
+    debug, embeddings, evaluation, extractor, search, tagger, untagger,
 )
 
 app = typer.Typer(
@@ -24,6 +24,7 @@ app.add_typer(tagger.app, name="tagger")
 app.add_typer(untagger.app, name="untagger")
 app.add_typer(embeddings.app, name="embeddings")
 app.add_typer(search.app, name="search")
+app.add_typer(evaluation.app, name="eval")
 app.add_typer(debug.app, name="debug")
 
 
