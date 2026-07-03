@@ -55,8 +55,11 @@ class VectorStorePort(Protocol):
     def search(
         self, name: str, vector: list[float], k: int, filters: dict | None = None
     ) -> list[SearchHit]:
-        """Return the ``k`` nearest points, optionally filtered by exact payload
-        matches given as ``{key: value}``."""
+        """Return the ``k`` nearest points, optionally filtered by payload.
+
+        ``filters`` is ``{key: value}``: a scalar value is an exact match; a dict
+        value is a numeric range with ``gte``/``gt``/``lte``/``lt`` keys, e.g.
+        ``{"date": {"gte": 20250403, "lte": 20250703}}`` (``date`` is a YYYYMMDD int)."""
         ...
 
     def search_grouped(
@@ -70,7 +73,8 @@ class VectorStorePort(Protocol):
         exclude: set | None = None,
     ) -> list["SpeechGroup"]:
         """Return the ``limit`` best groups (by payload ``group_by``), each with up
-        to ``group_size`` passages as highlights. ``filters`` are exact payload
-        matches; ``exclude`` is a set of ``group_by`` values to omit — used as a
-        stateless pagination cursor ("load more" = re-query excluding seen ids)."""
+        to ``group_size`` passages as highlights. ``filters`` follow the same
+        scalar-or-range form as ``search``; ``exclude`` is a set of ``group_by``
+        values to omit — a stateless pagination cursor ("load more" = re-query
+        excluding seen ids)."""
         ...

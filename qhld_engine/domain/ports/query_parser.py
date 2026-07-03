@@ -1,0 +1,66 @@
+"""Port for query understanding: parse a natural-language search query into
+structured filters plus the residual semantic query.
+
+``ParsedQuery`` is a Pydantic model so it doubles as the LLM structured-output
+schema (the LLM adapter binds it via ``with_structured_output``) and the port's
+return type. The field descriptions are the extraction spec the LLM reads, so
+keep them precise.
+
+Entity *resolution* (fuzzy-matching ``speaker`` to a corpus value, a party name
+to a group token, ISO dates to the YYYYMMDD range) is a separate application
+concern — this port only extracts what the user asked for, verbatim-ish.
+"""
+
+from datetime import date
+from typing import Protocol
+
+from pydantic import BaseModel, Field
+
+
+class ParsedQuery(BaseModel):
+    semantic_query: str = Field(
+        description=(
+            "The thematic content to search for — what the speech is ABOUT — with "
+            "speaker, group/party and date constraints removed. If a person is only "
+            "MENTIONED in the speech (not the speaker), keep their name here. Empty "
+            "string if the query is purely a filter with no topic."))
+    speaker: str | None = Field(
+        default=None,
+        description=(
+            "Person named as the one who SPEAKS/intervenes, given by proper name "
+            "(e.g. 'María Jesús Montero'). Null if the speaker is only referred to "
+            "by office/title, or if no speaker is specified."))
+    speaker_title: str | None = Field(
+        default=None,
+        description=(
+            "The speaker's office or role when referred to by title instead of name "
+            "(e.g. 'ministra de economía', 'presidente del gobierno'). Null otherwise."))
+    group_or_party: str | None = Field(
+        default=None,
+        description=(
+            "Parliamentary group or political party named as a filter (e.g. 'PSOE', "
+            "'Grupo Socialista', 'Partido Popular'). Null if none."))
+    date_from: str | None = Field(
+        default=None,
+        description=(
+            "Start of the date range in ISO format YYYY-MM-DD. Resolve relative "
+            "expressions ('el último año', 'últimos tres meses', 'en 2024') against "
+            "the provided current date. Null if the query has no time constraint."))
+    date_to: str | None = Field(
+        default=None,
+        description="End of the date range in ISO format YYYY-MM-DD. Null if open-ended.")
+    lang: str | None = Field(
+        default=None,
+        description=(
+            "Language code (es/ca/gl/eu) only if the user explicitly asks for a "
+            "language. Null otherwise."))
+    legislature: str | None = Field(
+        default=None,
+        description="Legislature number only if explicitly stated. Null otherwise.")
+
+
+class QueryParserPort(Protocol):
+    def parse(self, query: str, today: date) -> ParsedQuery:
+        """Extract structured filters + residual semantic query from ``query``.
+        ``today`` anchors relative-date resolution (injected, never a wall-clock)."""
+        ...

@@ -49,6 +49,43 @@ def test_search_applies_payload_filter(adapter):
     assert [h.payload["speech_id"] for h in hits] == ["a"]
 
 
+def test_search_applies_numeric_range_filter(adapter):
+    adapter.ensure_collection("c", 3)
+    adapter.upsert("c", [
+        _point({"speech_id": "old", "date": 20240101}),
+        _point({"speech_id": "mid", "date": 20250501}),
+        _point({"speech_id": "new", "date": 20250901}),
+    ])
+    hits = adapter.search(
+        "c", [0.1, 0.2, 0.3], k=5, filters={"date": {"gte": 20250101, "lte": 20250701}})
+    assert [h.payload["speech_id"] for h in hits] == ["mid"]
+
+
+def test_search_combines_range_and_exact_filters(adapter):
+    adapter.ensure_collection("c", 3)
+    adapter.upsert("c", [
+        _point({"speech_id": "a", "date": 20250501, "lang": "es"}),
+        _point({"speech_id": "b", "date": 20250501, "lang": "gl"}),
+        _point({"speech_id": "c", "date": 20240101, "lang": "es"}),
+    ])
+    hits = adapter.search(
+        "c", [0.1, 0.2, 0.3], k=5,
+        filters={"date": {"gte": 20250101}, "lang": "es"})
+    assert [h.payload["speech_id"] for h in hits] == ["a"]
+
+
+def test_search_grouped_applies_range_filter(adapter):
+    adapter.ensure_collection("c", 3)
+    adapter.upsert("c", [
+        _point({"speech_id": "A", "date": 20250901}),
+        _point({"speech_id": "B", "date": 20240101}),
+    ])
+    groups = adapter.search_grouped(
+        "c", [0.1, 0.2, 0.3], group_by="speech_id", limit=10, group_size=3,
+        filters={"date": {"gte": 20250101}})
+    assert [g.speech_id for g in groups] == ["A"]
+
+
 def test_delete_by_removes_matching_points(adapter):
     adapter.ensure_collection("c", 3)
     adapter.upsert("c", [

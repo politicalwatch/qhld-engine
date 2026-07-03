@@ -13,6 +13,11 @@ def speeches(
     query: str = typer.Argument(..., help="Natural-language query."),
     k: int = typer.Option(
         10, "--k", help="Number of results (passages, or speeches with --grouped)."),
+    natural: bool = typer.Option(
+        False, "--natural",
+        help="Parse the query as natural language (speaker/group/party/dates → "
+             "structured filters + a residual topic) instead of using the manual "
+             "--group/--speaker/... flags. Echoes what was understood."),
     grouped: bool = typer.Option(
         False, "--grouped",
         help="Return distinct speeches, each with its top matching passages as "
@@ -29,8 +34,25 @@ def speeches(
              "omit for bi-encoder order only."),
 ):
     """Search speeches semantically and print the ranked hits."""
-    from qhld_engine.application.search.search_speeches import SearchSpeeches
     from qhld_engine.infrastructure.config.settings import get_settings
+
+    settings = get_settings()
+    if reranker:
+        settings = settings.model_copy(
+            update={"reranker_provider": "cross_encoder", "reranker_model": reranker})
+
+    if natural:
+        from datetime import date
+
+        from qhld_engine.application.search.natural_search import NaturalSearchSpeeches
+
+        result = NaturalSearchSpeeches(settings=settings).execute(
+            query, today=date.today(), k=k, grouped=grouped, highlights=highlights)
+        _print_parse(result)
+        _print_grouped(result.hits) if grouped else _print_hits(result.hits)
+        return
+
+    from qhld_engine.application.search.search_speeches import SearchSpeeches
 
     filters = {
         "group": group,
@@ -38,16 +60,22 @@ def speeches(
         "lang": lang,
         "speaker": speaker,
     }
-    settings = get_settings()
-    if reranker:
-        settings = settings.model_copy(
-            update={"reranker_provider": "cross_encoder", "reranker_model": reranker})
     service = SearchSpeeches(settings=settings)
     if grouped:
         _print_grouped(
             service.search_grouped(query, page_size=k, highlights=highlights, filters=filters))
     else:
         _print_hits(service.search(query, k=k, filters=filters))
+
+
+def _print_parse(result):
+    """Show what the natural-language parser understood, so raw-vs-parsed is
+    directly comparable on the same command."""
+    typer.echo(f"› semantic query: {result.semantic_query!r}")
+    typer.echo(f"› filters: {result.resolution.filters or '(none)'}")
+    for note in result.resolution.notes:
+        typer.echo(f"    - {note}")
+    typer.echo("")
 
 
 def _snippet(payload, length=240):

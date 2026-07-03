@@ -62,6 +62,14 @@ class Settings(BaseSettings):
     speech_chunk_chars: int = 1200
     speech_chunk_overlap: int = 150
 
+    # Query understanding: parse a NL query into structured
+    # filters + a residual semantic query. Decoupled from the main llm_* so the
+    # parser can use a different model than any future answer-synthesis; empty
+    # provider/model fall back to llm_provider/llm_model.
+    query_parser_provider: str = "llm"
+    query_parser_llm_provider: str = ""
+    query_parser_llm_model: str = ""
+
     # Cross-encoder reranker (retrieval Lever 1). "noop" leaves bi-encoder order
     # untouched (the clean baseline); any other provider over-fetches
     # reranker_top_n passages and reorders them on (query, passage) relevance.

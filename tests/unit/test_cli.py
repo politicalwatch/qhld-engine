@@ -206,6 +206,34 @@ def test_search_grouped_flag_calls_grouped(monkeypatch):
     assert "172/000001" in result.output
 
 
+def test_search_natural_flag_routes_to_natural_service(monkeypatch):
+    from qhld_engine.application.search.natural_search import NaturalResult
+    from qhld_engine.application.search.resolve_entities import Resolution
+    from qhld_engine.domain.ports.query_parser import ParsedQuery
+
+    svc = _patch_class(
+        monkeypatch, "qhld_engine.application.search.natural_search.NaturalSearchSpeeches")
+    svc.execute.return_value = NaturalResult(
+        parsed=ParsedQuery(semantic_query="financiación autonómica"),
+        resolution=Resolution(
+            filters={"speaker": "Montero Cuadrado, María Jesús"},
+            notes=["speaker: 'Montero' → 'Montero Cuadrado, María Jesús' (95)"]),
+        semantic_query="financiación autonómica",
+        hits=[SearchHit(id="p1", score=0.7, payload={
+            "speaker": "Montero", "reference": "172/000006", "lang": "es", "text": "hola"})])
+    result = runner.invoke(app, [
+        "search", "speeches",
+        "intervenciones de Montero sobre financiación del último año", "--natural", "--k", "5"])
+    assert result.exit_code == 0, result.output
+    svc.execute.assert_called_once()
+    args, kwargs = svc.execute.call_args
+    assert args[0].startswith("intervenciones de Montero")
+    assert kwargs["k"] == 5 and kwargs["grouped"] is False
+    assert "financiación autonómica" in result.output   # residual topic echoed
+    assert "Montero Cuadrado" in result.output           # resolved filter echoed
+    assert "172/000006" in result.output                 # hit printed
+
+
 # --- debug -----------------------------------------------------------------
 
 def test_debug_generate_alert(monkeypatch):

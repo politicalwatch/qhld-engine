@@ -113,7 +113,7 @@ class QdrantAdapter(VectorStorePort):
         filters: dict | None = None,
         exclude: set | None = None,
     ) -> list[SpeechGroup]:
-        must = [self._condition(key, value) for key, value in (filters or {}).items()]
+        must = self._build_conditions(filters)
         must_not = (
             [models.FieldCondition(key=group_by, match=models.MatchAny(any=list(exclude)))]
             if exclude
@@ -148,10 +148,8 @@ class QdrantAdapter(VectorStorePort):
     def search(
         self, name: str, vector: list[float], k: int, filters: dict | None = None
     ) -> list[SearchHit]:
-        query_filter = None
-        if filters:
-            query_filter = models.Filter(
-                must=[self._condition(key, value) for key, value in filters.items()])
+        must = self._build_conditions(filters)
+        query_filter = models.Filter(must=must) if must else None
         response = self._retry(lambda: self.client.query_points(
             collection_name=name,
             query=vector,
@@ -164,8 +162,19 @@ class QdrantAdapter(VectorStorePort):
             for point in response.points
         ]
 
+    @classmethod
+    def _build_conditions(cls, filters: dict | None) -> list[models.FieldCondition]:
+        """Translate a ``{key: value}`` filter dict into Qdrant conditions. A scalar
+        value is an exact ``MatchValue``; a dict value is a numeric ``Range`` whose
+        keys are ``gte``/``gt``/``lte``/``lt`` (used for the ``date`` YYYYMMDD int)."""
+        return [cls._condition(key, value) for key, value in (filters or {}).items()]
+
     @staticmethod
     def _condition(key: str, value) -> models.FieldCondition:
+        if isinstance(value, dict):
+            allowed = {"gte", "gt", "lte", "lt"}
+            bounds = {k: v for k, v in value.items() if k in allowed}
+            return models.FieldCondition(key=key, range=models.Range(**bounds))
         return models.FieldCondition(key=key, match=models.MatchValue(value=value))
 
 
