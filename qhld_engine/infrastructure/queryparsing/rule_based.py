@@ -1,4 +1,4 @@
-"""Rule-based query parser — the thesis baseline against the LLM parser.
+"""Rule-based query parser — the baseline against the LLM parser.
 
 A conventional NLP pipeline: spaCy ``es_core_news_lg`` NER (PER → speaker,
 ORG/MISC → group/party) + light regex for titles/languages/legislature + a

@@ -3,7 +3,7 @@
 Adapters self-register a ``create(settings)`` callable under a provider name; the
 factory dispatches on ``settings.query_parser_provider``. "llm" uses structured
 output from a chat model (the product path); a rule-based baseline (spaCy +
-dateparser) registers here later for the thesis comparison.
+dateparser) registers here later for the comparison.
 """
 
 from qhld_engine.domain.ports.query_parser import QueryParserPort

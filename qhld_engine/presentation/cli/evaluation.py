@@ -1,11 +1,15 @@
-"""`qhld eval` — semantic-search A/B benchmark CLI.
+"""`qhld eval` — A/B benchmark CLI.
 
-Driving adapter over the ``RunBenchmark`` application service. Runs the frozen
-query set across an embedding-model x reranker grid and prints rank / MRR /
-hit@k / recall@k / MAP per dimension. Run in-container (repo volume-mounted),
-where ``Settings`` already reaches Qdrant + ollama:
+Two sibling benchmarks, one per task:
+- ``retrieval`` — semantic search across an embedding-model x reranker grid
+  (rank / MRR / hit@k / recall@k / MAP), over ``RunBenchmark``.
+- ``parse`` — the NL query parser across LLMs / rule-based (per-slot P/R/F1,
+  cost + latency via LangSmith), over ``RunParseBenchmark``.
 
-    docker exec qhld-engine qhld eval ab \\
+Run in-container (repo volume-mounted), where ``Settings`` already reaches
+Qdrant + ollama:
+
+    docker exec qhld-engine qhld eval retrieval \\
         --models granite-embedding:278m,bge-m3:567m --rerankers none
 """
 
@@ -13,7 +17,7 @@ import typer
 
 app = typer.Typer(
     name="eval",
-    help="A/B benchmark semantic search across embedding models and rerankers.",
+    help="A/B benchmarks: retrieval (embedding x reranker) and parse (query parser).",
     no_args_is_help=True,
 )
 
@@ -22,8 +26,8 @@ def _split(value):
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
-@app.command("ab")
-def ab(
+@app.command("retrieval")
+def retrieval(
     models: str = typer.Option(..., "--models", help="Comma-separated ollama embedding tags."),
     rerankers: str = typer.Option("none", "--rerankers", help="Comma-separated rerankers ('none' = bi-encoder only)."),
     k: int = typer.Option(10, "--k", help="Retrieval depth per query."),
@@ -50,21 +54,124 @@ def ab(
 def parse(
     parsers: str = typer.Option(
         "llm,rule_based", "--parsers",
-        help="Comma-separated query parsers to compare ('llm', 'rule_based')."),
+        help="Comma-separated query parsers to compare ('llm', 'rule_based'). "
+             "Ignored when --models is given."),
+    models: str = typer.Option(
+        None, "--models",
+        help="Comma-separated 'provider:model' LLM specs to A/B the 'llm' parser over "
+             "(e.g. 'ollama:gpt-oss:20b,openai:gpt-5.4-nano-2026-03-17'). Split on the "
+             "FIRST colon, so ollama tags keep theirs. LangSmith traces every run when "
+             "LANGSMITH_TRACING is set, grouped by model."),
+    repeats: int = typer.Option(
+        1, "--repeats", min=1,
+        help="Runs per model; the summary reports the median of each metric to smooth "
+             "latency noise (results are otherwise ~stable at temperature 0)."),
+    baseline: bool = typer.Option(
+        True, "--baseline/--no-baseline",
+        help="In --models mode, also run the rule_based parser as a $0/fast reference."),
     queryset: str = typer.Option(None, "--queryset", help="Path to a parse query-set JSON."),
     verbose: bool = typer.Option(False, "--verbose", help="Dump predicted vs gold per query."),
 ):
     """Compare query parsers on the frozen parse set: per-slot P/R/F1, exact-match,
-    topic overlap and mean latency (LLM structured-output vs spaCy+dateparser)."""
+    topic overlap and mean latency (LLM structured-output vs spaCy+dateparser).
+
+    With --models, sweeps the 'llm' parser across several LLMs and prints a median
+    comparison summary; token counts + $ cost land in LangSmith (project 'qhld')."""
     from qhld_engine.application.evaluation.parse_benchmark import RunParseBenchmark
 
     runner = RunParseBenchmark(queryset) if queryset else RunParseBenchmark()
+
+    if not models:
+        typer.echo(
+            f"Parse query set: {len(runner.queries)} queries · today={runner.today.isoformat()} "
+            f"· parsers={_split(parsers)}")
+        for name in _split(parsers):
+            rows = runner.run(name)
+            _print_parse_report(name, rows, verbose)
+        return
+
+    specs = _parse_models(models)
     typer.echo(
-        f"Parse query set: {len(runner.queries)} queries · today={runner.today.isoformat()} "
-        f"· parsers={_split(parsers)}")
-    for name in _split(parsers):
-        rows = runner.run(name)
-        _print_parse_report(name, rows, verbose)
+        f"Parse A/B · {len(runner.queries)} queries · today={runner.today.isoformat()} "
+        f"· repeats={repeats} · models={[label for _, _, label in specs]}"
+        + (" · +rule_based" if baseline else ""))
+    summary = []
+    for provider, model, label in specs:
+        try:
+            first_rows, median = _run_scored(runner, "llm", provider, model, repeats)
+        except Exception as exc:  # noqa: BLE001 - one bad model must not sink the sweep
+            typer.echo(f"\n=== {label}: FAILED ({type(exc).__name__}: {exc}) — skipped ===")
+            continue
+        _print_parse_report(label, first_rows, verbose)
+        summary.append((label, median))
+    if baseline:
+        try:
+            first_rows, median = _run_scored(runner, "rule_based", None, None, repeats)
+            _print_parse_report("rule_based", first_rows, verbose)
+            summary.append(("rule_based", median))
+        except ImportError:
+            # spaCy/dateparser are the optional `eval` group, absent in the engine
+            # container. Don't discard the (already-run) LLM results — skip + note.
+            typer.echo(
+                "\n[skipped rule_based baseline: `eval` group not installed here "
+                "— run on host with `uv run --group eval`, or pass --no-baseline]")
+    _print_parse_summary(summary, repeats)
+
+
+def _parse_models(value):
+    """Parse 'provider:model' specs into (provider, model, label) triples, splitting on
+    the FIRST colon so ollama tags like 'gpt-oss:20b' keep their colon."""
+    specs = []
+    for item in _split(value):
+        if ":" not in item:
+            raise typer.BadParameter(
+                f"model spec {item!r} must be 'provider:model' (e.g. 'ollama:gpt-oss:20b')")
+        provider, model = item.split(":", 1)
+        specs.append((provider.strip(), model.strip(), item))
+    return specs
+
+
+def _run_scored(runner, parser_name, provider, model, repeats):
+    """Run a parser ``repeats`` times; return (first-pass rows, median-metrics dict)."""
+    from qhld_engine.domain.evaluation import parse_scoring
+
+    passes = []
+    first_rows = None
+    for i in range(repeats):
+        rows = runner.run(parser_name, llm_provider=provider, llm_model=model)
+        if i == 0:
+            first_rows = rows
+        report = parse_scoring.score(rows)
+        passes.append({
+            "micro_f1": report["micro"]["f1"],
+            "exact_match": report["exact_match"],
+            "topic_f1": report["topic_f1"],
+            "mean_latency": report["mean_latency"],
+            "parse_fail": sum(1 for r in rows if r.get("parse_error")),
+        })
+    median = {key: _median([p[key] for p in passes]) for key in passes[0]}
+    return first_rows, median
+
+
+def _median(values):
+    ordered = sorted(values)
+    n = len(ordered)
+    mid = n // 2
+    if n % 2:
+        return ordered[mid]
+    return round((ordered[mid - 1] + ordered[mid]) / 2, 4)
+
+
+def _print_parse_summary(summary, repeats):
+    plural = "s" if repeats > 1 else ""
+    typer.echo(f"\n=== summary (median of {repeats} run{plural}) ===")
+    typer.echo(
+        f"{'model':<44}{'micro-F1':>9}{'exact':>8}{'topic-F1':>9}"
+        f"{'latency(s)':>12}{'fail':>6}")
+    for label, m in summary:
+        typer.echo(
+            f"{label:<44}{m['micro_f1']:>9}{m['exact_match']:>8}"
+            f"{m['topic_f1']:>9}{m['mean_latency']:>12}{m['parse_fail']:>6}")
 
 
 def _print_parse_report(name, rows, verbose):
@@ -95,6 +202,12 @@ def _print_parse_report(name, rows, verbose):
     typer.echo(
         f"  exact-match={report['exact_match']}  topic-F1={report['topic_f1']}  "
         f"mean-latency={report['mean_latency']}s")
+    fails = sum(1 for row in rows if row.get("parse_error"))
+    if fails:
+        kinds = sorted({row["parse_error"] for row in rows if row.get("parse_error")})
+        typer.echo(
+            f"  parse-failures={fails}/{len(rows)} ({', '.join(kinds)}) "
+            f"— counted as empty predictions")
 
 
 def _print_report(model, reranker, rows, hit_at, verbose):

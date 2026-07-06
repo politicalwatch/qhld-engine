@@ -1,4 +1,4 @@
-"""Benchmark service for the LLM-vs-rule-based query-parser comparison (thesis).
+"""Benchmark service for the LLM-vs-rule-based query-parser comparison.
 
 For each parser it runs the frozen parse query set, times ``parse``, resolves the
 extracted fields through the *shared* ``EntityResolver`` (so the metric isolates
@@ -41,14 +41,29 @@ class RunParseBenchmark:
         self.settings = settings or get_settings()
         self._resolver = None
 
-    def run(self, parser_name):
-        """Return a scored row per query for one parser ('llm' / 'rule_based')."""
-        parser = self._parser(parser_name)
+    def run(self, parser_name, llm_provider=None, llm_model=None):
+        """Return a scored row per query for one parser ('llm' / 'rule_based').
+
+        For the ``llm`` parser, ``llm_provider`` / ``llm_model`` override the
+        query-parser model for this run (used by the ``--models`` A/B sweep) and are
+        ignored by ``rule_based``.
+        """
+        from qhld_engine.domain.ports.query_parser import ParsedQuery
+
+        parser = self._parser(parser_name, llm_provider, llm_model)
         resolver = self._resolver_obj()
         rows = []
         for entry in self.queries:
             start = time.perf_counter()
-            parsed = parser.parse(entry["query"], self.today)
+            try:
+                parsed = parser.parse(entry["query"], self.today)
+                parse_error = None
+            except Exception as exc:  # noqa: BLE001
+                # A model that can't emit schema-valid output (e.g. prose instead of
+                # JSON) must not abort the whole A/B — count it as a failed extraction
+                # (empty prediction => scored as misses) and record the error.
+                parsed = ParsedQuery(semantic_query="")
+                parse_error = type(exc).__name__
             latency = time.perf_counter() - start
             resolution = resolver.resolve(parsed)
             rows.append({
@@ -57,14 +72,19 @@ class RunParseBenchmark:
                 "pred_topic": parsed.semantic_query,
                 "notes": resolution.notes,
                 "latency": latency,
+                "parse_error": parse_error,
             })
         return rows
 
-    def _parser(self, name):
+    def _parser(self, name, llm_provider=None, llm_model=None):
         from qhld_engine.infrastructure.queryparsing.factory import create_query_parser_from_env
 
-        return create_query_parser_from_env(
-            self.settings.model_copy(update={"query_parser_provider": name}))
+        update = {"query_parser_provider": name}
+        if llm_provider:
+            update["query_parser_llm_provider"] = llm_provider
+        if llm_model:
+            update["query_parser_llm_model"] = llm_model
+        return create_query_parser_from_env(self.settings.model_copy(update=update))
 
     def _resolver_obj(self):
         """The shared resolver, bound to the target collection's corpus values and

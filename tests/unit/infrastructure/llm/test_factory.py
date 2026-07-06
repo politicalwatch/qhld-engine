@@ -56,6 +56,22 @@ def test_all_llm_providers_registered():
     )
 
 
+def test_anthropic_omits_temperature_for_reasoning_models():
+    # Claude 5 family / Opus 4.7-4.8 reject sampling params with a 400 — the
+    # adapter must not send temperature for them.
+    llm = create_llm_from_env(
+        _settings(llm_provider="anthropic", llm_model="claude-sonnet-5",
+                  llm_temperature=0.0, anthropic_api_key="x"))
+    assert llm.temperature is None
+
+
+def test_anthropic_keeps_temperature_for_older_models():
+    llm = create_llm_from_env(
+        _settings(llm_provider="anthropic", llm_model="claude-haiku-4-5",
+                  llm_temperature=0.0, anthropic_api_key="x"))
+    assert llm.temperature == pytest.approx(0.0)
+
+
 @pytest.mark.parametrize(
     "provider, expected_cls",
     [
