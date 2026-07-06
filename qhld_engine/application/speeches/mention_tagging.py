@@ -10,7 +10,13 @@ Spanish translation alongside the original, so one Spanish model covers the whol
 corpus and we never NER Basque/Galician/Catalan (where the model is weak).
 """
 
-from qhld_engine.domain.speeches.mentions import build_deputy_index, resolve_mentions
+from qhld_engine.domain.speeches.mentions import (
+    COMMON_WORD_SURNAMES,
+    NON_DEPUTY_SURNAMES,
+    build_deputy_index,
+    context_excluded_surnames,
+    resolve_mentions,
+)
 from qhld_engine.infrastructure.config.settings import get_settings
 from qhld_engine.infrastructure.ner.factory import create_ner_from_env
 
@@ -29,9 +35,17 @@ class MentionTagger:
         self._threshold = self.settings.mention_match_threshold
 
     def tag(self, text: str):
-        """Return the ``Mention``s named in ``text`` (already the Spanish block)."""
+        """Return the ``Mention``s named in ``text`` (already the Spanish block).
+
+        Spans that name a flagged non-deputy are dropped: a fixed denylist of famous
+        non-deputies (ex-PMs, autonomous-community presidents) plus common-word false
+        friends, and any surname the speech's own wording marks as a non-deputy office
+        holder (magistrate/judge/prosecutor/ex-president/Franco-the-dictator)."""
         spans = self._ner.person_spans(text)
-        return resolve_mentions(spans, self._index, self._threshold)
+        excluded = (
+            NON_DEPUTY_SURNAMES | COMMON_WORD_SURNAMES
+            | context_excluded_surnames(text))
+        return resolve_mentions(spans, self._index, self._threshold, excluded)
 
     def tag_speech(self, speech):
         """Convenience: tag a ``Speech`` from its stored Spanish block(s)."""

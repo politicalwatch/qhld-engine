@@ -29,7 +29,7 @@ from tipi_data.models.speech import Mention
 # small: role words (ministro/presidente…) are left in — token_set_ratio tolerates
 # the extra token, whereas over-stripping risks matching a bare title to a name.
 _HONORIFICS = {
-    "el", "la", "los", "las", "un", "una",
+    "el", "la", "los", "las", "un", "una", "al",
     "sr", "sra", "srs", "sras", "señor", "señora", "señores", "señoras",
     "don", "doña", "su", "señoria", "señorias", "señoría", "señorías",
     "excelentisimo", "excelentisima", "excelentísimo", "excelentísima",
@@ -37,6 +37,69 @@ _HONORIFICS = {
 }
 _PUNCT_RE = re.compile(r"[^\w\s-]", re.UNICODE)
 _MIN_LEN = 3
+
+# Surnames that fuzzy-match a real deputy but, in this national-Congress corpus, denote
+# a famous non-deputy who happens to share the surname. Every entry MUST collide with a
+# deputy — otherwise it is dead weight: a surname with no deputy homonym (a foreign
+# leader, a non-colliding ex-president) matches nothing and is already dropped by the
+# match threshold, and a surname several deputies share is dropped by the ambiguity
+# guard. So only DISTINCTIVE, actually-colliding surnames earn a place here.
+NON_DEPUTY_SURNAMES = frozenset({
+    "aznar",     # José María Aznar (ex-PM) vs the deputy Aznar Teruel
+    "suárez",    # Adolfo Suárez (ex-PM) vs the deputy Rodríguez Suárez (2nd surname)
+    "clavijo",   # Fernando Clavijo (presidente de Canarias) vs Gamarra Ruiz-Clavijo (2nd surname)
+})
+
+# Common words spaCy sometimes tags as a person because they are also borne as a
+# surname (typically sentence-initial "Bueno, …"). They never name the deputy.
+COMMON_WORD_SURNAMES = frozenset({"bueno"})
+
+
+def _tokens(text: str) -> set[str]:
+    """Lowercase word tokens, split on whitespace and hyphens, keeping those long
+    enough to discriminate (so "de"/"la" are ignored)."""
+    return {t for t in re.split(r"[\s-]+", text.lower()) if len(t) >= _MIN_LEN}
+
+
+def _first_surname_tokens(name: str) -> set[str]:
+    """The tokens of a deputy's FIRST surname (the first whitespace element before the
+    comma; hyphenated compounds like "Grande-Marlaska" split into both parts) — the
+    core of their identity, used to tell a real mention from a homonym."""
+    surname_part = name.partition(",")[0]
+    first = surname_part.split()[0] if surname_part.split() else ""
+    return _tokens(first)
+
+
+# Offices a sitting deputy would not simultaneously hold: when the text introduces a
+# person by one of these, the person named is not the deputy who happens to share the
+# surname. Scanned per speech so the exclusion is scoped to that speech (a cue anywhere
+# in it disqualifies the surname throughout — e.g. "expresidente Aznar" ⇒ every "Aznar").
+_CONTEXT_CUE_PATTERNS = (
+    # "<Apellido>, (actual) magistrado" / "magistrado(a) <Apellido>"
+    r"([a-zá-úñ]+),?\s+(?:actual\s+)?magistrad[oa]",
+    r"magistrad[oa]\s+(?:del?\s+\w+\s+)*([a-zá-úñ]+)",
+    # "(el) juez/jueza <Apellido>", "(el) fiscal (general) <Apellido>"
+    r"jueza?\s+([a-zá-úñ]+)",
+    r"fiscal(?:\s+general)?\s+([a-zá-úñ]+)",
+    # "expresidente/-a (del Gobierno) <Apellido>"
+    r"expresident[ae]s?\s+(?:del\s+gobierno\s+)?([a-zá-úñ]+)",
+)
+# Franco is uniquely the dictator whenever the speech invokes the dictatorship; the
+# deputy surnamed Franco is meant only absent that framing (hence a cue, not a denylist).
+_DICTATORSHIP_CUE = re.compile(r"dictadur|dictador|franquism|r[ée]gimen\s+de\s+franco")
+
+
+def context_excluded_surnames(text: str) -> frozenset[str]:
+    """Surnames the speech's own wording marks as non-deputies (a magistrate, judge,
+    prosecutor, former head of government, or Franco-the-dictator). Speech-scoped."""
+    low = (text or "").lower()
+    excluded = set()
+    if _DICTATORSHIP_CUE.search(low):
+        excluded.add("franco")
+    for pattern in _CONTEXT_CUE_PATTERNS:
+        for match in re.finditer(pattern, low):
+            excluded.add(match.group(1))
+    return frozenset(excluded)
 
 
 @dataclass(frozen=True)
@@ -90,13 +153,38 @@ def _resolve_one(norm: str, index: list[DeputyEntry], threshold: int):
     return best
 
 
-def resolve_mentions(spans, index: list[DeputyEntry], threshold: int) -> list[Mention]:
+def _is_excluded(norm: str, entry: DeputyEntry, excluded: frozenset[str]) -> bool:
+    """Whether a resolved span actually names a flagged non-deputy rather than the
+    deputy it fuzzy-matched. Two cases:
+
+    - *referent-homonym* — the deputy's OWN first surname is flagged (the ex-PM Aznar
+      vs the deputy Aznar Teruel): the surname coincides, so drop it.
+    - *mismatch* — the span carries a flagged token but resolved via a secondary
+      surname (the Canarias president "Clavijo" fuzzy-matching Gamarra Ruiz-Clavijo):
+      drop only when the deputy's first surname is absent from the span, so a genuine
+      full-name mention ("Gamarra Ruiz-Clavijo") that merely contains the token survives.
+    """
+    if not excluded:
+        return False
+    span_tokens = _tokens(norm)
+    if not (span_tokens & excluded):
+        return False
+    first = _first_surname_tokens(entry.name)
+    if first & excluded:
+        return True
+    return not (span_tokens & first)
+
+
+def resolve_mentions(
+    spans, index: list[DeputyEntry], threshold: int,
+    excluded_surnames: frozenset[str] = frozenset()) -> list[Mention]:
     """Collapse raw NER ``spans`` (duplicates preserved) into canonical ``Mention``s.
 
     Each span is normalized then resolved (cached per normalized form). Occurrences
     that resolve to the same deputy are merged: ``count`` totals them and
-    ``surface_forms`` keeps the distinct raw spans seen. Returns mentions ordered
-    by descending count then name."""
+    ``surface_forms`` keeps the distinct raw spans seen. ``excluded_surnames`` drops
+    spans that name a flagged non-deputy (see ``_is_excluded``). Returns mentions
+    ordered by descending count then name."""
     cache: dict[str, DeputyEntry | None] = {}
     by_deputy: dict[str, dict] = {}
     for span in spans:
@@ -107,6 +195,8 @@ def resolve_mentions(spans, index: list[DeputyEntry], threshold: int) -> list[Me
             cache[norm] = _resolve_one(norm, index, threshold)
         entry = cache[norm]
         if entry is None:
+            continue
+        if _is_excluded(norm, entry, excluded_surnames):
             continue
         acc = by_deputy.setdefault(
             entry.deputy_id,
