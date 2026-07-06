@@ -23,11 +23,13 @@ extrae los filtros estructurados y la consulta semántica residual.
 
 Reglas:
 - semantic_query: SOLO el tema o contenido de la intervención (de qué trata), sin \
-las restricciones de orador, grupo/partido ni fechas. Si una persona solo es \
-MENCIONADA en la intervención (no es quien interviene), deja su nombre aquí. Cadena \
+las restricciones de orador, persona mencionada, grupo/partido ni fechas. Cadena \
 vacía si la consulta no tiene tema.
 - speaker: persona que INTERVIENE, indicada por su nombre propio. Null si se \
 refiere a ella por su cargo, o si no se especifica orador.
+- mentioned_person: persona que la intervención debe MENCIONAR o nombrar, que NO es \
+quien interviene (p. ej. 'discursos que mencionen a Zapatero' → 'Zapatero'). Null si \
+la consulta no pide una persona mencionada.
 - speaker_title: el cargo del orador cuando se le nombra por su cargo en lugar de \
 por su nombre (p. ej. 'ministra de economía'). Null en otro caso.
 - group_or_party: grupo parlamentario o partido político como filtro (p. ej. \

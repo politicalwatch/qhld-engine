@@ -98,6 +98,13 @@ class IndexSpeeches:
 
     @staticmethod
     def _payload(speech, block, block_index, chunk_index, text):
+        # Deputies named within the speech, resolved at extraction time. Speech-level,
+        # so the same list rides on every passage-point. `mentions` is the filterable
+        # list of deputy ids; `mention_counts` (unused for now) is kept so a future
+        # relevance boost by mention frequency needs no second full re-index.
+        mentions = [m.deputy_id for m in (speech.mentions or []) if m.deputy_id]
+        mention_counts = {
+            m.deputy_id: m.count for m in (speech.mentions or []) if m.deputy_id}
         return {
             "speech_id": speech.id,
             "session_id": speech.session_id,
@@ -110,6 +117,8 @@ class IndexSpeeches:
             "order": speech.order,
             "date": speech.date,
             "session_name": speech.session_name,
+            "mentions": mentions,
+            "mention_counts": mention_counts,
             "lang": block.lang,
             "original": block.original,
             "block_index": block_index,

@@ -12,7 +12,7 @@ from qhld_engine.application.speeches import index_speeches as mod
 from qhld_engine.application.speeches.index_speeches import IndexSpeeches
 from qhld_engine.infrastructure.config.settings import Settings
 
-from tipi_data.models.speech import Speech, SpeechText
+from tipi_data.models.speech import Mention, Speech, SpeechText
 
 pytestmark = pytest.mark.unit
 
@@ -79,6 +79,11 @@ def _bilingual_speech():
             SpeechText(lang="es", text="Buenas tardes a todas y todos.", original=False),
         ],
         original_language="gl",
+        mentions=[
+            Mention(deputy_id="d9", name="Sánchez, Pedro", surface_forms=["Sánchez"], count=2),
+            # unresolved (no deputy_id) → must not leak into the filterable payload
+            Mention(deputy_id=None, name="Von der Leyen", surface_forms=["Von der Leyen"], count=1),
+        ],
     )
 
 
@@ -115,6 +120,11 @@ def test_indexes_both_language_blocks_as_separate_points(monkeypatch):
     assert by_lang["gl"].payload["group"] == "GMx"
     # snippet text is stored for display
     assert by_lang["gl"].payload["text"] == "Boas tardes a todas e todos."
+    # resolved mentions ride on every point (filterable list + reserved counts);
+    # the unresolved mention (deputy_id=None) is excluded
+    for point in points:
+        assert point.payload["mentions"] == ["d9"]
+        assert point.payload["mention_counts"] == {"d9": 2}
 
     # deterministic point ids
     assert by_lang["gl"].id == str(uuid5(_NS, "sid1:0:0"))

@@ -44,14 +44,18 @@ class NaturalSearchSpeeches:
     def _resolver_from_corpus(self) -> EntityResolver:
         """Build a resolver bound to the target (per-model) collection's payload:
         distinct speaker/role/group values come from that collection, group aliases
-        from the ParliamentaryGroups repo."""
+        from the ParliamentaryGroups repo, and the deputies catalog resolves a
+        mentioned person to a deputy id (matching the payload ``mentions`` list)."""
+        from tipi_data.repositories.deputies import Deputies
         from tipi_data.repositories.parliamentarygroups import ParliamentaryGroups
 
         dim = len(self.search.embedder.embed_query("probe"))
         collection = collection_name(self.settings, dim)
         return EntityResolver(
             distinct=lambda key: self.search.store.distinct_values(collection, key),
-            groups=ParliamentaryGroups.get_all())
+            groups=ParliamentaryGroups.get_all(),
+            deputies=Deputies.get_all(),
+            mention_threshold=self.settings.mention_match_threshold)
 
     def resolver(self) -> EntityResolver:
         if self._resolver is None:

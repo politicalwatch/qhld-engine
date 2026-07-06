@@ -23,9 +23,26 @@ GROUPS = [
 ]
 
 
+class _FakeDeputy:
+    def __init__(self, id, name):
+        self.id = id
+        self.name = name
+
+    def get_fullname(self):
+        surname, given = (p.strip() for p in self.name.split(","))
+        return f"{given} {surname}"
+
+
+DEPUTIES = [
+    _FakeDeputy("dep-montero", "Montero Cuadrado, María Jesús"),
+    _FakeDeputy("dep-abascal", "Abascal Conde, Santiago"),
+]
+
+
 @pytest.fixture
 def resolver():
-    return EntityResolver(distinct=lambda key: CORPUS.get(key, set()), groups=GROUPS)
+    return EntityResolver(
+        distinct=lambda key: CORPUS.get(key, set()), groups=GROUPS, deputies=DEPUTIES)
 
 
 def test_resolves_speaker_name_with_token_reordering(resolver):
@@ -90,3 +107,22 @@ def test_unknown_lang_is_not_filtered(resolver):
 
 def test_no_filters_when_nothing_extracted(resolver):
     assert resolver.resolve(ParsedQuery(semantic_query="financiación")).filters == {}
+
+
+def test_mentioned_person_resolves_to_deputy_id(resolver):
+    r = resolver.resolve(ParsedQuery(semantic_query="vivienda", mentioned_person="Montero"))
+    assert r.filters["mentions"] == "dep-montero"
+    assert any("mentions:" in note for note in r.notes)
+
+
+def test_unresolvable_mentioned_person_is_not_filtered(resolver):
+    r = resolver.resolve(ParsedQuery(semantic_query="x", mentioned_person="Winston Churchill"))
+    assert "mentions" not in r.filters
+    assert any("unresolved" in note for note in r.notes)
+
+
+def test_mentioned_person_ignored_without_deputies_catalog():
+    # A resolver built without the catalog cannot resolve a mention → no filter.
+    resolver = EntityResolver(distinct=lambda key: CORPUS.get(key, set()), groups=GROUPS)
+    r = resolver.resolve(ParsedQuery(semantic_query="x", mentioned_person="Montero"))
+    assert "mentions" not in r.filters

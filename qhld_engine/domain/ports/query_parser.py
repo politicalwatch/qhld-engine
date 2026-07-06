@@ -21,15 +21,20 @@ class ParsedQuery(BaseModel):
     semantic_query: str = Field(
         description=(
             "The thematic content to search for — what the speech is ABOUT — with "
-            "speaker, group/party and date constraints removed. If a person is only "
-            "MENTIONED in the speech (not the speaker), keep their name here. Empty "
-            "string if the query is purely a filter with no topic."))
+            "speaker, mentioned-person, group/party and date constraints removed. "
+            "Empty string if the query is purely a filter with no topic."))
     speaker: str | None = Field(
         default=None,
         description=(
             "Person named as the one who SPEAKS/intervenes, given by proper name "
             "(e.g. 'María Jesús Montero'). Null if the speaker is only referred to "
             "by office/title, or if no speaker is specified."))
+    mentioned_person: str | None = Field(
+        default=None,
+        description=(
+            "Person that the speech must MENTION or refer to, who is NOT the speaker "
+            "(e.g. 'discursos que mencionen a Zapatero' → 'Zapatero'). Given by proper "
+            "name. Null if the query does not ask for a mentioned person."))
     speaker_title: str | None = Field(
         default=None,
         description=(

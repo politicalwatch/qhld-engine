@@ -14,6 +14,7 @@ from qhld_engine.domain.speeches.mentions import (
     context_excluded_surnames,
     normalize_span,
     resolve_mentions,
+    resolve_person,
 )
 
 pytestmark = pytest.mark.unit
@@ -205,6 +206,32 @@ def test_tie_broken_by_exact_token_order():
 def test_ambiguous_shared_first_surname_still_drops():
     # Two deputies hold "Muñoz" as their first surname → genuinely ambiguous → dropped.
     assert resolve_mentions(["Muñoz"], INDEX_TIE, 90) == []
+
+
+# --- resolve_person (query side) -------------------------------------------
+
+def test_resolve_person_surname_resolves_to_deputy():
+    entry = resolve_person("Montero", INDEX, 90)
+    assert entry is not None
+    assert (entry.deputy_id, entry.name) == ("d2", "Montero Cuadrado, María Jesús")
+
+
+def test_resolve_person_full_name_resolves():
+    entry = resolve_person("Pedro Sánchez", INDEX, 90)
+    assert entry.deputy_id == "d1"
+
+
+def test_resolve_person_ambiguous_surname_is_none():
+    # "García" is borne by two deputies at the same score → ambiguous → not resolved.
+    assert resolve_person("García", INDEX, 90) is None
+
+
+def test_resolve_person_unknown_is_none():
+    assert resolve_person("Winston Churchill", INDEX, 90) is None
+
+
+def test_resolve_person_empty_after_normalize_is_none():
+    assert resolve_person("Su Señoría", INDEX, 90) is None
 
 
 # --- surname gazetteer -----------------------------------------------------

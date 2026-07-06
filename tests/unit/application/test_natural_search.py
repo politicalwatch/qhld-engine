@@ -66,6 +66,17 @@ def test_searches_residual_topic_with_resolved_filters():
     assert result.hits == ["hit"]
 
 
+def test_mentioned_person_filter_is_forwarded_to_search():
+    parsed = ParsedQuery(semantic_query="vivienda", mentioned_person="Zapatero")
+    resolution = Resolution(filters={"mentions": "dep-zapatero"})
+    service = _service(parsed, resolution)
+    service.execute("intervenciones sobre vivienda que mencionen a Zapatero",
+                    today=date(2025, 7, 3))
+    _, query, _, filters = service.search.calls[0]
+    assert query == "vivienda"
+    assert filters == {"mentions": "dep-zapatero"}
+
+
 def test_grouped_routes_to_search_grouped():
     service = _service(ParsedQuery(semantic_query="vivienda"), Resolution())
     service.execute("vivienda", today=date(2025, 7, 3), k=8, grouped=True, highlights=4)

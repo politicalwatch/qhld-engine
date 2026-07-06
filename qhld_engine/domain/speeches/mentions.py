@@ -189,6 +189,17 @@ def _break_tie(norm: str, tied: list[DeputyEntry]) -> list[DeputyEntry]:
     return [e for score, e in scored if score == top]
 
 
+def resolve_person(name: str, index: list[DeputyEntry], threshold: int) -> DeputyEntry | None:
+    """Resolve a free-text person name (as typed in a search query, e.g. "Zapatero",
+    "María Jesús Montero") to a deputy, or ``None`` if it does not clear the threshold or
+    stays ambiguous. Runs the span through the SAME normalization + fuzzy match + ambiguity
+    guard used to tag the corpus, so a query resolves consistently with what was indexed."""
+    norm = normalize_span(name)
+    if not norm:
+        return None
+    return _resolve_one(norm, index, threshold)
+
+
 def _resolve_one(norm: str, index: list[DeputyEntry], threshold: int):
     """Best-scoring deputy for a normalized span, or ``None`` when nothing clears the
     threshold or the top score stays shared after tie-breaking (ambiguous surname)."""

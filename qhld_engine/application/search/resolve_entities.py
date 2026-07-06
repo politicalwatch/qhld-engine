@@ -8,6 +8,8 @@ service maps that onto what the index actually *stores*:
 - speaker title -> fuzzy match against the corpus ``role`` values (full office titles).
 - group/party   -> the payload ``group`` code (== ``ParliamentaryGroup.shortname``),
   resolved from an alias map over group short/long names and party names.
+- mentioned person -> a ``Deputy._id``, matched against the deputies catalog with the
+  same resolver that tags the corpus, then filtered on the payload ``mentions`` list.
 - ISO dates     -> a numeric ``date`` range ({"gte"/"lte": YYYYMMDD}).
 
 Corpus values are read via an injected ``distinct(key)`` callable (wrapping
@@ -21,6 +23,7 @@ from dataclasses import dataclass, field
 from thefuzz import fuzz, process
 
 from qhld_engine.domain.ports.query_parser import ParsedQuery
+from qhld_engine.domain.speeches.mentions import build_deputy_index, resolve_person
 
 # token_set_ratio scores a subset match ~100 ("María Jesús Montero" ⊆ "Montero
 # Cuadrado, María Jesús", or a surname-only "Montero") while an unrelated name
@@ -48,11 +51,15 @@ class Resolution:
 
 
 class EntityResolver:
-    def __init__(self, distinct, groups):
+    def __init__(self, distinct, groups, deputies=None, mention_threshold=90):
         """``distinct`` is ``callable(key) -> set`` over the target collection's
-        payload; ``groups`` is the list of ``ParliamentaryGroup`` records."""
+        payload; ``groups`` is the list of ``ParliamentaryGroup`` records. ``deputies``
+        (the ``Deputy`` catalog) enables resolving a mentioned person to a deputy id;
+        omitted => mentioned-person queries are left unfiltered."""
         self._distinct = distinct
         self._group_aliases = _build_group_aliases(groups)
+        self._deputy_index = build_deputy_index(deputies) if deputies else []
+        self._mention_threshold = mention_threshold
 
     def resolve(self, parsed: ParsedQuery) -> Resolution:
         result = Resolution()
@@ -64,6 +71,8 @@ class EntityResolver:
             self._resolve_fuzzy(
                 result, "role", parsed.speaker_title, "role",
                 fuzz.token_set_ratio, _ROLE_THRESHOLD)
+        if parsed.mentioned_person:
+            self._resolve_mention(result, parsed.mentioned_person)
         if parsed.group_or_party:
             self._resolve_group(result, parsed.group_or_party)
         self._resolve_dates(result, parsed)
@@ -72,6 +81,15 @@ class EntityResolver:
         if parsed.legislature:
             result.filters["legislature"] = parsed.legislature
         return result
+
+    def _resolve_mention(self, result, raw):
+        entry = (resolve_person(raw, self._deputy_index, self._mention_threshold)
+                 if self._deputy_index else None)
+        if entry:
+            result.filters["mentions"] = entry.deputy_id
+            result.notes.append(f"mentions: '{raw}' → '{entry.name}'")
+        else:
+            result.notes.append(f"mentions: '{raw}' unresolved — not filtered")
 
     def _resolve_lang(self, result, raw):
         code = _LANG_ALIASES.get(raw.strip().lower())
