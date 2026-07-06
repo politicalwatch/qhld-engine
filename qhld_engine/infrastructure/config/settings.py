@@ -70,12 +70,20 @@ class Settings(BaseSettings):
     query_parser_llm_provider: str = ""
     query_parser_llm_model: str = ""
 
-    # Cross-encoder reranker (retrieval Lever 1). "noop" leaves bi-encoder order
+    # Cross-encoder reranker. "noop" leaves bi-encoder order
     # untouched (the clean baseline); any other provider over-fetches
     # reranker_top_n passages and reorders them on (query, passage) relevance.
     reranker_provider: str = "noop"
     reranker_model: str = ""
     reranker_top_n: int = 50
+
+    # Mention extraction (index-time NER → resolved deputies on Speech.mentions).
+    # PER spans are found by spaCy over the Spanish text block, then fuzzy-matched
+    # against the deputies catalog; token_set_ratio scores subset matches high, so
+    # a high threshold stays both forgiving (surname-only) and precise.
+    ner_provider: str = "spacy"
+    ner_model: str = "es_core_news_lg"
+    mention_match_threshold: int = 90
 
 
 @lru_cache

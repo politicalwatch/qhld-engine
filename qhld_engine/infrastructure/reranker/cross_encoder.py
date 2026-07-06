@@ -1,11 +1,10 @@
-"""Cross-encoder reranker via sentence-transformers (retrieval Lever 1).
+"""Cross-encoder reranker via sentence-transformers.
 
 Scores each ``(query, passage)`` pair jointly and reorders — sharper than the
-bi-encoder cone. Model is a settings/env value so the A/B challenger is a config
-swap; default is ``BAAI/bge-reranker-v2-m3`` (Apache-2.0, XLM-R backbone with
-explicit eu/ca/gl/es coverage — see the vault reranker decision note). The
-``CrossEncoder`` (and torch) is loaded lazily on first use, so importing this
-module stays cheap for callers that don't rerank.
+bi-encoder cone. Model is a settings/env value so it can be swapped via config;
+default is ``BAAI/bge-reranker-v2-m3`` (Apache-2.0, XLM-R backbone with explicit
+eu/ca/gl/es coverage). The ``CrossEncoder`` (and torch) is loaded lazily on first
+use, so importing this module stays cheap for callers that don't rerank.
 """
 
 from qhld_engine.domain.ports.reranker import RerankerPort

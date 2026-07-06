@@ -3,7 +3,7 @@
 Driving-adapter orchestration: runs the frozen query set through the
 ``SearchSpeeches`` application service for each (embedding model x reranker)
 cell and returns scored rows — no printing (the CLI owns presentation). The
-grid is what makes it reusable after every retrieval lever: pass more models or
+grid is what makes it reusable as retrieval changes: pass more models or
 rerankers and each combination becomes a column.
 
 Scores are passage-level (the clean embedder signal). Crosslingual entries run

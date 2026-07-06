@@ -18,6 +18,7 @@ import os
 from collections import OrderedDict
 
 from qhld_engine.logger import get_logger
+from qhld_engine.application.speeches.mention_tagging import MentionTagger, es_text
 from qhld_engine.domain.speeches import segmentation
 from qhld_engine.domain.speeches.language_split import split_languages
 from qhld_engine.infrastructure.language import detect
@@ -29,6 +30,7 @@ from qhld_engine.extractors.spain.initiative_extractors.utils.pdf_parsers import
 from tipi_data.utils import generate_id
 from tipi_data.models.session import Session
 from tipi_data.models.speech import Speech, SpeechText
+from tipi_data.repositories.deputies import Deputies
 from tipi_data.repositories.sessions import Sessions
 from tipi_data.repositories.speeches import Speeches
 
@@ -43,6 +45,15 @@ class ExtractSpeeches:
 
     def __init__(self):
         self.api = CongressApi()
+        self._tagger = None
+
+    @property
+    def tagger(self):
+        """Mention tagger, built once (loads the deputy catalog + spaCy model on
+        first use). Lazy so importing/constructing the service stays Mongo-free."""
+        if self._tagger is None:
+            self._tagger = MentionTagger(Deputies.get_all())
+        return self._tagger
 
     def execute(self, references):
         for reference in references:
@@ -132,6 +143,7 @@ class ExtractSpeeches:
             session_link=session_link,
             speech=blocks,
             original_language=original_language,
+            mentions=self.tagger.tag(es_text(blocks)),
         )
         Speeches.save(speech)
 

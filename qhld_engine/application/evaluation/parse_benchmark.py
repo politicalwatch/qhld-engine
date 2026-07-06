@@ -10,7 +10,7 @@ standing benchmark-on-host preference:
     QDRANT_HOST=localhost OLLAMA_BASE_URL=http://localhost:11434 \\
     EMBEDDING_MODEL=bge-m3:567m \\
     QUERY_PARSER_LLM_PROVIDER=ollama QUERY_PARSER_LLM_MODEL=gpt-oss:20b \\
-    uv run --group eval qhld eval parse --parsers llm,rule_based
+    uv run qhld eval parse --parsers llm,rule_based
 """
 
 import json

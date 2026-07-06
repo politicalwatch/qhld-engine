@@ -110,12 +110,46 @@ def parse(
             _print_parse_report("rule_based", first_rows, verbose)
             summary.append(("rule_based", median))
         except ImportError:
-            # spaCy/dateparser are the optional `eval` group, absent in the engine
-            # container. Don't discard the (already-run) LLM results — skip + note.
+            # dateparser not installed — don't discard the (already-run) LLM results.
             typer.echo(
-                "\n[skipped rule_based baseline: `eval` group not installed here "
-                "— run on host with `uv run --group eval`, or pass --no-baseline]")
+                "\n[skipped rule_based baseline: dateparser not installed "
+                "— run `uv sync`, or pass --no-baseline]")
     _print_parse_summary(summary, repeats)
+
+
+@app.command("mentions")
+def mentions(
+    goldset: str = typer.Option(
+        None, "--goldset", help="Path to a mentions gold-set JSON (defaults to the frozen set)."),
+    verbose: bool = typer.Option(False, "--verbose", help="Show predicted vs gold per speech."),
+):
+    """Score index-time mention extraction (NER → resolved deputies) against the
+    frozen gold set: micro P/R/F1 over mentions, per-speech exact-match, latency."""
+    from qhld_engine.application.evaluation.mentions_benchmark import RunMentionsBenchmark
+    from qhld_engine.domain.evaluation import mentions_scoring
+
+    runner = RunMentionsBenchmark(goldset) if goldset else RunMentionsBenchmark()
+    typer.echo(f"Mentions gold set: {len(runner.entries)} speeches")
+    rows = runner.run()
+    report = mentions_scoring.score(rows)
+    if verbose:
+        for row in rows:
+            ok = "✓" if set(row["pred_deputies"]) == set(row["gold_deputies"]) else "✗"
+            typer.echo(f"  {ok} {row.get('id', row['speech_id'])} {row.get('reference', '')}")
+            missed = sorted(set(row["gold_deputies"]) - set(row["pred_deputies"]))
+            spurious = sorted(set(row["pred_deputies"]) - set(row["gold_deputies"]))
+            if missed:
+                typer.echo(f"      missed (FN): {missed}")
+            if spurious:
+                typer.echo(f"      spurious (FP): {spurious}")
+    m = report["micro"]
+    typer.echo("\n=== mentions ===")
+    typer.echo(f"{'':<7}{'P':>7}{'R':>7}{'F1':>7}   tp/fp/fn")
+    typer.echo(
+        f"{'MICRO':<7}{m['precision']:>7}{m['recall']:>7}{m['f1']:>7}   "
+        f"{m['tp']}/{m['fp']}/{m['fn']}")
+    typer.echo(
+        f"  exact-match={report['exact_match']}  mean-latency={report['mean_latency']}s")
 
 
 def _parse_models(value):

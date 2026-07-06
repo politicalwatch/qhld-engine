@@ -29,6 +29,8 @@ dependencies = [
     "py3langid==0.3.0",
     "qdrant-client==1.18.0",
     "sentence-transformers>=3.3.0",
+    "spacy>=3.8,<3.9",
+    "es-core-news-lg @ https://github.com/explosion/spacy-models/releases/download/es_core_news_lg-3.8.0/es_core_news_lg-3.8.0-py3-none-any.whl",
 ]
 
 [project.scripts]
@@ -38,6 +40,10 @@ qhld = "qhld_engine.cli:app"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.metadata]
+# es-core-news-lg is a direct URL reference (spaCy model wheel) in project.dependencies.
+allow-direct-references = true
+
 [tool.hatch.build.targets.wheel]
 packages = ["qhld_engine"]
 
@@ -46,15 +52,7 @@ dev = [
     "ipdb==0.13.13",
     "pytest==9.1.1",
     "testcontainers[mongodb]==4.14.2",
-]
-# Baseline/eval-only tooling for the LLM-vs-rule-based query-parser comparison.
-# NOT on the product path — the rule-based parser lazy-imports these, so
-# production images built without this group never carry spaCy or the ~560MB model.
-# Re-run the comparison with `uv sync --group eval`.
-eval = [
-    "spacy>=3.8,<3.9",
     "dateparser>=1.2,<2",
-    "es-core-news-lg @ https://github.com/explosion/spacy-models/releases/download/es_core_news_lg-3.8.0/es_core_news_lg-3.8.0-py3-none-any.whl",
 ]
 
 [tool.pytest.ini_options]

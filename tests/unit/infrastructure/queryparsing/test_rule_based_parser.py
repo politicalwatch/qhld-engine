@@ -1,8 +1,6 @@
 """Unit tests for the rule-based (spaCy + dateparser) query parser.
 
-Skipped when the optional 'eval' dependency group (spaCy + model + dateparser) is
-not installed, so the default suite stays lightweight. Run with:
-``uv run --group eval pytest tests/unit/infrastructure/queryparsing``.
+Skipped when spaCy or dateparser is not installed.
 """
 
 from datetime import date
@@ -13,7 +11,7 @@ import pytest
 pytestmark = pytest.mark.unit
 
 if find_spec("spacy") is None or find_spec("dateparser") is None:
-    pytest.skip("optional 'eval' deps (spaCy/dateparser) not installed", allow_module_level=True)
+    pytest.skip("spaCy/dateparser not installed", allow_module_level=True)
 
 from qhld_engine.infrastructure.queryparsing.rule_based import RuleBasedQueryParser
 

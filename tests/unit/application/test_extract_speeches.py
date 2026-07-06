@@ -58,6 +58,11 @@ def test_execute_segments_and_saves_a_speech(monkeypatch):
     monkeypatch.setattr(mod, "PDFExtractor", _FakePDF)
     monkeypatch.setattr(mod.Speeches, "save", lambda speech: saved.append(speech))
     monkeypatch.setattr(mod.Sessions, "save", lambda s: saved_sessions.append(s))
+    # stub mention tagging: no Mongo (deputy catalog) and no spaCy load here.
+    monkeypatch.setattr(mod.Deputies, "get_all", staticmethod(lambda: []))
+    monkeypatch.setattr(
+        mod, "MentionTagger",
+        lambda deputies: type("T", (), {"tag": staticmethod(lambda text: [])})())
     # patch the detector so the test never loads py3langid and is deterministic
     monkeypatch.setattr(mod, "detect", lambda text: "es")
 

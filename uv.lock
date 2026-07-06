@@ -2408,7 +2408,7 @@ wheels = [
 [[package]]
 name = "qhld-data"
 version = "2.0.1"
-source = { git = "https://github.com/politicalwatch/qhld-data.git?branch=feat%2Fparliamentary-speech-analysis#fabb106b17e6fed0ba62bd61f0d9ca3b38f4933c" }
+source = { git = "https://github.com/politicalwatch/qhld-data.git?branch=feat%2Fparliamentary-speech-analysis#386705e7f030e77bc4c7eb19b8383cf77b253ec1" }
 dependencies = [
     { name = "pydantic" },
     { name = "pymongo" },
@@ -2423,6 +2423,7 @@ source = { editable = "." }
 dependencies = [
     { name = "beautifulsoup4" },
     { name = "cssselect" },
+    { name = "es-core-news-lg" },
     { name = "langchain-anthropic" },
     { name = "langchain-core" },
     { name = "langchain-google-genai" },
@@ -2441,6 +2442,7 @@ dependencies = [
     { name = "qhld-tasks" },
     { name = "requests-futures" },
     { name = "sentence-transformers" },
+    { name = "spacy" },
     { name = "thefuzz" },
     { name = "tqdm" },
     { name = "typer" },
@@ -2448,20 +2450,17 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "dateparser" },
     { name = "ipdb" },
     { name = "pytest" },
     { name = "testcontainers", extra = ["mongodb"] },
-]
-eval = [
-    { name = "dateparser" },
-    { name = "es-core-news-lg" },
-    { name = "spacy" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "beautifulsoup4", specifier = "==4.12.3" },
     { name = "cssselect", specifier = "==1.2.0" },
+    { name = "es-core-news-lg", url = "https://github.com/explosion/spacy-models/releases/download/es_core_news_lg-3.8.0/es_core_news_lg-3.8.0-py3-none-any.whl" },
     { name = "langchain-anthropic", specifier = "==1.4.8" },
     { name = "langchain-core", specifier = "==1.4.8" },
     { name = "langchain-google-genai", specifier = "==4.2.6" },
@@ -2480,6 +2479,7 @@ requires-dist = [
     { name = "qhld-tasks", git = "https://github.com/politicalwatch/qhld-tasks.git?branch=feat%2Fparliamentary-speech-analysis" },
     { name = "requests-futures", specifier = "==1.0.2" },
     { name = "sentence-transformers", specifier = ">=3.3.0" },
+    { name = "spacy", specifier = ">=3.8,<3.9" },
     { name = "thefuzz", specifier = "==0.22.1" },
     { name = "tqdm", specifier = "==4.67.1" },
     { name = "typer", specifier = ">=0.16.0" },
@@ -2487,14 +2487,10 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "dateparser", specifier = ">=1.2,<2" },
     { name = "ipdb", specifier = "==0.13.13" },
     { name = "pytest", specifier = "==9.1.1" },
     { name = "testcontainers", extras = ["mongodb"], specifier = "==4.14.2" },
-]
-eval = [
-    { name = "dateparser", specifier = ">=1.2,<2" },
-    { name = "es-core-news-lg", url = "https://github.com/explosion/spacy-models/releases/download/es_core_news_lg-3.8.0/es_core_news_lg-3.8.0-py3-none-any.whl" },
-    { name = "spacy", specifier = ">=3.8,<3.9" },
 ]
 
 [[package]]

@@ -9,8 +9,8 @@ speaker from a merely-mentioned person, cannot classify a title vs a name, and
 ``dateparser`` misses most Spanish relative *ranges* ("los últimos tres meses").
 
 spaCy/dateparser are lazy-imported so this module stays importable (and the
-factory registration stays cheap) even when the optional ``eval`` dependency
-group is not installed; only ``parse`` needs them.
+factory registration stays cheap) even when they are not installed; only ``parse``
+needs them.
 """
 
 import re

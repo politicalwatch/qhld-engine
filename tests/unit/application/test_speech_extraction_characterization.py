@@ -57,6 +57,12 @@ def test_extract_speeches_172_000001(monkeypatch, capture):
     monkeypatch.setattr(mod, "PDFExtractor", _FakePDF)
     monkeypatch.setattr(mod.Speeches, "save", lambda speech: saved.append(speech))
     monkeypatch.setattr(mod.Sessions, "save", lambda s: saved_sessions.append(s))
+    # stub mention tagging: this test locks segmentation/language-split, not NER,
+    # and must stay Mongo-free (no deputy catalog) and spaCy-free.
+    monkeypatch.setattr(mod.Deputies, "get_all", staticmethod(lambda: []))
+    monkeypatch.setattr(
+        mod, "MentionTagger",
+        lambda deputies: type("T", (), {"tag": staticmethod(lambda text: [])})())
 
     mod.ExtractSpeeches().execute(["172/000001"])
 
