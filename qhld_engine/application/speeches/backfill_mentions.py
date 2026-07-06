@@ -13,6 +13,8 @@ genuinely names no deputy resolves to ``[]`` and so is revisited by a later
 incremental run — harmless for a one-shot backfill.
 """
 
+from tqdm import tqdm
+
 from qhld_engine.logger import get_logger
 from qhld_engine.application.speeches.mention_tagging import MentionTagger, es_text
 
@@ -40,7 +42,7 @@ class BackfillMentions:
                     f"(pass --all to re-tag the whole corpus)")
         log.info(f"Tagging mentions for {len(speeches)} speeches")
         tagged = 0
-        for speech in speeches:
+        for speech in tqdm(speeches, desc="Tagging mentions", unit="speech"):
             mentions = self.tagger.tag(es_text(speech.speech))
             speech.mentions = mentions
             Speeches.save(speech)
