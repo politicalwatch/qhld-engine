@@ -18,6 +18,7 @@ testable offline with no Mongo, mirroring ``domain.speeches.segmentation``.
 """
 
 import re
+from collections import Counter
 from dataclasses import dataclass
 
 from thefuzz import fuzz
@@ -129,6 +130,28 @@ def build_deputy_index(deputies) -> list[DeputyEntry]:
     return index
 
 
+def build_surname_gazetteer(deputies) -> list[str]:
+    """Distinctive first-surname surfaces (each borne by exactly one deputy) to seed an
+    NER gazetteer, so the model also tags the uncommon/compound surnames it otherwise
+    misses. Hyphenated compounds contribute each part ("Grande-Marlaska" → "Grande",
+    "Marlaska"). Surnames shared by several deputies are left out: the base model
+    usually catches common ones, and they would only add ambiguous spans the resolver
+    drops anyway. Original casing is kept (names are Title-case in the Diario text)."""
+    counts: Counter[str] = Counter()
+    surface: dict[str, str] = {}
+    for deputy in deputies:
+        name = getattr(deputy, "name", None)
+        surname_part = name.partition(",")[0] if name else ""
+        if not surname_part.split():
+            continue
+        for token in re.split(r"[-\s]+", surname_part.split()[0]):
+            key = token.lower()
+            if len(key) >= _MIN_LEN:
+                counts[key] += 1
+                surface.setdefault(key, token)
+    return sorted(surface[key] for key, count in counts.items() if count == 1)
+
+
 def normalize_span(span: str) -> str:
     """Lowercase, drop punctuation and courtesy honorifics/articles. Returns the
     residual name, or "" when nothing usable remains (e.g. "Su Señoría")."""
@@ -138,19 +161,50 @@ def normalize_span(span: str) -> str:
     return residual if len(residual) >= _MIN_LEN else ""
 
 
+def _break_tie(norm: str, tied: list[DeputyEntry]) -> list[DeputyEntry]:
+    """Narrow equally-scored deputies (``token_set_ratio`` gives a bare surname 100
+    against everyone who carries it anywhere) to the one the span actually names:
+
+    1. Prefer deputies whose FIRST surname the span matches — a surname resolves to
+       whoever bears it first, not to someone who has it as a second surname or given
+       name ("Bravo" → Juan Bravo, not Aitor Esteban Bravo).
+    2. If several still qualify, prefer the closest exact-order match
+       (``token_sort_ratio``), which separates a partial multi-token overlap from the
+       real full surname ("Sánchez Pérez-Castejón" → Pedro, not Sánchez Pérez, César).
+
+    Returns the surviving candidates; a still-tied result (e.g. two deputies sharing a
+    first surname) is left for the caller to drop as genuinely ambiguous."""
+    span_tokens = _tokens(norm)
+    first = [e for e in tied if span_tokens & _first_surname_tokens(e.name)]
+    candidates = first if first else tied
+    if len(candidates) == 1:
+        return candidates
+    # Only a fuller, multi-token reference can separate several deputies who share a
+    # first surname; a bare surname borne by many stays ambiguous (caller drops it).
+    if len(span_tokens) < 2:
+        return candidates
+    scored = [(max(fuzz.token_sort_ratio(norm, key) for key in e.keys), e)
+              for e in candidates]
+    top = max(score for score, _ in scored)
+    return [e for score, e in scored if score == top]
+
+
 def _resolve_one(norm: str, index: list[DeputyEntry], threshold: int):
-    """Best-scoring deputy for a normalized span, or ``None`` when nothing clears
-    the threshold or the top score is shared (ambiguous surname)."""
-    best_score, best, tie = 0, None, False
+    """Best-scoring deputy for a normalized span, or ``None`` when nothing clears the
+    threshold or the top score stays shared after tie-breaking (ambiguous surname)."""
+    best_score = 0
+    tied: list[DeputyEntry] = []
     for entry in index:
         score = max(fuzz.token_set_ratio(norm, key) for key in entry.keys)
         if score > best_score:
-            best_score, best, tie = score, entry, False
-        elif score == best_score and best is not None and entry.deputy_id != best.deputy_id:
-            tie = True
-    if best is None or best_score < threshold or tie:
+            best_score, tied = score, [entry]
+        elif score == best_score and best_score > 0:
+            tied.append(entry)
+    if best_score < threshold:
         return None
-    return best
+    if len(tied) > 1:
+        tied = _break_tie(norm, tied)
+    return tied[0] if len(tied) == 1 else None
 
 
 def _is_excluded(norm: str, entry: DeputyEntry, excluded: frozenset[str]) -> bool:

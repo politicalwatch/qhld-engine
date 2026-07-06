@@ -16,8 +16,9 @@ from .factory import _register
 
 
 class SpacyNer(NerPort):
-    def __init__(self, settings):
+    def __init__(self, settings, gazetteer=None):
         self.settings = settings
+        self._gazetteer = tuple(gazetteer or ())
         self._nlp = None
 
     def _model(self):
@@ -25,6 +26,20 @@ class SpacyNer(NerPort):
             import spacy
 
             self._nlp = spacy.load(self.settings.ner_model)
+            if self._gazetteer:
+                # Only gazetteer surnames the model has NO representation for (out of
+                # vocabulary). In-vocabulary surfaces — common words the model won't tag
+                # as a person ("Madrid", "Torres") and common surnames it already knows
+                # — are left to its context-sensitive judgement; overriding them with a
+                # blunt rule tags every occurrence and wrecks precision.
+                terms = [t for t in self._gazetteer if self._nlp.vocab[t.lower()].is_oov]
+                if terms:
+                    # An entity ruler before the statistical NER; case-sensitive, so it
+                    # matches the Title-case name and supplements (not overrides) the model.
+                    ruler = self._nlp.add_pipe(
+                        "entity_ruler", before="ner", config={"overwrite_ents": False})
+                    ruler.add_patterns(
+                        [{"label": "PER", "pattern": term} for term in terms])
         return self._nlp
 
     def person_spans(self, text: str) -> list[str]:
@@ -35,5 +50,5 @@ class SpacyNer(NerPort):
 
 
 @_register("spacy")
-def create(settings) -> SpacyNer:
-    return SpacyNer(settings)
+def create(settings, gazetteer=None) -> SpacyNer:
+    return SpacyNer(settings, gazetteer=gazetteer)

@@ -14,6 +14,7 @@ from qhld_engine.domain.speeches.mentions import (
     COMMON_WORD_SURNAMES,
     NON_DEPUTY_SURNAMES,
     build_deputy_index,
+    build_surname_gazetteer,
     context_excluded_surnames,
     resolve_mentions,
 )
@@ -30,9 +31,14 @@ def es_text(blocks) -> str:
 class MentionTagger:
     def __init__(self, deputies, ner=None, settings=None):
         self.settings = settings or get_settings()
-        self._ner = ner or create_ner_from_env(self.settings)
         self._index = build_deputy_index(deputies)
         self._threshold = self.settings.mention_match_threshold
+        if ner is not None:
+            self._ner = ner
+        else:
+            gazetteer = (build_surname_gazetteer(deputies)
+                         if getattr(self.settings, "ner_gazetteer", False) else None)
+            self._ner = create_ner_from_env(self.settings, gazetteer=gazetteer)
 
     def tag(self, text: str):
         """Return the ``Mention``s named in ``text`` (already the Spanish block).

@@ -10,6 +10,7 @@ from qhld_engine.domain.speeches.mentions import (
     COMMON_WORD_SURNAMES,
     NON_DEPUTY_SURNAMES,
     build_deputy_index,
+    build_surname_gazetteer,
     context_excluded_surnames,
     normalize_span,
     resolve_mentions,
@@ -163,3 +164,60 @@ def test_context_cue_expresidente():
 
 def test_no_context_cue_yields_empty():
     assert context_excluded_surnames("El señor Sánchez habló de vivienda.") == frozenset()
+
+
+# --- tie-break (recall) ----------------------------------------------------
+
+JUAN_BRAVO = FakeDeputy("t1", "Bravo Baena, Juan")
+AITOR_ESTEBAN = FakeDeputy("t2", "Esteban Bravo, Aitor")
+GONZALEZ_PONS = FakeDeputy("t3", "González Pons, Esteban")
+RAMOS_ESTEBAN = FakeDeputy("t4", "Ramos Esteban, César Joaquín")
+PEDRO_SANCHEZ = FakeDeputy("t5", "Sánchez Pérez-Castejón, Pedro")
+CESAR_SANCHEZ = FakeDeputy("t6", "Sánchez Pérez, César")
+MUNOZ_IGLESIA = FakeDeputy("t7", "Muñoz de la Iglesia, Ester")
+MUNOZ_ABRINES = FakeDeputy("t8", "Muñoz Abrines, Pedro")
+INDEX_TIE = build_deputy_index([
+    JUAN_BRAVO, AITOR_ESTEBAN, GONZALEZ_PONS, RAMOS_ESTEBAN,
+    PEDRO_SANCHEZ, CESAR_SANCHEZ, MUNOZ_IGLESIA, MUNOZ_ABRINES])
+
+
+def test_tie_broken_toward_first_surname_holder():
+    # "Bravo" is Juan Bravo's FIRST surname but Aitor Esteban Bravo's SECOND — resolves
+    # to the former instead of dropping as an ambiguous tie.
+    assert _names(resolve_mentions(["el señor Bravo"], INDEX_TIE, 90)) == {
+        "Bravo Baena, Juan"}
+
+
+def test_tie_first_surname_beats_given_name_and_second_surname():
+    # "Esteban" is Aitor Esteban's FIRST surname, González Pons's GIVEN name and Ramos
+    # Esteban's SECOND surname — resolves to the first-surname holder.
+    assert _names(resolve_mentions(["Esteban"], INDEX_TIE, 90)) == {
+        "Esteban Bravo, Aitor"}
+
+
+def test_tie_broken_by_exact_token_order():
+    # Both share first surname "Sánchez" and tie at token_set_ratio 100; the exact
+    # surname order picks Pedro over the shorter "Sánchez Pérez".
+    assert _names(resolve_mentions(["Sánchez Pérez-Castejón"], INDEX_TIE, 90)) == {
+        "Sánchez Pérez-Castejón, Pedro"}
+
+
+def test_ambiguous_shared_first_surname_still_drops():
+    # Two deputies hold "Muñoz" as their first surname → genuinely ambiguous → dropped.
+    assert resolve_mentions(["Muñoz"], INDEX_TIE, 90) == []
+
+
+# --- surname gazetteer -----------------------------------------------------
+
+def test_gazetteer_keeps_distinctive_first_surnames_and_compound_parts():
+    deputies = [
+        FakeDeputy("g1", "Vallugera Balañà, Pilar"),
+        FakeDeputy("g2", "Grande-Marlaska Gómez, Fernando"),
+        FakeDeputy("g3", "García López, Ana"),
+        FakeDeputy("g4", "García Ruiz, Juan"),  # 'García' shared → excluded
+    ]
+    terms = build_surname_gazetteer(deputies)
+    assert "Vallugera" in terms
+    assert "Grande" in terms and "Marlaska" in terms  # hyphenated compound split
+    assert "García" not in terms  # borne by two deputies → not distinctive
+    assert all(t == t for t in terms) and terms == sorted(terms)

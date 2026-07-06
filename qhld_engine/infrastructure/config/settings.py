@@ -83,6 +83,10 @@ class Settings(BaseSettings):
     # a high threshold stays both forgiving (surname-only) and precise.
     ner_provider: str = "spacy"
     ner_model: str = "es_core_news_lg"
+    # Seed the NER pipeline with a gazetteer of distinctive deputy surnames so it also
+    # tags the uncommon/compound ones (Catalan/Basque names, hyphenated compounds) the
+    # base model misses. Off => base model only.
+    ner_gazetteer: bool = True
     mention_match_threshold: int = 90
 
 

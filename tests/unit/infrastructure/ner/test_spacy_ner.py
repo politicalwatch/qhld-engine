@@ -35,3 +35,18 @@ def test_empty_text_returns_no_spans():
 
     ner = create_ner_from_env(Settings())
     assert ner.person_spans("") == []
+
+
+def test_gazetteer_tags_surname_the_model_misses():
+    from qhld_engine.infrastructure.config.settings import Settings
+    from qhld_engine.infrastructure.ner.factory import create_ner_from_env
+
+    text = "La señora Vallugera intervino y también habló la señora Cruset."
+    # These out-of-vocabulary surnames get tagged only once the gazetteer seeds them.
+    seeded = create_ner_from_env(Settings(), gazetteer=["Vallugera", "Cruset"])
+    spans = seeded.person_spans(text)
+    assert any("Vallugera" in s for s in spans)
+    assert any("Cruset" in s for s in spans)
+    # An in-vocabulary common word offered to the gazetteer is filtered out, not tagged.
+    only_common = create_ner_from_env(Settings(), gazetteer=["Madrid"])
+    assert not any(s == "Madrid" for s in only_common.person_spans("Vivo en Madrid ahora."))
