@@ -80,3 +80,5 @@ blacklist
 
 # Tipi Alerts
 local_config.py
+
+.env
