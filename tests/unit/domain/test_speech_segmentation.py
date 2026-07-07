@@ -64,6 +64,46 @@ def test_government_speaker_is_bounded_not_swallowed():
     assert seg.next_speech(_regex("Rego Candamil, Néstor (GMx)")) == "Réplica del diputado."
 
 
+def test_build_speaker_regex_hyphen_and_space_interchangeable():
+    # Compound surnames get printed with the hyphen dropped ("Grande Marlaska",
+    # seen live in DSCD-15-PL-127) or with a space after it from line wrapping.
+    regex = _regex("Grande-Marlaska Gómez, Fernando")
+    for heading in ("El señor MINISTRO DEL INTERIOR (Grande-Marlaska Gómez):",
+                    "El señor MINISTRO DEL INTERIOR (Grande Marlaska Gómez):",
+                    "El señor MINISTRO DEL INTERIOR (Grande- Marlaska Gómez):"):
+        assert re.search(regex, heading, flags=re.IGNORECASE), heading
+
+
+def test_build_speaker_regex_matches_shortened_compound_surname():
+    # Later turns shorten long compound surnames (seen live: "ÁLVAREZ DE TOLEDO
+    # PERALTA-RAMOS" resumes as "ÁLVAREZ DE TOLEDO" in DSCD-15-PL-34, and
+    # "(Grande-Marlaska Gómez)" as "(Grande-Marlaska)" in DSCD-15-PL-13).
+    regex = _regex("Álvarez de Toledo Peralta-Ramos, Cayetana (GP)")
+    assert re.search(regex, "La señora ÁLVAREZ DE TOLEDO PERALTA-RAMOS:",
+                     flags=re.IGNORECASE)
+    assert re.search(regex, "La señora ÁLVAREZ DE TOLEDO:", flags=re.IGNORECASE)
+    regex = _regex("Grande-Marlaska Gómez, Fernando")
+    assert re.search(regex, "El señor MINISTRO DE INTERIOR (Grande-Marlaska):",
+                     flags=re.IGNORECASE)
+    # A short single word left after truncation is too ambiguous to match.
+    regex = _regex("Rego Candamil, Néstor (GMx)")
+    assert re.search(regex, "El señor REGO CANDAMIL:", flags=re.IGNORECASE)
+    assert not re.search(regex, "El señor REGO:", flags=re.IGNORECASE)
+
+
+def test_build_role_regex_matches_office_heading():
+    # Fallback for API records that credit the intervention to someone who never
+    # took the floor: the printed heading carries the office, not their surname.
+    regex = segmentation.build_role_regex(
+        "Ministro de Política Territorial y Memoria Democrática")
+    heading = ("El señor MINISTRO DE POLÍTICA TERRITORIAL Y MEMORIA "
+               "DEMOCRÁTICA (Torres Pérez):")
+    assert re.search(regex, heading, flags=re.IGNORECASE)
+    assert segmentation.build_role_regex(None) is None
+    assert not re.search(segmentation.build_role_regex("Diputado"),
+                         "El señor PEREZ:", flags=re.IGNORECASE)
+
+
 def test_speaker_surname_upper():
     assert segmentation.speaker_surname_upper(
         "García, Ana (GP Popular)") == "GARCÍA"
@@ -81,6 +121,87 @@ def test_normalize_session_text_trims_to_expediente():
     out = segmentation.normalize_session_text(raw, "161/000123")
     assert "previo" not in out
     assert out.strip().startswith("El señor PEREZ")
+
+
+def test_normalize_session_text_without_anchor_keeps_full_text():
+    raw = "Sin ancla alguna. El señor PEREZ: hola."
+    out = segmentation.normalize_session_text(raw, "161/000123")
+    assert out == raw
+
+
+def test_normalize_ignores_vote_announcement_anchor_after_debate():
+    # Voted initiative types (mociones, PNLs) re-print the expediente anchor in
+    # the vote announcement at the end of the sitting. The debate anchor, not
+    # the vote one, must win — the vote comes after every speech.
+    raw = (
+        "Sumario (Número de expediente 173/000004). ....... "
+        "Otro debate anterior. El señor OTRO: Otra cosa. "
+        "MOCIONES (Número de expediente 173/000004). "
+        "El señor PEREZ: Defiendo la moción. "
+        "La señora GARCIA: Fijamos posición. "
+        "La señora PRESIDENTA: Votamos ahora la moción "
+        "(Número de expediente 173/000004). Queda aprobada."
+    )
+    regexes = [_regex("Perez, J (G)"), _regex("Garcia, A (G)")]
+    out = segmentation.normalize_session_text(raw, "173/000004", regexes)
+    seg = segmentation.SpeechSegmenter(out)
+    assert seg.next_speech(regexes[0]) == "Defiendo la moción."
+    assert seg.next_speech(regexes[1]) == "Fijamos posición."
+
+
+def test_normalize_tolerates_zero_padding_typo_in_debate_anchor():
+    # Seen live (173/000004 in DSCD-15-PL-21): the debate heading prints the
+    # number with an extra zero, so an exact match sees only the vote anchor.
+    raw = (
+        "MOCIONES (Número de expediente 173/0000004). "
+        "El señor PEREZ: Defiendo la moción. "
+        "La señora PRESIDENTA: Votamos (Número de expediente 173/000004). Aprobada."
+    )
+    regexes = [_regex("Perez, J (G)")]
+    out = segmentation.normalize_session_text(raw, "173/000004", regexes)
+    assert segmentation.SpeechSegmenter(out).next_speech(
+        regexes[0]) == "Defiendo la moción."
+
+
+def test_normalize_ignores_mid_debate_reanchor():
+    # The chair sometimes re-prints the anchor mid-debate; the earlier anchor
+    # that still yields every speaker must win over the later partial one.
+    raw = (
+        "DEBATE (Número de expediente 210/000113). "
+        "El señor PEREZ: Comparezco. "
+        "La señora PRESIDENTA: Continuamos (Número de expediente 210/000113). "
+        "La señora GARCIA: Pregunto."
+    )
+    regexes = [_regex("Perez, J (G)"), _regex("Garcia, A (G)")]
+    out = segmentation.normalize_session_text(raw, "210/000113", regexes)
+    seg = segmentation.SpeechSegmenter(out)
+    assert seg.next_speech(regexes[0]) == "Comparezco."
+    assert seg.next_speech(regexes[1]) == "Pregunto."
+
+
+def test_normalize_tie_breaks_to_latest_anchor():
+    # Starting at the summary spans the whole sitting, where a similar heading
+    # in someone else's debate can be latched onto (the wrong-text artifact).
+    # On equal scores the latest anchor — the debate's own — must win.
+    raw = (
+        "Sumario (Número de expediente 173/000004). ....... "
+        "Debate ajeno. El señor PEREZ: Texto de otro debate. "
+        "MOCIONES (Número de expediente 173/000004). "
+        "El señor PEREZ: Texto correcto."
+    )
+    regexes = [_regex("Perez, J (G)")]
+    out = segmentation.normalize_session_text(raw, "173/000004", regexes)
+    assert segmentation.SpeechSegmenter(out).next_speech(
+        regexes[0]) == "Texto correcto."
+
+
+def test_normalize_without_regexes_uses_last_anchor():
+    raw = (
+        "Primero (Número de expediente 161/000123). Texto A. "
+        "Segundo (Número de expediente 161/000123). Texto B."
+    )
+    out = segmentation.normalize_session_text(raw, "161/000123")
+    assert out.strip() == "Texto B."
 
 
 def test_clean_speech_removes_stage_directions():
@@ -134,6 +255,25 @@ def test_chair_interruption_without_resume_ends_speech():
     speech = seg.next_speech(_regex("Perez, J (G)"))
     assert speech == "Solo una parte."
     assert "Se levanta" not in speech
+
+
+def test_consecutive_turns_of_same_speaker_not_stitched():
+    # Two consecutive interventions by the same speaker look, in the PDF, exactly
+    # like a chair interruption with a resume. The lookahead (the next expected
+    # intervention is the same speaker) is what keeps them apart; without it the
+    # first call swallows both turns and every later speaker falls behind the
+    # cursor (seen live in DSCD-15-PL-73, 210/000046).
+    text = (
+        "El señor MATUTE: Primer turno. "
+        "La señora PRESIDENTA: Gracias. "
+        "El señor MATUTE: Segundo turno. "
+        "La señora GARCIA: Fin."
+    )
+    matute, garcia = _regex("Matute, O (G)"), _regex("Garcia, A (G)")
+    seg = segmentation.SpeechSegmenter(text)
+    assert seg.next_speech(matute, matute) == "Primer turno."
+    assert seg.next_speech(matute, garcia) == "Segundo turno."
+    assert seg.next_speech(garcia, None) == "Fin."
 
 
 def test_missing_speaker_heading_returns_none():

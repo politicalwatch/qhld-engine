@@ -77,12 +77,18 @@ class ExtractSpeeches:
                 continue
             session_id = generate_id(session_link)
             self._save_session(items[0], session_link, session_id, reference)
-            text = segmentation.normalize_session_text(raw, reference)
+            speaker_regexes = [
+                segmentation.build_speaker_regex(i["orador"]) for i in items
+            ]
+            text = segmentation.normalize_session_text(
+                raw, reference, speaker_regexes)
             text = segmentation.fix_speaker_typos(text, surnames)
             segmenter = segmentation.SpeechSegmenter(text)
-            for intervention in items:
+            for intervention, regex, upcoming in zip(
+                    items, speaker_regexes, speaker_regexes[1:] + [None]):
                 self._extract_one(
-                    intervention, session_link, session_id, segmenter, reference)
+                    intervention, session_link, session_id, segmenter,
+                    reference, regex, upcoming)
 
     def _save_session(self, intervention, session_link, session_id, reference):
         """Upsert the sitting that hosts this debate. Metadata is taken from any of
@@ -109,15 +115,24 @@ class ExtractSpeeches:
         ``/public_oficiales/L15/CONG/DS/PL/DSCD-15-PL-13.PDF`` -> ``DSCD-15-PL-13``."""
         return os.path.splitext(os.path.basename(session_link))[0]
 
-    def _extract_one(self, intervention, session_link, session_id, segmenter, reference):
+    def _extract_one(self, intervention, session_link, session_id, segmenter,
+                     reference, speaker_regex, upcoming_regex):
         speaker, group, surname = segmentation.parse_speaker(intervention["orador"])
         if speaker is None:
             log.warning(
                 f"Unparseable speaker {intervention.get('orador')!r} for {reference}")
             return
 
-        speaker_regex = segmentation.build_speaker_regex(intervention["orador"])
-        text = segmenter.next_speech(speaker_regex)
+        text = segmenter.next_speech(speaker_regex, upcoming_regex)
+        if text is None:
+            # The API sometimes credits the intervention to someone who never
+            # took the floor (a Government reply is listed under the office
+            # holder, not the minister who answered); the office heading is
+            # then the only one printed. A failed search leaves the cursor
+            # unmoved, so the retry is safe.
+            role_regex = segmentation.build_role_regex(
+                intervention.get("cargo_orador"))
+            text = segmenter.next_speech(role_regex, upcoming_regex)
         if text is None:
             log.warning(f"Speaker heading not found for {reference}")
             original_language, blocks = None, []

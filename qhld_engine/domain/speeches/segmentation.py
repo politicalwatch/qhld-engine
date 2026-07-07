@@ -78,23 +78,95 @@ def build_speaker_regex(orador):
 
     ``[^:]*?`` between the courtesy title and the surname absorbs any role title
     ("MINISTRA DE …, …") for government speakers, while the optional parens around
-    the surname cover both "El señor SURNAME:" and "… (Surname):" forms."""
+    the surname cover both "El señor SURNAME:" and "… (Surname):" forms. Hyphens
+    and spaces are interchangeable: compound surnames get printed with the hyphen
+    dropped or with a space after it when wrapped across lines.
+
+    Long compound surnames also get *shortened* on a speaker's later turns
+    ("ÁLVAREZ DE TOLEDO PERALTA-RAMOS" resumes as "ÁLVAREZ DE TOLEDO"), so the
+    surname minus its last word is matched as an alternative — inside the same
+    regex, not as a retry, so whichever form occurs first from the cursor wins
+    (a retry would let the full form latch onto a later turn first). The colon
+    required right after the surname keeps the short form from matching the
+    long one's prefix."""
     surname = orador.split("(")[0].strip().split(",")[0]
     if not surname:
         return None
-    surname = re.sub(r"\s+", r"\\s+", surname)
-    return rf"(?<!\()(La señora|El señor)\s+[^:]*?\(?{surname}\)?:"
+    variants = [surname]
+    words = surname.split()[:-1]
+    while words and words[-1].islower():  # drop dangling connectors ("de", "i")
+        words.pop()
+    shortened = " ".join(words)
+    if len(re.split(r"[-\s]+", shortened)) >= 2:  # one word alone is too ambiguous
+        variants.append(shortened)
+    variants = [re.sub(r"[-\s]+", r"[-\\s]+", v) for v in variants]
+    alternatives = "|".join(rf"\(?{v}\)?" for v in variants)
+    return rf"(?<!\()(La señora|El señor)\s+[^:]*?(?:{alternatives}):"
 
 
-def normalize_session_text(raw, reference):
-    """Trim the PDF text to the initiative's debate (the last ``(Número de
-    expediente <ref>)`` anchor), collapse whitespace and unify dashes."""
-    pattern = rf"\s\(Número\s+de\s+expediente\s{re.escape(reference)}\)\.\s"
-    matches = list(re.finditer(pattern, raw))
-    if matches:
-        raw = raw[matches[-1].end():]
-    raw = re.sub(r"\s+", " ", raw)
-    return raw.replace("‑", "-").replace("–", "-").replace("—", "-")
+def build_role_regex(role):
+    """A regex matching a government speaker's heading from their office
+    (``cargo_orador``), e.g. "Ministro de X" -> "El señor MINISTRO DE X (Y):".
+
+    Fallback for interventions whose API ``orador`` names someone other than
+    the person who actually took the floor (seen with interpelaciones answered
+    on the Government's behalf), where no surname-based heading exists."""
+    if not role:
+        return None
+    role = re.sub(r"\s+", r"\\s+", role.strip().upper())
+    return rf"(La señora|El señor)\s+{role}\s*\([^)]*\):"
+
+
+def normalize_session_text(raw, reference, speaker_regexes=()):
+    """Collapse whitespace, unify dashes and trim the PDF text to the
+    initiative's debate.
+
+    The Diario prints ``(Número de expediente <ref>)`` in several places: the
+    opening summary, the debate's own section heading, and — for initiative
+    types that get voted — again in the vote announcement at the end of the
+    sitting, occasionally with extra zero-padding in the number. Which
+    occurrence starts the debate cannot be told from position alone, so each
+    candidate is trial-segmented against the interventions' ``speaker_regexes``
+    and the one yielding the most speeches wins. Ties go to the latest
+    position: a window that starts at the summary spans the whole sitting and
+    can latch onto a similar heading in someone else's debate.
+
+    Without ``speaker_regexes`` the last occurrence is used."""
+    flat = re.sub(r"\s+", " ", raw)
+    flat = flat.replace("‑", "-").replace("–", "-").replace("—", "-")
+    candidates = _anchor_candidates(flat, reference)
+    if not candidates:
+        return flat
+    if not speaker_regexes:
+        return flat[candidates[-1]:]
+    best = max(
+        candidates,
+        key=lambda start: (_segmentable(flat[start:], speaker_regexes), start),
+    )
+    return flat[best:]
+
+
+def _anchor_candidates(text, reference):
+    """End positions of every ``(Número de expediente <ref>)`` occurrence,
+    tolerating zero-padding differences in the printed number."""
+    try:
+        initiative_type, number = reference.split("/")
+        printed = rf"{re.escape(initiative_type)}/0*{int(number)}"
+    except ValueError:
+        printed = re.escape(reference)
+    pattern = rf"\(Número\s+de\s+expediente\s+{printed}\)\.?\s*"
+    return [match.end() for match in re.finditer(pattern, text)]
+
+
+def _segmentable(text, speaker_regexes):
+    """How many of the debate's interventions, taken in order, can be segmented
+    out of ``text`` — the trial score used to pick the debate's anchor."""
+    segmenter = SpeechSegmenter(text)
+    regexes = list(speaker_regexes)
+    return sum(
+        1 for regex, upcoming in zip(regexes, regexes[1:] + [None])
+        if segmenter.next_speech(regex, upcoming) is not None
+    )
 
 
 def fix_speaker_typos(text, surnames, threshold=80):
@@ -135,10 +207,16 @@ class SpeechSegmenter:
         self._text = text
         self._pos = 0
 
-    def next_speech(self, speaker_regex):
+    def next_speech(self, speaker_regex, upcoming_regex=None):
         """The current speaker's speech: their heading up to the next speaker's,
         stitched across chair interruptions when the same speaker resumes. Returns
-        ``None`` if the speaker's heading is not found from the cursor onward."""
+        ``None`` if the speaker's heading is not found from the cursor onward.
+
+        ``upcoming_regex`` is the *next* intervention's speaker. When a speaker
+        holds two consecutive interventions, the PDF shows the same
+        heading/chair/heading shape as a mere interruption; the lookahead is what
+        tells them apart, so the resumed text is left for the next intervention
+        instead of being stitched into this one."""
         if not speaker_regex:
             return None
 
@@ -146,11 +224,12 @@ class SpeechSegmenter:
         if not start:
             return None
 
-        speech, next_pos = self._collect(self._pos + start.end(), speaker_regex)
+        speech, next_pos = self._collect(
+            self._pos + start.end(), speaker_regex, upcoming_regex)
         self._pos = next_pos
         return clean_speech(speech)
 
-    def _collect(self, pos, speaker_regex):
+    def _collect(self, pos, speaker_regex, upcoming_regex):
         """Accumulate the speaker's text from ``pos``, returning ``(speech,
         next_pos)`` where ``next_pos`` starts the next speaker's heading (or end of
         text). Chair interruptions are skipped; the speaker's resumed text is kept."""
@@ -167,14 +246,18 @@ class SpeechSegmenter:
             if is_interrupter(heading.group(0)):
                 resume = re.search(
                     SPEAKER_PATTERN, self._text[after_heading:])
-                if resume and re.fullmatch(
-                        speaker_regex, resume.group(0), flags=re.IGNORECASE):
+                if (resume
+                        and re.fullmatch(
+                            speaker_regex, resume.group(0), flags=re.IGNORECASE)
+                        and not (upcoming_regex and re.fullmatch(
+                            upcoming_regex, resume.group(0), flags=re.IGNORECASE))):
                     # Same speaker resumes: skip the chair's heading + text and the
                     # resumed heading, then keep collecting.
                     pos = after_heading + resume.end()
                     continue
-                # Interrupted and not resumed: speech ends; the next intervention
-                # resumes from the interrupter's heading.
+                # Interrupted and not resumed (or the resumed heading is the next
+                # intervention): speech ends; the next intervention resumes from
+                # the interrupter's heading.
                 return speech, heading_pos
 
             # A different speaker: speech ends; next intervention starts here.
