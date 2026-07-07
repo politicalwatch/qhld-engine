@@ -701,15 +701,15 @@ wheels = [
 
 [[package]]
 name = "pdfminer-six"
-version = "20240706"
+version = "20260107"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "charset-normalizer" },
     { name = "cryptography" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e3/37/63cb918ffa21412dd5d54e32e190e69bfc340f3d6aa072ad740bec9386bb/pdfminer.six-20240706.tar.gz", hash = "sha256:c631a46d5da957a9ffe4460c5dce21e8431dabb615fee5f9f4400603a58d95a6", size = 7363505, upload-time = "2024-07-06T13:48:50.795Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/34/a4/5cec1112009f0439a5ca6afa8ace321f0ab2f48da3255b7a1c8953014670/pdfminer_six-20260107.tar.gz", hash = "sha256:96bfd431e3577a55a0efd25676968ca4ce8fd5b53f14565f85716ff363889602", size = 8512094, upload-time = "2026-01-07T13:29:12.937Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/67/7d/44d6b90e5a293d3a975cefdc4e12a932ebba814995b2a07e37e599dd27c6/pdfminer.six-20240706-py3-none-any.whl", hash = "sha256:f4f70e74174b4b3542fcb8406a210b6e2e27cd0f0b5fd04534a8cc0d8951e38c", size = 5615414, upload-time = "2024-07-06T13:48:48.408Z" },
+    { url = "https://files.pythonhosted.org/packages/20/8b/28c4eaec9d6b036a52cb44720408f26b1a143ca9bce76cc19e8f5de00ab4/pdfminer_six-20260107-py3-none-any.whl", hash = "sha256:366585ba97e80dffa8f00cebe303d2f381884d8637af4ce422f1df3ef38111a9", size = 6592252, upload-time = "2026-01-07T13:29:10.742Z" },
 ]
 
 [[package]]
@@ -1186,7 +1186,7 @@ requires-dist = [
     { name = "beautifulsoup4", specifier = "==4.12.3" },
     { name = "cssselect", specifier = "==1.2.0" },
     { name = "pdf2image", specifier = "==1.17.0" },
-    { name = "pdfminer-six", specifier = "==20240706" },
+    { name = "pdfminer-six", specifier = "==20260107" },
     { name = "pydantic-settings", specifier = "==2.14.2" },
     { name = "pytesseract", specifier = "==0.3.13" },
     { name = "python-docx", specifier = "==1.1.2" },
