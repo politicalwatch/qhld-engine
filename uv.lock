@@ -1192,7 +1192,7 @@ requires-dist = [
     { name = "python-docx", specifier = "==1.1.2" },
     { name = "python-pptx", specifier = "==1.0.2" },
     { name = "qhld-data", git = "https://github.com/politicalwatch/qhld-data.git?tag=v2.0.1" },
-    { name = "qhld-tasks", git = "https://github.com/politicalwatch/qhld-tasks.git?tag=v2.0.1" },
+    { name = "qhld-tasks", git = "https://github.com/politicalwatch/qhld-tasks.git?tag=v2.0.2" },
     { name = "requests-futures", specifier = "==1.0.2" },
     { name = "thefuzz", specifier = "==0.22.1" },
     { name = "tqdm", specifier = "==4.67.1" },
@@ -1209,7 +1209,7 @@ dev = [
 [[package]]
 name = "qhld-tasks"
 version = "2.0.1"
-source = { git = "https://github.com/politicalwatch/qhld-tasks.git?tag=v2.0.1#dfa2df10eb198164dd67bca8172284a72b284ef3" }
+source = { git = "https://github.com/politicalwatch/qhld-tasks.git?tag=v2.0.2#8a22aba4aed2171746d7143d182e7404ffc24e2d" }
 dependencies = [
     { name = "celery", extra = ["redis"] },
     { name = "jinja2" },
