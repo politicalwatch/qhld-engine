@@ -27,6 +27,7 @@ from qhld_engine.extractors.spain.initiative_extractors.utils.pdf_parsers import
     PDFExtractor,
 )
 
+from tipi_data import DoesNotExist
 from tipi_data.utils import generate_id
 from tipi_data.models.session import Session
 from tipi_data.models.speech import Speech, SpeechText
@@ -127,9 +128,12 @@ class ExtractSpeeches:
 
         video = intervention["video_intervencion"]
         order = int(intervention["doc"])
+        speech_id = self._speech_id(
+            video.get("id01"), session_link, intervention["orador"], order, blocks)
         speech = Speech(
-            id=generate_id(reference, session_link, str(order)),
-            reference=reference,
+            id=speech_id,
+            references=[reference],
+            video_id=video.get("id01") or None,
             session_id=session_id,
             speaker=speaker,
             speaker_surname=surname,
@@ -143,9 +147,40 @@ class ExtractSpeeches:
             session_link=session_link,
             speech=blocks,
             original_language=original_language,
-            mentions=self.tagger.tag(es_text(blocks)),
+            mentions=self._mentions(speech_id, blocks),
         )
         Speeches.save(speech)
+
+    @staticmethod
+    def _speech_id(video_id, session_link, orador, order, blocks):
+        """Identity of the *physical* intervention, so an accumulated debate
+        (several initiatives debated jointly) yields one document whose
+        ``references`` roster accumulates, instead of one copy per initiative.
+
+        The Congress intervention id (``video_intervencion.id01``) is that
+        identity and is stable across the debate's initiatives. It is empty
+        until the sitting's video is published, so the fallback keys on the
+        intervention's observable coordinates plus its text: identical-text
+        copies from the same speaker collapse, while a speaker's distinct
+        speeches under the same document number (numbering restarts per
+        initiative within a sitting) stay apart."""
+        if video_id:
+            return generate_id(video_id)
+        text = "||".join(block.text for block in blocks)
+        return generate_id(session_link, orador, str(order), text)
+
+    def _mentions(self, speech_id, blocks):
+        """Run NER over the Spanish text — unless this intervention was already
+        extracted with the same text (the earlier initiative of an accumulated
+        debate), in which case its stored mentions are reused."""
+        text = es_text(blocks)
+        try:
+            existing = Speeches.get(speech_id)
+        except DoesNotExist:
+            existing = None
+        if existing is not None and es_text(existing.speech) == text:
+            return existing.mentions
+        return self.tagger.tag(text)
 
     # -- API retrieval ---------------------------------------------------------
 

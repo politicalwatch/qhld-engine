@@ -19,9 +19,9 @@ class _FakeService:
     def search(self, query, k=10, filters=None):
         self.calls.append(filters)
         return [
-            SearchHit(id="1", score=0.9, payload={"reference": "A/1", "lang": "es"}),
-            SearchHit(id="2", score=0.8, payload={"reference": "A/1", "lang": "es"}),
-            SearchHit(id="3", score=0.7, payload={"reference": "B/2", "lang": "gl"}),
+            SearchHit(id="1", score=0.9, payload={"references": ["A/1"], "lang": "es"}),
+            SearchHit(id="2", score=0.8, payload={"references": ["A/1"], "lang": "es"}),
+            SearchHit(id="3", score=0.7, payload={"references": ["B/2"], "lang": "gl"}),
         ]
 
 

@@ -12,23 +12,25 @@ from collections import defaultdict
 
 
 def distinct_refs(hits):
-    """The ``reference`` payloads of ``hits`` in rank order, de-duplicated
+    """The ``references`` payloads of ``hits`` in rank order, de-duplicated
     (first occurrence wins). Passage-level results repeat a reference across its
-    chunks; reference-level metrics must count each reference once."""
+    chunks, and a speech from an accumulated debate carries several references —
+    each counts once, at the rank it first appears."""
     seen = []
     for hit in hits:
-        ref = hit.payload.get("reference")
-        if ref is not None and ref not in seen:
-            seen.append(ref)
+        for ref in hit.payload.get("references") or []:
+            if ref not in seen:
+                seen.append(ref)
     return seen
 
 
 def first_rank(hits, expected_refs):
-    """1-based rank of the first hit whose payload ``reference`` is in
-    ``expected_refs``; ``None`` if no top hit matches."""
+    """1-based rank of the first hit addressing any of ``expected_refs``
+    (a hit's payload ``references`` lists every initiative of its debate);
+    ``None`` if no top hit matches."""
     expected = set(expected_refs)
     for position, hit in enumerate(hits, start=1):
-        if hit.payload.get("reference") in expected:
+        if expected.intersection(hit.payload.get("references") or []):
             return position
     return None
 

@@ -62,7 +62,7 @@ class _FakeStore:
 def _bilingual_speech():
     return Speech(
         id="sid1",
-        reference="172/000001",
+        references=["172/000001", "172/000005"],
         session_id="ses1",
         speaker="Rego Candamil, Néstor",
         speaker_surname="Rego",
@@ -119,7 +119,7 @@ def test_indexes_both_language_blocks_as_separate_points(monkeypatch):
     assert by_lang["es"].payload["block_index"] == 1
     # shared speech metadata rides on every point
     assert by_lang["gl"].payload["speaker_surname"] == "Rego"
-    assert by_lang["gl"].payload["reference"] == "172/000001"
+    assert by_lang["gl"].payload["references"] == ["172/000001", "172/000005"]
     assert by_lang["gl"].payload["group"] == "GMx"
     # snippet text is stored for display
     assert by_lang["gl"].payload["text"] == "Boas tardes a todas e todos."

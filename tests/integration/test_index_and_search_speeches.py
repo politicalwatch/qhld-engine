@@ -50,7 +50,7 @@ def _settings():
 
 def _bilingual_speech():
     return Speech(
-        _id="x1", reference="172/000001", session_id="s1", speaker="Rego",
+        _id="x1", references=["172/000001"], session_id="s1", speaker="Rego",
         group="GMx", order=1, legislature="15", session_link="/s",
         speech=[
             SpeechText(lang="gl", text="Boas tardes, falamos de financiamento.", original=True),

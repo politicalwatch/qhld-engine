@@ -5,6 +5,9 @@ intervention-to-``Speech`` mapping without HTTP or a database.
 
 import pytest
 
+from tipi_data import DoesNotExist
+from tipi_data.utils import generate_id
+
 from qhld_engine.application.speeches import extract_speeches as mod
 
 pytestmark = pytest.mark.unit
@@ -18,8 +21,8 @@ class _FakeResponse:
         return self._data
 
 
-def test_execute_segments_and_saves_a_speech(monkeypatch):
-    page = {
+def _page(video_id="776209"):
+    return {
         "intervenciones_encontradas": "1",
         "lista_intervenciones": {
             "k1": {
@@ -28,6 +31,7 @@ def test_execute_segments_and_saves_a_speech(monkeypatch):
                 "doc": "3",
                 "video_intervencion": {
                     "legislatura": 15,
+                    "id01": video_id,
                     "enlace_descarga02": "http://v/3.mp4",
                 },
                 "pdia": "CONG-1#anchor",
@@ -41,6 +45,13 @@ def test_execute_segments_and_saves_a_speech(monkeypatch):
         },
     }
 
+
+def _stub_environment(monkeypatch, page, saved, saved_sessions, existing=None,
+                      tagged_texts=None):
+    """Stub the API, PDF, persistence and NER dependencies. ``existing`` maps
+    speech id -> stored Speech for the reuse-on-re-extract path; ``tagged_texts``
+    collects every text actually sent to the mention tagger."""
+
     class _FakeApi:
         def get_video(self, reference, page_number):
             return _FakeResponse(page)
@@ -52,19 +63,31 @@ def test_execute_segments_and_saves_a_speech(monkeypatch):
         def retrieve(self):
             return "El señor PEREZ: Hola. La señora GARCIA: Adiós."
 
-    saved = []
-    saved_sessions = []
+    def _get(speech_id):
+        if existing and speech_id in existing:
+            return existing[speech_id]
+        raise DoesNotExist(f"Speech {speech_id} does not exist")
+
     monkeypatch.setattr(mod, "CongressApi", lambda: _FakeApi())
     monkeypatch.setattr(mod, "PDFExtractor", _FakePDF)
     monkeypatch.setattr(mod.Speeches, "save", lambda speech: saved.append(speech))
+    monkeypatch.setattr(mod.Speeches, "get", staticmethod(_get))
     monkeypatch.setattr(mod.Sessions, "save", lambda s: saved_sessions.append(s))
     # stub mention tagging: no Mongo (deputy catalog) and no spaCy load here.
     monkeypatch.setattr(mod.Deputies, "get_all", staticmethod(lambda: []))
+    collector = tagged_texts if tagged_texts is not None else []
     monkeypatch.setattr(
         mod, "MentionTagger",
-        lambda deputies: type("T", (), {"tag": staticmethod(lambda text: [])})())
+        lambda deputies: type(
+            "T", (), {"tag": staticmethod(lambda text: collector.append(text) or [])})())
     # patch the detector so the test never loads py3langid and is deterministic
     monkeypatch.setattr(mod, "detect", lambda text: "es")
+
+
+def test_execute_segments_and_saves_a_speech(monkeypatch):
+    saved = []
+    saved_sessions = []
+    _stub_environment(monkeypatch, _page(), saved, saved_sessions)
 
     mod.ExtractSpeeches().execute(["161/000123"])
 
@@ -82,7 +105,11 @@ def test_execute_segments_and_saves_a_speech(monkeypatch):
 
     assert len(saved) == 1
     speech = saved[0]
-    assert speech.reference == "161/000123"
+    assert speech.references == ["161/000123"]
+    # identity = the Congress intervention id, stable across the initiatives
+    # of an accumulated debate
+    assert speech.id == generate_id("776209")
+    assert speech.video_id == "776209"
     # the speech links to its sitting via the session document's id
     assert speech.session_id == session.id
     assert speech.speaker == "Perez, Juan"
@@ -100,4 +127,49 @@ def test_execute_segments_and_saves_a_speech(monkeypatch):
         ("es", "Hola.", True)
     ]
     assert speech.original_language == "es"
-    assert speech.id  # deterministic id was generated
+
+
+def test_accumulated_debate_yields_one_id_across_references(monkeypatch):
+    saved = []
+    _stub_environment(monkeypatch, _page(), saved, [])
+
+    # the same physical intervention extracted under both initiatives of an
+    # accumulated debate
+    mod.ExtractSpeeches().execute(["210/000151", "210/000152"])
+
+    assert len(saved) == 2
+    assert saved[0].id == saved[1].id  # same doc upserted, roster accumulates
+    assert saved[0].references == ["210/000151"]
+    assert saved[1].references == ["210/000152"]
+
+
+def test_missing_video_id_falls_back_to_content_identity(monkeypatch):
+    saved = []
+    _stub_environment(monkeypatch, _page(video_id=""), saved, [])
+
+    mod.ExtractSpeeches().execute(["161/000123"])
+
+    speech = saved[0]
+    assert speech.video_id is None
+    assert speech.id == generate_id(
+        "/public_oficiales/L15/CONG-1", "Perez, Juan (GP Socialista)", "3", "Hola.")
+
+
+def test_reextraction_with_same_text_reuses_stored_mentions(monkeypatch):
+    from tipi_data.models.speech import Mention, Speech, SpeechText
+
+    stored = Speech(
+        id=generate_id("776209"),
+        references=["210/000151"],
+        speech=[SpeechText(lang="es", text="Hola.", original=True)],
+        mentions=[Mention(person_id="garcia-ana", name="Garcia, Ana", count=1)],
+    )
+    saved = []
+    tagged_texts = []
+    _stub_environment(monkeypatch, _page(), saved, [],
+                      existing={stored.id: stored}, tagged_texts=tagged_texts)
+
+    mod.ExtractSpeeches().execute(["210/000152"])
+
+    assert tagged_texts == []  # NER skipped: same intervention, unchanged text
+    assert saved[0].mentions == stored.mentions

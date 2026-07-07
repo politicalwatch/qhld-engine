@@ -78,6 +78,12 @@ def _print_parse(result):
     typer.echo("")
 
 
+def _references(payload):
+    """All initiative references the speech addresses (an accumulated debate
+    covers several), joined for display."""
+    return "+".join(payload.get("references") or []) or "?"
+
+
 def _snippet(payload, length=240):
     text = (payload.get("text") or "").strip().replace("\n", " ")
     return text[:length] + "…" if len(text) > length else text
@@ -93,7 +99,7 @@ def _print_hits(hits):
         group_line = payload.get("group") or payload.get("role") or "-"
         typer.echo(
             f"[{hit.score:.3f}] {speaker} ({group_line}) "
-            f"· {payload.get('reference')} · {payload.get('lang')}\n    {_snippet(payload)}\n")
+            f"· {_references(payload)} · {payload.get('lang')}\n    {_snippet(payload)}\n")
 
 
 def _print_grouped(groups):
@@ -105,7 +111,7 @@ def _print_grouped(groups):
         speaker = head.get("speaker") or "?"
         group_line = head.get("group") or head.get("role") or "-"
         typer.echo(
-            f"[{group.score:.3f}] {speaker} ({group_line}) · {head.get('reference')} "
+            f"[{group.score:.3f}] {speaker} ({group_line}) · {_references(head)} "
             f"· {len(group.highlights)} passage(s)")
         for hit in group.highlights:
             typer.echo(f"    · [{hit.score:.3f}] {hit.payload.get('lang')}  {_snippet(hit.payload, 200)}")

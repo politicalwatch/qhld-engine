@@ -114,7 +114,7 @@ class IndexSpeeches:
         return {
             "speech_id": speech.id,
             "session_id": speech.session_id,
-            "reference": speech.reference,
+            "references": speech.references,
             "legislature": speech.legislature,
             "group": speech.group,
             "speaker": speech.speaker,

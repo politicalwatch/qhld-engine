@@ -195,7 +195,7 @@ def test_search_grouped_flag_calls_grouped(monkeypatch):
     svc.search_grouped.return_value = [
         SpeechGroup(speech_id="A", score=0.8, highlights=[
             SearchHit(id="p1", score=0.8, payload={
-                "speaker": "X", "reference": "172/000001", "lang": "gl", "text": "hola"})])]
+                "speaker": "X", "references": ["172/000001"], "lang": "gl", "text": "hola"})])]
     result = runner.invoke(app, [
         "search", "speeches", "q", "--grouped", "--k", "5", "--highlights", "2", "--lang", "gl"])
     assert result.exit_code == 0, result.output
@@ -220,7 +220,7 @@ def test_search_natural_flag_routes_to_natural_service(monkeypatch):
             notes=["speaker: 'Montero' → 'Montero Cuadrado, María Jesús' (95)"]),
         semantic_query="financiación autonómica",
         hits=[SearchHit(id="p1", score=0.7, payload={
-            "speaker": "Montero", "reference": "172/000006", "lang": "es", "text": "hola"})])
+            "speaker": "Montero", "references": ["172/000006"], "lang": "es", "text": "hola"})])
     result = runner.invoke(app, [
         "search", "speeches",
         "intervenciones de Montero sobre financiación del último año", "--natural", "--k", "5"])

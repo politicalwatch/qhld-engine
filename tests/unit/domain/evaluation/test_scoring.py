@@ -8,8 +8,8 @@ from qhld_engine.domain.ports.vector_store import SearchHit
 pytestmark = pytest.mark.unit
 
 
-def _hit(reference, score=0.5):
-    return SearchHit(id="x", score=score, payload={"reference": reference})
+def _hit(*references, score=0.5):
+    return SearchHit(id="x", score=score, payload={"references": list(references)})
 
 
 def test_first_rank_returns_position_of_first_expected():
@@ -21,14 +21,25 @@ def test_first_rank_none_when_no_match():
     assert scoring.first_rank([_hit("A/1")], ["Z/9"]) is None
 
 
-def test_first_rank_ignores_missing_reference_payload():
+def test_first_rank_ignores_missing_references_payload():
     hits = [SearchHit(id="x", score=0.9, payload={}), _hit("A/1")]
     assert scoring.first_rank(hits, ["A/1"]) == 2
+
+
+def test_first_rank_matches_any_reference_of_an_accumulated_debate():
+    hits = [_hit("A/1"), _hit("B/2", "C/3")]
+    assert scoring.first_rank(hits, ["C/3"]) == 2
 
 
 def test_distinct_refs_dedupes_preserving_order():
     hits = [_hit("A/1"), _hit("A/1"), _hit("B/2"), SearchHit(id="x", score=0.1, payload={})]
     assert scoring.distinct_refs(hits) == ["A/1", "B/2"]
+
+
+def test_distinct_refs_counts_every_reference_of_an_accumulated_debate():
+    # one deduplicated speech addressing two initiatives ranks both at once
+    hits = [_hit("A/1", "B/2"), _hit("B/2"), _hit("C/3")]
+    assert scoring.distinct_refs(hits) == ["A/1", "B/2", "C/3"]
 
 
 def test_reciprocal_rank():

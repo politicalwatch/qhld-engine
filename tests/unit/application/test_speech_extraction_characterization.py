@@ -56,6 +56,10 @@ def test_extract_speeches_172_000001(monkeypatch, capture):
     monkeypatch.setattr(mod, "CongressApi", lambda: _FakeApi())
     monkeypatch.setattr(mod, "PDFExtractor", _FakePDF)
     monkeypatch.setattr(mod.Speeches, "save", lambda speech: saved.append(speech))
+    def _no_stored_speech(speech_id):
+        raise mod.DoesNotExist(speech_id)
+
+    monkeypatch.setattr(mod.Speeches, "get", staticmethod(_no_stored_speech))
     monkeypatch.setattr(mod.Sessions, "save", lambda s: saved_sessions.append(s))
     # stub mention tagging: this test locks segmentation/language-split, not NER,
     # and must stay Mongo-free (no deputy catalog) and spaCy-free.
@@ -126,7 +130,9 @@ def test_extract_speeches_172_000001(monkeypatch, capture):
     }
 
     # common fields
-    assert all(s.reference == "172/000001" for s in saved)
+    assert all(s.references == ["172/000001"] for s in saved)
     assert all(s.legislature == "15" for s in saved)
     assert all(s.session_link == expected_link for s in saved)
+    # identity = the Congress intervention id captured in the fixture
+    assert [s.video_id for s in saved] == ["726566", "726567", "726572", "726573"]
     assert all(s.id for s in saved)  # deterministic ids generated

@@ -290,6 +290,7 @@ def _dump(row):
     for position, hit in enumerate(row.get("hits", []), start=1):
         payload = hit.payload
         typer.echo(
-            f"      {position:>2}. [{hit.score:.3f}] {payload.get('reference')} "
+            f"      {position:>2}. [{hit.score:.3f}] "
+            f"{'+'.join(payload.get('references') or [])} "
             f"· {payload.get('lang')} · {payload.get('speaker')}"
         )
