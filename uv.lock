@@ -1209,7 +1209,7 @@ dev = [
 [[package]]
 name = "qhld-tasks"
 version = "2.0.1"
-source = { git = "https://github.com/politicalwatch/qhld-tasks.git?tag=v2.0.1#dfa2df10eb198164dd67bca8172284a72b284ef3" }
+source = { git = "https://github.com/politicalwatch/qhld-tasks.git?tag=v2.0.2#8a22aba4aed2171746d7143d182e7404ffc24e2d" }
 dependencies = [
     { name = "celery", extra = ["redis"] },
     { name = "jinja2" },
