@@ -101,7 +101,9 @@ def build_speaker_regex(orador):
         variants.append(shortened)
     variants = [re.sub(r"[-\s]+", r"[-\\s]+", v) for v in variants]
     alternatives = "|".join(rf"\(?{v}\)?" for v in variants)
-    return rf"(?<!\()(La señora|El señor)\s+[^:]*?(?:{alternatives}):"
+    # The optional parenthetical before the colon covers the inverted government
+    # form "DÍAZ PÉREZ (vicepresidenta segunda y ministra de …):".
+    return rf"(?<!\()(La señora|El señor)\s+[^:]*?(?:{alternatives})(\s*\([^)]*\))?:"
 
 
 def build_role_regex(role):
@@ -170,14 +172,21 @@ def _segmentable(text, speaker_regexes):
 
 
 def fix_speaker_typos(text, surnames, threshold=80):
-    """Repair OCR/transcription typos in speaker surnames against the known list."""
+    """Repair OCR/transcription typos in speaker surnames against the known list.
+
+    The replacement is bounded to whole uppercase words: a typo that is a prefix
+    of the correct surname ("RODRÍGUEZ SALA" for "RODRÍGUEZ SALAS") must not
+    rewrite the correct occurrences too, or they stop matching their heading."""
     for match in re.finditer(SPEAKER_PATTERN, text):
         if is_interrupter(match.group(0)):
             continue
         for surname in surnames:
             similarity = fuzz.ratio(match.group(2), surname)
             if threshold < similarity < 100:
-                text = text.replace(match.group(2), surname)
+                text = re.sub(
+                    rf"(?<![A-ZÁÀÉÈÍÏÓÒÚÜÇÑ]){re.escape(match.group(2))}"
+                    rf"(?![A-ZÁÀÉÈÍÏÓÒÚÜÇÑ])",
+                    surname, text)
                 break
     return text
 

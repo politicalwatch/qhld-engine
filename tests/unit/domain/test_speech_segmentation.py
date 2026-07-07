@@ -219,6 +219,27 @@ def test_fix_speaker_typos_corrects_near_match():
     assert "señora GARCIA:" not in fixed
 
 
+def test_fix_speaker_typos_does_not_corrupt_correct_occurrences():
+    # A typo that is a PREFIX of the correct surname (seen live: "RODRÍGUEZ
+    # SALA" for "RODRÍGUEZ SALAS" in DSCD-15-PL-124) must be fixed without
+    # rewriting the already-correct headings ("...SALAS" -> "...SALASS").
+    text = ("El señor RODRÍGUEZ SALAS: Primer turno. "
+            "El señor RODRÍGUEZ SALA: Segundo turno.")
+    fixed = segmentation.fix_speaker_typos(text, ["RODRÍGUEZ SALAS"])
+    assert "El señor RODRÍGUEZ SALAS: Primer turno." in fixed
+    assert "El señor RODRÍGUEZ SALAS: Segundo turno." in fixed
+    assert "SALASS" not in fixed
+
+
+def test_build_speaker_regex_matches_surname_then_role_heading():
+    # Inverted government form (seen live: DSCD-15-PL-130): surname first, the
+    # office in a parenthetical before the colon.
+    regex = _regex("Díaz Pérez, Yolanda")
+    heading = ("La señora DÍAZ PÉREZ (vicepresidenta segunda y ministra "
+               "de Trabajo y Economía Social):")
+    assert re.search(regex, heading, flags=re.IGNORECASE)
+
+
 # --- SpeechSegmenter ----------------------------------------------------------
 
 def test_two_consecutive_speakers_each_extracted():
