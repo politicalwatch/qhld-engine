@@ -14,6 +14,18 @@ from ..congress_api import CongressApi
 log = get_logger(__name__)
 
 
+def extract_json_link(html):
+    regex = re.compile(r'<a[\sa-zA-Z\"\.=0-9_\/:]+\>JSON\<\/a\>')
+    matches = regex.findall(html)
+    if not matches:
+        return None
+    tag = matches[0]
+    start = tag.find('href="') + 6
+    link = tag[start:]
+    end = link.find('"')
+    return link[:end]
+
+
 class VoteExtractor():
     JSON_XPATH = "//div[@class='votaciones']/div[1]/a[contains(text(), 'JSON')]"
     VOTE_TYPES = [
@@ -42,8 +54,11 @@ class VoteExtractor():
                     self.__extract_item(item, 'Principal')
 
     def __extract_item(self, item, label):
+        link = extract_json_link(item)
+        if link is None:
+            log.warning(f"No JSON link found for {self.reference}")
+            return
         log.info(f"Extracting '{label}' votes for {self.reference}")
-        link = self.extract_link(item)
         self.extract_votes(link)
 
     def get_votes_html(self):
@@ -62,15 +77,6 @@ class VoteExtractor():
             cleaned.append(unescape(item) + 'JSON</a>')
 
         return cleaned[:len(cleaned) - 1]
-
-    def extract_link(self, html):
-        regex = re.compile(r'<a[\sa-zA-Z\"\.=0-9_\/:]+\>JSON\<\/a\>')
-        matches = regex.findall(html)
-        tag = matches[0]
-        start = tag.find('href="') + 6
-        link = tag[start:]
-        end = link.find('"')
-        return link[:end]
 
     def extract_votes(self, url):
         try:
