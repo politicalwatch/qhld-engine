@@ -80,9 +80,12 @@ def _bilingual_speech():
         ],
         original_language="gl",
         mentions=[
-            Mention(deputy_id="d9", name="Sánchez, Pedro", surface_forms=["Sánchez"], count=2),
-            # unresolved (no deputy_id) → must not leak into the filterable payload
-            Mention(deputy_id=None, name="Von der Leyen", surface_forms=["Von der Leyen"], count=1),
+            Mention(person_id="d9", person_type="deputy",
+                    name="Sánchez, Pedro", surface_forms=["Sánchez"], count=2),
+            Mention(person_id="isabel-diaz-ayuso", person_type="regional_president",
+                    name="Díaz Ayuso, Isabel", surface_forms=["Ayuso"], count=1),
+            # unresolved (no person_id) → must not leak into the filterable payload
+            Mention(person_id=None, name="Unknown", surface_forms=["Unknown"], count=1),
         ],
     )
 
@@ -120,11 +123,13 @@ def test_indexes_both_language_blocks_as_separate_points(monkeypatch):
     assert by_lang["gl"].payload["group"] == "GMx"
     # snippet text is stored for display
     assert by_lang["gl"].payload["text"] == "Boas tardes a todas e todos."
-    # resolved mentions ride on every point (filterable list + reserved counts);
-    # the unresolved mention (deputy_id=None) is excluded
+    # resolved mentions ride on every point — deputy AND non-deputy person ids, the
+    # types map and the reserved counts; the unresolved mention (person_id=None) is excluded
     for point in points:
-        assert point.payload["mentions"] == ["d9"]
-        assert point.payload["mention_counts"] == {"d9": 2}
+        assert point.payload["mentions"] == ["d9", "isabel-diaz-ayuso"]
+        assert point.payload["mention_counts"] == {"d9": 2, "isabel-diaz-ayuso": 1}
+        assert point.payload["mention_types"] == {
+            "d9": "deputy", "isabel-diaz-ayuso": "regional_president"}
 
     # deterministic point ids
     assert by_lang["gl"].id == str(uuid5(_NS, "sid1:0:0"))

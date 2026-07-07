@@ -56,7 +56,8 @@ def test_es_text_empty_when_no_spanish_block():
 
 def test_tag_runs_ner_and_resolves():
     ner = RecordingNer(["el señor Rufián"])
-    tagger = MentionTagger(DEPUTIES, ner=ner, settings=SETTINGS)
+    tagger = MentionTagger(DEPUTIES, ner=ner, settings=SETTINGS,
+                           curated=[], nondeputy_speakers=[])
     mentions = tagger.tag("El señor Rufián intervino.")
     assert ner.seen == "El señor Rufián intervino."
     assert [m.name for m in mentions] == ["Rufián Romero, Gabriel"]
@@ -64,7 +65,8 @@ def test_tag_runs_ner_and_resolves():
 
 def test_tag_speech_uses_spanish_block():
     ner = RecordingNer(["Rufián"])
-    tagger = MentionTagger(DEPUTIES, ner=ner, settings=SETTINGS)
+    tagger = MentionTagger(DEPUTIES, ner=ner, settings=SETTINGS,
+                           curated=[], nondeputy_speakers=[])
     speech = SimpleNamespace(speech=[
         SpeechText(lang="ca", text="original en català", original=True),
         SpeechText(lang="es", text="traducción con Rufián", original=False),
@@ -72,3 +74,17 @@ def test_tag_speech_uses_spanish_block():
     mentions = tagger.tag_speech(speech)
     assert ner.seen == "traducción con Rufián"
     assert [m.name for m in mentions] == ["Rufián Romero, Gabriel"]
+
+
+def test_tag_resolves_non_deputy_from_curated_and_bootstrap():
+    # A deputy, a curated non-deputy (Ayuso) and a bootstrapped minister all resolve.
+    ner = RecordingNer(["Rufián", "Ayuso", "Aagesen"])
+    tagger = MentionTagger(
+        DEPUTIES, ner=ner, settings=SETTINGS,
+        curated=[{"person_id": "isabel-diaz-ayuso", "person_type": "regional_president",
+                  "name": "Díaz Ayuso, Isabel", "aliases": ["Ayuso"]}],
+        nondeputy_speakers=[{"speaker": "Aagesen Muñoz, Sara", "role": "Ministra"}])
+    by_type = {m.person_type: m.name for m in tagger.tag("...")}
+    assert by_type["deputy"] == "Rufián Romero, Gabriel"
+    assert by_type["regional_president"] == "Díaz Ayuso, Isabel"
+    assert by_type["minister"] == "Aagesen Muñoz, Sara"

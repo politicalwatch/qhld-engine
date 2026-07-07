@@ -44,8 +44,9 @@ class NaturalSearchSpeeches:
     def _resolver_from_corpus(self) -> EntityResolver:
         """Build a resolver bound to the target (per-model) collection's payload:
         distinct speaker/role/group values come from that collection, group aliases
-        from the ParliamentaryGroups repo, and the deputies catalog resolves a
-        mentioned person to a deputy id (matching the payload ``mentions`` list)."""
+        from the ParliamentaryGroups repo, and the person catalog (deputies + curated
+        and bootstrapped non-deputies) resolves a mentioned person to a person id
+        (matching the payload ``mentions`` list)."""
         from tipi_data.repositories.deputies import Deputies
         from tipi_data.repositories.parliamentarygroups import ParliamentaryGroups
 

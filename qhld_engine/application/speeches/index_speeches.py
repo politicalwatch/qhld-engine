@@ -18,6 +18,8 @@ fresh ones are written, so re-runs and chunk-count changes never leave orphans.
 
 from uuid import NAMESPACE_DNS, uuid5
 
+from tqdm import tqdm
+
 from qhld_engine.logger import get_logger
 from qhld_engine.domain.speeches.chunking import chunk_text
 from qhld_engine.domain.ports.vector_store import VectorPoint
@@ -63,7 +65,7 @@ class IndexSpeeches:
                     f"Incremental: {len(speeches)} of {total} speeches not yet in "
                     f"{self.collection} (pass --all to re-index the whole corpus)")
         log.info(f"Indexing {len(speeches)} speeches into {self.collection}")
-        for speech in speeches:
+        for speech in tqdm(speeches, desc="Indexing speeches", unit="speech"):
             self._index_speech(speech)
 
     def _index_speech(self, speech):
@@ -71,7 +73,7 @@ class IndexSpeeches:
         # Delete first so a re-index with fewer chunks leaves no orphans.
         self.store.delete_by(self.collection, "speech_id", speech.id)
         if not chunks:
-            log.info(f"No text to index for speech {speech.id}")
+            log.debug(f"No text to index for speech {speech.id}")
             return
         vectors = self.embedder.embed_documents([text for _, _, text in chunks])
         points = [
@@ -79,7 +81,7 @@ class IndexSpeeches:
             for (point_id, payload, _text), vector in zip(chunks, vectors)
         ]
         self.store.upsert(self.collection, points)
-        log.info(f"Indexed {len(points)} passages for speech {speech.id}")
+        log.debug(f"Indexed {len(points)} passages for speech {speech.id}")
 
     def _chunks(self, speech):
         """The (point_id, payload, text) triples for every passage of every block."""
@@ -98,13 +100,17 @@ class IndexSpeeches:
 
     @staticmethod
     def _payload(speech, block, block_index, chunk_index, text):
-        # Deputies named within the speech, resolved at extraction time. Speech-level,
-        # so the same list rides on every passage-point. `mentions` is the filterable
-        # list of deputy ids; `mention_counts` (unused for now) is kept so a future
-        # relevance boost by mention frequency needs no second full re-index.
-        mentions = [m.deputy_id for m in (speech.mentions or []) if m.deputy_id]
-        mention_counts = {
-            m.deputy_id: m.count for m in (speech.mentions or []) if m.deputy_id}
+        # People named within the speech, resolved at extraction time (deputies plus
+        # non-deputies — ministers, the King, regional presidents, foreign leaders).
+        # Speech-level, so the same lists ride on every passage-point. `mentions` is the
+        # filterable list of person ids (a deputy's id is its old deputy slug, so deputy
+        # filters are unchanged); `mention_types` maps id→kind for faceting;
+        # `mention_counts` (unused for now) is kept so a future relevance boost by
+        # mention frequency needs no second full re-index.
+        resolved = [m for m in (speech.mentions or []) if m.person_id]
+        mentions = [m.person_id for m in resolved]
+        mention_types = {m.person_id: m.person_type for m in resolved}
+        mention_counts = {m.person_id: m.count for m in resolved}
         return {
             "speech_id": speech.id,
             "session_id": speech.session_id,
@@ -118,6 +124,7 @@ class IndexSpeeches:
             "date": speech.date,
             "session_name": speech.session_name,
             "mentions": mentions,
+            "mention_types": mention_types,
             "mention_counts": mention_counts,
             "lang": block.lang,
             "original": block.original,

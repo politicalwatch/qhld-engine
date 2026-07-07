@@ -8,10 +8,11 @@ import pytest
 
 from qhld_engine.domain.speeches.mentions import (
     COMMON_WORD_SURNAMES,
-    NON_DEPUTY_SURNAMES,
     build_deputy_index,
+    build_person_index,
     build_surname_gazetteer,
     context_excluded_surnames,
+    make_person_entry,
     normalize_span,
     resolve_mentions,
     resolve_person,
@@ -64,7 +65,8 @@ def test_normalize_drops_pure_honorific_and_too_short():
 def test_surname_only_resolves_to_canonical_name():
     mentions = resolve_mentions(["Montero"], INDEX, 90)
     assert _names(mentions) == {"Montero Cuadrado, María Jesús"}
-    assert mentions[0].deputy_id == "d2"
+    assert mentions[0].person_id == "d2"
+    assert mentions[0].person_type == "deputy"
 
 
 def test_full_name_and_honorific_forms_merge_into_one_mention():
@@ -135,9 +137,10 @@ def test_common_word_surname_excluded():
 
 
 def test_deputy_known_by_second_surname_survives_denylist():
-    # Regression guard: the denylist must not suppress a deputy universally named by
-    # their SECOND surname (Feijóo of Núñez Feijóo) — "feijóo" is not flagged.
-    mentions = resolve_mentions(["Feijóo"], INDEX_EXCL, 90, NON_DEPUTY_SURNAMES)
+    # Regression guard: the exclusion set must not suppress a deputy universally named
+    # by their SECOND surname (Feijóo of Núñez Feijóo) — "feijóo" is not flagged.
+    mentions = resolve_mentions(
+        ["Feijóo"], INDEX_EXCL, 90, frozenset({"aznar", "suárez", "clavijo"}))
     assert _names(mentions) == {"Núñez Feijóo, Alberto"}
 
 
@@ -156,11 +159,6 @@ def test_context_cue_magistrate():
 def test_context_cue_dictatorship_flags_franco():
     text = "La ley debe ser la orgánica de Franco, la manera fina de llamarla en la Dictadura."
     assert "franco" in context_excluded_surnames(text)
-
-
-def test_context_cue_expresidente():
-    text = "Lo dijo el expresidente del Gobierno Aznar en aquella ocasión."
-    assert "aznar" in context_excluded_surnames(text)
 
 
 def test_no_context_cue_yields_empty():
@@ -213,12 +211,12 @@ def test_ambiguous_shared_first_surname_still_drops():
 def test_resolve_person_surname_resolves_to_deputy():
     entry = resolve_person("Montero", INDEX, 90)
     assert entry is not None
-    assert (entry.deputy_id, entry.name) == ("d2", "Montero Cuadrado, María Jesús")
+    assert (entry.person_id, entry.name) == ("d2", "Montero Cuadrado, María Jesús")
 
 
 def test_resolve_person_full_name_resolves():
     entry = resolve_person("Pedro Sánchez", INDEX, 90)
-    assert entry.deputy_id == "d1"
+    assert entry.person_id == "d1"
 
 
 def test_resolve_person_ambiguous_surname_is_none():
@@ -248,3 +246,94 @@ def test_gazetteer_keeps_distinctive_first_surnames_and_compound_parts():
     assert "Grande" in terms and "Marlaska" in terms  # hyphenated compound split
     assert "García" not in terms  # borne by two deputies → not distinctive
     assert all(t == t for t in terms) and terms == sorted(terms)
+
+
+# --- non-deputy people (curated catalog + overrides) -----------------------
+
+# A deputy who shares a surname with a famous non-deputy, plus one who doesn't.
+GAMARRA = FakeDeputy("gamarra", "Gamarra Ruiz-Clavijo, Concepción")
+AZNAR_DEP2 = FakeDeputy("aznar-teruel", "Aznar Teruel, Evarist")
+FEIJOO2 = FakeDeputy("nunez-feijoo-alberto", "Núñez Feijóo, Alberto")
+
+CURATED = [
+    make_person_entry("fernando-clavijo", "regional_president", "Clavijo Batlle, Fernando",
+                      aliases=["Clavijo", "Fernando Clavijo"], overrides_deputy=True),
+    make_person_entry("jose-maria-aznar", "former_pm", "Aznar López, José María",
+                      aliases=["Aznar", "José María Aznar"], overrides_deputy=True),
+    make_person_entry("isabel-diaz-ayuso", "regional_president", "Díaz Ayuso, Isabel",
+                      aliases=["Ayuso", "Díaz Ayuso"]),
+    make_person_entry("donald-trump", "foreign_leader", "Trump, Donald", aliases=["Trump"]),
+    make_person_entry("felipe-vi", "head_of_state", "Felipe VI",
+                      aliases=["Felipe VI", "su majestad"]),
+]
+PERSON_INDEX = build_person_index([GAMARRA, AZNAR_DEP2, FEIJOO2], CURATED)
+
+
+def _one(span):
+    m = resolve_mentions([span], PERSON_INDEX, 90)
+    return (m[0].name, m[0].person_type) if m else None
+
+
+def test_non_deputy_resolves_to_catalog_person():
+    assert _one("Ayuso") == ("Díaz Ayuso, Isabel", "regional_president")
+    assert _one("Trump") == ("Trump, Donald", "foreign_leader")
+
+
+def test_override_wins_over_colliding_deputy_on_bare_surname():
+    # "Clavijo" is the Canarias president, not the deputy Gamarra Ruiz-Clavijo (2nd
+    # surname); "Aznar" is the ex-PM, not the deputy Aznar Teruel.
+    assert _one("Clavijo") == ("Clavijo Batlle, Fernando", "regional_president")
+    assert _one("Aznar") == ("Aznar López, José María", "former_pm")
+
+
+def test_deputy_full_name_beats_override():
+    # The deputy's OWN full name outranks the surname-sharing override.
+    assert _one("Gamarra Ruiz-Clavijo") == ("Gamarra Ruiz-Clavijo, Concepción", "deputy")
+
+
+def test_deputy_second_surname_still_wins_when_no_override():
+    # Feijóo has no override entry and only the deputy matches → deputy, unchanged.
+    assert _one("Feijóo") == ("Núñez Feijóo, Alberto", "deputy")
+
+
+def test_king_matched_by_explicit_alias_not_bare_common_noun():
+    assert _one("su majestad") == ("Felipe VI", "head_of_state")
+    assert _one("Felipe VI") == ("Felipe VI", "head_of_state")
+    # bare "rey" is a common noun (and collides with the real deputy 'Rey de las
+    # Heras'), deliberately not an alias → the King is not matched from it.
+    assert _one("rey") is None
+
+
+def test_non_deputy_never_excluded_by_deputy_denylist():
+    # The exclusion set only guards deputy resolutions; a resolved non-deputy is kept
+    # even if a homonymous surname would be flagged for deputies.
+    mentions = resolve_mentions(["Aznar"], PERSON_INDEX, 90, frozenset({"aznar"}))
+    assert _names(mentions) == {"Aznar López, José María"}
+
+
+def test_resolve_person_resolves_non_deputy():
+    entry = resolve_person("Ayuso", PERSON_INDEX, 90)
+    assert (entry.person_id, entry.person_type) == ("isabel-diaz-ayuso", "regional_president")
+
+
+def test_override_second_surname_does_not_hijack_ambiguous_tie():
+    # 'Aznar López' (override ex-PM) shares his SECOND surname with a bare 'López', which
+    # is ambiguous across several deputies. The override must not fire on a secondary
+    # token: 'López' stays ambiguous (dropped), while the ex-PM still resolves from 'Aznar'.
+    lopez1 = FakeDeputy("lopez-cano", "López Cano, Ignacio")
+    lopez2 = FakeDeputy("lopez-alvarez", "López Álvarez, Patxi")
+    aznar = make_person_entry("jose-maria-aznar", "former_pm", "Aznar López, José María",
+                              aliases=["Aznar"], overrides_deputy=True)
+    index = build_person_index([lopez1, lopez2], [aznar])
+    assert resolve_mentions(["López"], index, 90) == []
+    assert resolve_mentions(["Aznar"], index, 90)[0].person_type == "former_pm"
+
+
+def test_deputy_wins_tie_over_nonoverride_nondeputy():
+    # A bootstrapped minister shares a surname with a deputy ("Rego"): the deputy is the
+    # primary referent and wins — a non-override non-deputy never blocks a deputy.
+    deputy = FakeDeputy("rego-candamil-nestor", "Rego Candamil, Néstor")
+    minister = make_person_entry("sira-rego", "minister", "Rego, Sira Abed")
+    index = build_person_index([deputy], [minister])
+    m = resolve_mentions(["Rego"], index, 90)
+    assert (m[0].name, m[0].person_type) == ("Rego Candamil, Néstor", "deputy")

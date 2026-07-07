@@ -1,0 +1,30 @@
+[
+  {"person_id": "isabel-diaz-ayuso", "person_type": "regional_president", "name": "Díaz Ayuso, Isabel", "aliases": ["Ayuso", "Díaz Ayuso", "Isabel Díaz Ayuso"]},
+  {"person_id": "juanma-moreno-bonilla", "person_type": "regional_president", "name": "Moreno Bonilla, Juan Manuel", "aliases": ["Moreno Bonilla", "Juanma Moreno"]},
+  {"person_id": "carlos-mazon", "person_type": "regional_president", "name": "Mazón Guixot, Carlos", "aliases": ["Mazón", "Carlos Mazón"]},
+  {"person_id": "salvador-illa", "person_type": "regional_president", "name": "Illa Roca, Salvador", "aliases": ["Illa", "Salvador Illa"]},
+  {"person_id": "fernando-clavijo", "person_type": "regional_president", "name": "Clavijo Batlle, Fernando", "aliases": ["Clavijo", "Fernando Clavijo"], "overrides_deputy": true},
+  {"person_id": "carles-puigdemont", "person_type": "regional_president", "name": "Puigdemont i Casamajó, Carles", "aliases": ["Puigdemont", "Carles Puigdemont"]},
+  {"person_id": "emiliano-garcia-page", "person_type": "regional_president", "name": "García-Page Sánchez, Emiliano", "aliases": ["García-Page", "Page", "Emiliano García-Page"]},
+
+  {"person_id": "jose-maria-aznar", "person_type": "former_pm", "name": "Aznar López, José María", "aliases": ["Aznar", "José María Aznar"], "overrides_deputy": true},
+  {"person_id": "jose-luis-rodriguez-zapatero", "person_type": "former_pm", "name": "Rodríguez Zapatero, José Luis", "aliases": ["Zapatero", "José Luis Rodríguez Zapatero"]},
+  {"person_id": "mariano-rajoy", "person_type": "former_pm", "name": "Rajoy Brey, Mariano", "aliases": ["Rajoy", "Mariano Rajoy"]},
+  {"person_id": "felipe-gonzalez", "person_type": "former_pm", "name": "González Márquez, Felipe", "aliases": ["Felipe González"]},
+  {"person_id": "adolfo-suarez", "person_type": "former_pm", "name": "Suárez González, Adolfo", "aliases": ["Adolfo Suárez", "Suárez"], "overrides_deputy": true},
+
+  {"person_id": "donald-trump", "person_type": "foreign_leader", "name": "Trump, Donald", "aliases": ["Trump", "Donald Trump"]},
+  {"person_id": "vladimir-putin", "person_type": "foreign_leader", "name": "Putin, Vladímir", "aliases": ["Putin", "Vladímir Putin", "Vladimir Putin"]},
+  {"person_id": "benjamin-netanyahu", "person_type": "foreign_leader", "name": "Netanyahu, Benjamin", "aliases": ["Netanyahu"]},
+  {"person_id": "volodimir-zelenski", "person_type": "foreign_leader", "name": "Zelenski, Volodímir", "aliases": ["Zelenski", "Zelensky"]},
+  {"person_id": "giorgia-meloni", "person_type": "foreign_leader", "name": "Meloni, Giorgia", "aliases": ["Meloni", "Giorgia Meloni"]},
+  {"person_id": "javier-milei", "person_type": "foreign_leader", "name": "Milei, Javier", "aliases": ["Milei", "Javier Milei"]},
+  {"person_id": "emmanuel-macron", "person_type": "foreign_leader", "name": "Macron, Emmanuel", "aliases": ["Macron", "Emmanuel Macron"]},
+  {"person_id": "ursula-von-der-leyen", "person_type": "foreign_leader", "name": "Von der Leyen, Ursula", "aliases": ["Von der Leyen", "Ursula von der Leyen"]},
+
+  {"person_id": "felipe-vi", "person_type": "head_of_state", "name": "Felipe VI", "aliases": ["Felipe VI", "su majestad"]},
+  {"person_id": "juan-carlos-i", "person_type": "head_of_state", "name": "Juan Carlos I", "aliases": ["Juan Carlos I", "Juan Carlos"]},
+
+  {"person_id": "victor-de-aldama", "person_type": "other", "name": "Aldama, Víctor de", "aliases": ["Aldama", "Víctor de Aldama"]},
+  {"person_id": "begona-gomez", "person_type": "other", "name": "Gómez Fernández, Begoña", "aliases": ["Begoña Gómez"]}
+]

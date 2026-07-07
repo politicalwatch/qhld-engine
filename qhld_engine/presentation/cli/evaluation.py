@@ -123,33 +123,42 @@ def mentions(
         None, "--goldset", help="Path to a mentions gold-set JSON (defaults to the frozen set)."),
     verbose: bool = typer.Option(False, "--verbose", help="Show predicted vs gold per speech."),
 ):
-    """Score index-time mention extraction (NER → resolved deputies) against the
-    frozen gold set: micro P/R/F1 over mentions, per-speech exact-match, latency."""
+    """Score index-time mention extraction (NER → resolved people) against the frozen
+    gold set: micro P/R/F1 over mentions, per-speech exact-match, latency — reported
+    separately for deputies (unchanged basis) and the new non-deputy figures."""
     from qhld_engine.application.evaluation.mentions_benchmark import RunMentionsBenchmark
     from qhld_engine.domain.evaluation import mentions_scoring
 
     runner = RunMentionsBenchmark(goldset) if goldset else RunMentionsBenchmark()
     typer.echo(f"Mentions gold set: {len(runner.entries)} speeches")
     rows = runner.run()
-    report = mentions_scoring.score(rows)
+    deputy = mentions_scoring.score(rows, "pred_deputies", "gold_deputies")
+    non_deputy = mentions_scoring.score(rows, "pred_non_deputies", "gold_non_deputies")
+
     if verbose:
         for row in rows:
-            ok = "✓" if set(row["pred_deputies"]) == set(row["gold_deputies"]) else "✗"
-            typer.echo(f"  {ok} {row.get('id', row['speech_id'])} {row.get('reference', '')}")
-            missed = sorted(set(row["gold_deputies"]) - set(row["pred_deputies"]))
-            spurious = sorted(set(row["pred_deputies"]) - set(row["gold_deputies"]))
-            if missed:
-                typer.echo(f"      missed (FN): {missed}")
-            if spurious:
-                typer.echo(f"      spurious (FP): {spurious}")
-    m = report["micro"]
+            for label, pk, gk in (("dep", "pred_deputies", "gold_deputies"),
+                                  ("non", "pred_non_deputies", "gold_non_deputies")):
+                missed = sorted(set(row.get(gk, [])) - set(row.get(pk, [])))
+                spurious = sorted(set(row.get(pk, [])) - set(row.get(gk, [])))
+                if missed or spurious:
+                    typer.echo(f"  {row.get('id', row['speech_id'])} "
+                               f"{row.get('reference', '')} [{label}]")
+                    if missed:
+                        typer.echo(f"      missed (FN): {missed}")
+                    if spurious:
+                        typer.echo(f"      spurious (FP): {spurious}")
+
     typer.echo("\n=== mentions ===")
-    typer.echo(f"{'':<7}{'P':>7}{'R':>7}{'F1':>7}   tp/fp/fn")
+    typer.echo(f"{'':<12}{'P':>7}{'R':>7}{'F1':>7}   tp/fp/fn")
+    for label, rep in (("DEPUTIES", deputy), ("NON-DEPUTY", non_deputy)):
+        m = rep["micro"]
+        typer.echo(
+            f"{label:<12}{m['precision']:>7}{m['recall']:>7}{m['f1']:>7}   "
+            f"{m['tp']}/{m['fp']}/{m['fn']}")
     typer.echo(
-        f"{'MICRO':<7}{m['precision']:>7}{m['recall']:>7}{m['f1']:>7}   "
-        f"{m['tp']}/{m['fp']}/{m['fn']}")
-    typer.echo(
-        f"  exact-match={report['exact_match']}  mean-latency={report['mean_latency']}s")
+        f"  deputy exact-match={deputy['exact_match']}  "
+        f"mean-latency={deputy['mean_latency']}s")
 
 
 def _parse_models(value):

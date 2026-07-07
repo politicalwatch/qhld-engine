@@ -33,7 +33,10 @@ class RunMentionsBenchmark:
         return self._tagger
 
     def run(self):
-        """Return a scored row per gold-set speech: predicted vs gold deputy names."""
+        """Return a scored row per gold-set speech: predicted vs gold names, split into
+        deputies and non-deputies. Predictions are split by ``person_type`` so the deputy
+        metric is scored on exactly the deputy predictions (unchanged basis) and the new
+        non-deputy figures are scored separately."""
         from tipi_data.repositories.speeches import Speeches
 
         tagger = self._tagger_obj()
@@ -45,8 +48,11 @@ class RunMentionsBenchmark:
             latency = time.perf_counter() - start
             rows.append({
                 **entry,
-                "pred_deputies": [m.name for m in mentions],
+                "pred_deputies": [m.name for m in mentions if m.person_type == "deputy"],
                 "gold_deputies": entry["expected_deputies"],
+                "pred_non_deputies": [
+                    m.name for m in mentions if m.person_type != "deputy"],
+                "gold_non_deputies": entry.get("expected_non_deputies", []),
                 "latency": latency,
             })
         return rows

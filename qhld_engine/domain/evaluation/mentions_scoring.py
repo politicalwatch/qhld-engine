@@ -21,16 +21,17 @@ def _prf(tp, fp, fn) -> dict:
             "precision": round(precision, 4), "recall": round(recall, 4), "f1": round(f1, 4)}
 
 
-def score(rows: list[dict]) -> dict:
-    """Aggregate scored ``rows`` (each with ``pred_deputies``, ``gold_deputies`` name
-    lists and an optional ``latency``). Returns micro P/R/F1 over all mentions, the
-    per-speech exact-match rate (predicted set == gold set) and mean latency."""
+def score(rows: list[dict], pred_key="pred_deputies", gold_key="gold_deputies") -> dict:
+    """Aggregate scored ``rows`` (each with ``pred_key``/``gold_key`` name lists and an
+    optional ``latency``). Returns micro P/R/F1 over all mentions, the per-speech
+    exact-match rate (predicted set == gold set) and mean latency. The key pair lets the
+    same scorer report deputies and non-deputies as separate dimensions."""
     tp = fp = fn = 0
     exact = 0
     latencies = []
     for row in rows:
-        pred = set(row["pred_deputies"])
-        gold = set(row["gold_deputies"])
+        pred = set(row.get(pred_key, []))
+        gold = set(row.get(gold_key, []))
         tp += len(pred & gold)
         fp += len(pred - gold)
         fn += len(gold - pred)

@@ -41,8 +41,11 @@ DEPUTIES = [
 
 @pytest.fixture
 def resolver():
+    # curated/nondeputy_speakers injected empty → the person index is deputies-only and
+    # no Mongo/data-file I/O happens in these unit tests.
     return EntityResolver(
-        distinct=lambda key: CORPUS.get(key, set()), groups=GROUPS, deputies=DEPUTIES)
+        distinct=lambda key: CORPUS.get(key, set()), groups=GROUPS, deputies=DEPUTIES,
+        curated=[], nondeputy_speakers=[])
 
 
 def test_resolves_speaker_name_with_token_reordering(resolver):
@@ -126,3 +129,27 @@ def test_mentioned_person_ignored_without_deputies_catalog():
     resolver = EntityResolver(distinct=lambda key: CORPUS.get(key, set()), groups=GROUPS)
     r = resolver.resolve(ParsedQuery(semantic_query="x", mentioned_person="Montero"))
     assert "mentions" not in r.filters
+
+
+def test_mentioned_non_deputy_resolves_via_curated():
+    # A curated non-deputy (Ayuso) resolves to her person id and is filtered.
+    resolver = EntityResolver(
+        distinct=lambda key: CORPUS.get(key, set()), groups=GROUPS, deputies=DEPUTIES,
+        curated=[{"person_id": "isabel-diaz-ayuso", "person_type": "regional_president",
+                  "name": "Díaz Ayuso, Isabel", "aliases": ["Ayuso", "Díaz Ayuso"]}],
+        nondeputy_speakers=[])
+    r = resolver.resolve(ParsedQuery(semantic_query="vivienda", mentioned_person="Ayuso"))
+    assert r.filters["mentions"] == "isabel-diaz-ayuso"
+    assert any("regional_president" in note for note in r.notes)
+
+
+def test_mentioned_bootstrapped_minister_resolves():
+    # A non-deputy speaker bootstrapped from the corpus (a minister) is resolvable too.
+    resolver = EntityResolver(
+        distinct=lambda key: CORPUS.get(key, set()), groups=GROUPS, deputies=DEPUTIES,
+        curated=[],
+        nondeputy_speakers=[{"speaker": "Aagesen Muñoz, Sara",
+                             "role": "Vicepresidenta Tercera y Ministra"}])
+    r = resolver.resolve(ParsedQuery(semantic_query="x", mentioned_person="Aagesen"))
+    assert r.filters["mentions"] == "aagesen-munoz-sara"
+    assert any("minister" in note for note in r.notes)

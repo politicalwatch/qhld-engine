@@ -1,10 +1,16 @@
-"""Resolve raw NER person-spans to canonical deputies — pure, no I/O.
+"""Resolve raw NER person-spans to canonical people — pure, no I/O.
 
 NER (``NerPort``) yields person
 spans verbatim from a speech's Spanish text ("Sánchez", "el señor Sánchez",
-"Pedro Sánchez"); this module normalizes them and fuzzy-matches each against the
-deputies catalog, collapsing the many surface forms of one person into a single
-``Mention`` with an occurrence count.
+"Pedro Sánchez"); this module normalizes them and fuzzy-matches each against a
+person catalog (sitting deputies plus non-deputies — government ministers, the
+King, regional presidents, foreign leaders), collapsing the many surface forms of
+one person into a single ``Mention`` with an occurrence count.
+
+The catalog is a flat list of ``PersonEntry`` — deputies and non-deputies scored
+in ONE pass. A few non-deputies share a surname with a deputy ("Clavijo" = the
+Canarias president vs the deputy Gamarra Ruiz-Clavijo's second surname); such
+entries carry ``overrides_deputy`` so that, when tied with a deputy, they win.
 
 Matching reuses the ``thefuzz.token_set_ratio`` + high-threshold trick the query
 ``EntityResolver`` relies on: ``token_set_ratio`` scores a subset match ~100
@@ -39,20 +45,11 @@ _HONORIFICS = {
 _PUNCT_RE = re.compile(r"[^\w\s-]", re.UNICODE)
 _MIN_LEN = 3
 
-# Surnames that fuzzy-match a real deputy but, in this national-Congress corpus, denote
-# a famous non-deputy who happens to share the surname. Every entry MUST collide with a
-# deputy — otherwise it is dead weight: a surname with no deputy homonym (a foreign
-# leader, a non-colliding ex-president) matches nothing and is already dropped by the
-# match threshold, and a surname several deputies share is dropped by the ambiguity
-# guard. So only DISTINCTIVE, actually-colliding surnames earn a place here.
-NON_DEPUTY_SURNAMES = frozenset({
-    "aznar",     # José María Aznar (ex-PM) vs the deputy Aznar Teruel
-    "suárez",    # Adolfo Suárez (ex-PM) vs the deputy Rodríguez Suárez (2nd surname)
-    "clavijo",   # Fernando Clavijo (presidente de Canarias) vs Gamarra Ruiz-Clavijo (2nd surname)
-})
-
 # Common words spaCy sometimes tags as a person because they are also borne as a
-# surname (typically sentence-initial "Bueno, …"). They never name the deputy.
+# surname (typically sentence-initial "Bueno, …"). They never name a real person.
+# (Famous non-deputies who share a surname with a deputy — Aznar, Suárez, Clavijo —
+# are no longer dropped here: they now resolve to their own catalog entry, which
+# wins the tie via ``overrides_deputy``.)
 COMMON_WORD_SURNAMES = frozenset({"bueno"})
 
 
@@ -82,8 +79,9 @@ _CONTEXT_CUE_PATTERNS = (
     # "(el) juez/jueza <Apellido>", "(el) fiscal (general) <Apellido>"
     r"jueza?\s+([a-zá-úñ]+)",
     r"fiscal(?:\s+general)?\s+([a-zá-úñ]+)",
-    # "expresidente/-a (del Gobierno) <Apellido>"
-    r"expresident[ae]s?\s+(?:del\s+gobierno\s+)?([a-zá-úñ]+)",
+    # NB: no "expresidente(a) del Gobierno <Apellido>" cue — its only job was to keep
+    # an ex-PM (Aznar, Zapatero) from resolving to a colliding deputy; the ex-PMs now
+    # live in the person catalog and resolve there instead of being dropped.
 )
 # Franco is uniquely the dictator whenever the speech invokes the dictatorship; the
 # deputy surnamed Franco is meant only absent that framing (hence a cue, not a denylist).
@@ -104,16 +102,46 @@ def context_excluded_surnames(text: str) -> frozenset[str]:
 
 
 @dataclass(frozen=True)
-class DeputyEntry:
-    """One deputy's canonical identity plus the lowercased keys a span is scored
-    against (full "apellido, nombre", "nombre apellido", and the bare surname)."""
-    deputy_id: str
+class PersonEntry:
+    """One person's canonical identity plus the lowercased keys a span is scored
+    against (full "apellido, nombre", "nombre apellido", the bare surname, and any
+    explicit aliases). ``person_type`` is ``"deputy"`` for catalog deputies, else the
+    non-deputy kind. ``overrides_deputy`` marks a non-deputy who should win a tie
+    against a deputy sharing the surname (e.g. "Clavijo")."""
+    person_id: str
+    person_type: str
     name: str
     keys: tuple[str, ...]
+    overrides_deputy: bool = False
 
 
-def build_deputy_index(deputies) -> list[DeputyEntry]:
-    """Build the match index from ``Deputy`` records (``name`` = 'Apellido, Nombre',
+def _name_keys(name: str) -> set[str]:
+    """Match keys derived from an "Apellido(s), Nombre" name: the whole string, the
+    bare first surname group, and the "Nombre Apellido" order."""
+    keys = {name.lower(), name.split(",")[0].strip().lower()}
+    parts = [p.strip() for p in name.split(",")]
+    if len(parts) == 2 and parts[0] and parts[1]:
+        keys.add(f"{parts[1]} {parts[0]}".lower())
+    return {k for k in keys if k}
+
+
+def make_person_entry(person_id, person_type, name, aliases=(), overrides_deputy=False):
+    """Build a non-deputy ``PersonEntry``. Keys come from the canonical ``name`` plus
+    any ``aliases`` (nicknames, bare surname, role phrases like "su majestad"), each
+    run through ``normalize_span`` so they match under the same normalization the
+    corpus spans get."""
+    keys = _name_keys(name)
+    for alias in aliases:
+        norm = normalize_span(alias)
+        if norm:
+            keys.add(norm)
+    return PersonEntry(
+        person_id=person_id, person_type=person_type, name=name,
+        keys=tuple(sorted(keys)), overrides_deputy=overrides_deputy)
+
+
+def build_deputy_index(deputies) -> list[PersonEntry]:
+    """Build match entries from ``Deputy`` records (``name`` = 'Apellido, Nombre',
     ``get_fullname()`` = 'Nombre Apellido'). Deputies without a name are skipped."""
     index = []
     for deputy in deputies:
@@ -125,9 +153,17 @@ def build_deputy_index(deputies) -> list[DeputyEntry]:
             keys.add(deputy.get_fullname().lower())
         except (AttributeError, IndexError):
             pass
-        index.append(DeputyEntry(
-            deputy_id=deputy.id, name=name, keys=tuple(k for k in keys if k)))
+        index.append(PersonEntry(
+            person_id=deputy.id, person_type="deputy", name=name,
+            keys=tuple(k for k in keys if k), overrides_deputy=False))
     return index
+
+
+def build_person_index(deputies, extra=()) -> list[PersonEntry]:
+    """The full match index: every deputy plus ``extra`` non-deputy ``PersonEntry``
+    rows (curated catalog + corpus-bootstrapped speakers, assembled at the
+    application layer). Scored together in one pass by the resolver."""
+    return build_deputy_index(deputies) + list(extra)
 
 
 def build_surname_gazetteer(deputies) -> list[str]:
@@ -161,8 +197,8 @@ def normalize_span(span: str) -> str:
     return residual if len(residual) >= _MIN_LEN else ""
 
 
-def _break_tie(norm: str, tied: list[DeputyEntry]) -> list[DeputyEntry]:
-    """Narrow equally-scored deputies (``token_set_ratio`` gives a bare surname 100
+def _break_tie(norm: str, tied: list[PersonEntry]) -> list[PersonEntry]:
+    """Narrow equally-scored people (``token_set_ratio`` gives a bare surname 100
     against everyone who carries it anywhere) to the one the span actually names:
 
     1. Prefer deputies whose FIRST surname the span matches — a surname resolves to
@@ -189,22 +225,23 @@ def _break_tie(norm: str, tied: list[DeputyEntry]) -> list[DeputyEntry]:
     return [e for score, e in scored if score == top]
 
 
-def resolve_person(name: str, index: list[DeputyEntry], threshold: int) -> DeputyEntry | None:
+def resolve_person(name: str, index: list[PersonEntry], threshold: int) -> PersonEntry | None:
     """Resolve a free-text person name (as typed in a search query, e.g. "Zapatero",
-    "María Jesús Montero") to a deputy, or ``None`` if it does not clear the threshold or
-    stays ambiguous. Runs the span through the SAME normalization + fuzzy match + ambiguity
-    guard used to tag the corpus, so a query resolves consistently with what was indexed."""
+    "María Jesús Montero", "Ayuso") to a catalog person, or ``None`` if it does not clear
+    the threshold or stays ambiguous. Runs the span through the SAME normalization + fuzzy
+    match + ambiguity guard used to tag the corpus, so a query resolves consistently with
+    what was indexed."""
     norm = normalize_span(name)
     if not norm:
         return None
     return _resolve_one(norm, index, threshold)
 
 
-def _resolve_one(norm: str, index: list[DeputyEntry], threshold: int):
-    """Best-scoring deputy for a normalized span, or ``None`` when nothing clears the
+def _resolve_one(norm: str, index: list[PersonEntry], threshold: int):
+    """Best-scoring person for a normalized span, or ``None`` when nothing clears the
     threshold or the top score stays shared after tie-breaking (ambiguous surname)."""
     best_score = 0
-    tied: list[DeputyEntry] = []
+    tied: list[PersonEntry] = []
     for entry in index:
         score = max(fuzz.token_set_ratio(norm, key) for key in entry.keys)
         if score > best_score:
@@ -214,11 +251,45 @@ def _resolve_one(norm: str, index: list[DeputyEntry], threshold: int):
     if best_score < threshold:
         return None
     if len(tied) > 1:
+        # An override only applies when the span names the override's OWN first surname —
+        # not when it merely shares a secondary token (the ex-PM "Aznar López" must not
+        # hijack a bare "López" tie via his second surname).
+        span_tokens = _tokens(norm)
+        named_override = any(
+            e.overrides_deputy and (_first_surname_tokens(e.name) & span_tokens)
+            for e in tied)
+        if named_override:
+            # A famous non-deputy tied with the deputy who merely shares the surname
+            # wins: "Clavijo" is the Canarias president, not the deputy Gamarra
+            # Ruiz-Clavijo. But only for a bare-surname reference — the ORDER-sensitive
+            # score separates a fuller deputy match ("Gamarra Ruiz-Clavijo" → the deputy)
+            # from a plain surname ("Clavijo" → the president).
+            tied = _prefer_overrides(norm, tied)
+        elif any(e.person_type == "deputy" for e in tied):
+            # Deputies are the primary referents in the chamber: a non-deputy (a
+            # bootstrapped minister, a non-override curated figure) never blocks or
+            # steals a deputy resolution on a shared-surname tie ("Rego" → the deputy
+            # Rego Candamil, not the minister Sira Rego). This keeps the deputy metric
+            # identical to the deputies-only baseline.
+            tied = [e for e in tied if e.person_type == "deputy"]
+    if len(tied) > 1:
         tied = _break_tie(norm, tied)
     return tied[0] if len(tied) == 1 else None
 
 
-def _is_excluded(norm: str, entry: DeputyEntry, excluded: frozenset[str]) -> bool:
+def _prefer_overrides(norm: str, tied: list[PersonEntry]) -> list[PersonEntry]:
+    """Resolve an override-vs-deputy tie by order-sensitive match: keep the entries the
+    span matches most exactly (``token_sort_ratio``), then, within that group, keep the
+    override(s) if any. So "Clavijo"/"Aznar" (bare surname) go to the non-deputy, while
+    "Gamarra Ruiz-Clavijo" (the deputy's own full name) stays with the deputy."""
+    scored = [(max(fuzz.token_sort_ratio(norm, key) for key in e.keys), e) for e in tied]
+    top = max(score for score, _ in scored)
+    best = [e for score, e in scored if score == top]
+    overrides = [e for e in best if e.overrides_deputy]
+    return overrides if overrides else best
+
+
+def _is_excluded(norm: str, entry: PersonEntry, excluded: frozenset[str]) -> bool:
     """Whether a resolved span actually names a flagged non-deputy rather than the
     deputy it fuzzy-matched. Two cases:
 
@@ -241,17 +312,18 @@ def _is_excluded(norm: str, entry: DeputyEntry, excluded: frozenset[str]) -> boo
 
 
 def resolve_mentions(
-    spans, index: list[DeputyEntry], threshold: int,
+    spans, index: list[PersonEntry], threshold: int,
     excluded_surnames: frozenset[str] = frozenset()) -> list[Mention]:
     """Collapse raw NER ``spans`` (duplicates preserved) into canonical ``Mention``s.
 
     Each span is normalized then resolved (cached per normalized form). Occurrences
-    that resolve to the same deputy are merged: ``count`` totals them and
+    that resolve to the same person are merged: ``count`` totals them and
     ``surface_forms`` keeps the distinct raw spans seen. ``excluded_surnames`` drops
-    spans that name a flagged non-deputy (see ``_is_excluded``). Returns mentions
-    ordered by descending count then name."""
-    cache: dict[str, DeputyEntry | None] = {}
-    by_deputy: dict[str, dict] = {}
+    spans that name a flagged non-deputy homonym of a DEPUTY (see ``_is_excluded``);
+    it never touches a resolved non-deputy. Returns mentions ordered by descending
+    count then name."""
+    cache: dict[str, PersonEntry | None] = {}
+    by_person: dict[str, dict] = {}
     for span in spans:
         norm = normalize_span(span)
         if not norm:
@@ -261,21 +333,26 @@ def resolve_mentions(
         entry = cache[norm]
         if entry is None:
             continue
-        if _is_excluded(norm, entry, excluded_surnames):
+        # The homonym denylist / speech-scoped cues exist only to stop a famous
+        # non-deputy being mistaken for a deputy — so they gate deputy resolutions
+        # only. A resolved non-deputy is exactly who we want and is never excluded.
+        if entry.person_type == "deputy" and _is_excluded(norm, entry, excluded_surnames):
             continue
-        acc = by_deputy.setdefault(
-            entry.deputy_id,
-            {"name": entry.name, "surface_forms": set(), "count": 0})
+        acc = by_person.setdefault(
+            entry.person_id,
+            {"name": entry.name, "person_type": entry.person_type,
+             "surface_forms": set(), "count": 0})
         acc["surface_forms"].add(span.strip())
         acc["count"] += 1
 
     mentions = [
         Mention(
-            deputy_id=deputy_id,
+            person_id=person_id,
+            person_type=acc["person_type"],
             name=acc["name"],
             surface_forms=sorted(acc["surface_forms"]),
             count=acc["count"])
-        for deputy_id, acc in by_deputy.items()
+        for person_id, acc in by_person.items()
     ]
     mentions.sort(key=lambda m: (-m.count, m.name))
     return mentions
