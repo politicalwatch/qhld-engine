@@ -29,60 +29,80 @@ def _split(value):
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
+def _cell_label(model, reranker, sparse="none"):
+    label = model
+    if reranker not in ("none", "noop"):
+        label += f" + {reranker}"
+    if sparse and sparse != "none":
+        label += f" + {sparse}"
+    return label
+
+
 @app.command("retrieval")
 def retrieval(
     models: str = typer.Option(..., "--models", help="Comma-separated ollama embedding tags."),
     rerankers: str = typer.Option("none", "--rerankers", help="Comma-separated rerankers ('none' = bi-encoder only)."),
+    sparse: str = typer.Option(
+        "none", "--sparse",
+        help="Comma-separated sparse providers ('none' = dense only; 'bm25' = "
+             "hybrid fusion — needs that model's hybrid collection indexed)."),
     k: int = typer.Option(10, "--k", help="Retrieval depth per query."),
     hit_at: int = typer.Option(5, "--hit-at", help="hit@k / recall@k metric threshold."),
     queryset: str = typer.Option(None, "--queryset", help="Path to a query-set JSON (defaults to the frozen set)."),
     verbose: bool = typer.Option(False, "--verbose", help="Dump top-k per query."),
 ):
-    """Benchmark each (model x reranker) cell over the frozen query set."""
+    """Benchmark each (model x reranker x sparse) cell over the frozen query set."""
     from qhld_engine.application.evaluation.benchmark import RunBenchmark
 
     runner = RunBenchmark(queryset) if queryset else RunBenchmark()
-    model_list, reranker_list = _split(models), _split(rerankers)
+    model_list, reranker_list, sparse_list = _split(models), _split(rerankers), _split(sparse)
     typer.echo(
         f"Query set: {len(runner.queryset)} queries · retrieval k={k} · "
-        f"metric @{hit_at} · models={model_list} · rerankers={reranker_list}"
+        f"metric @{hit_at} · models={model_list} · rerankers={reranker_list} · "
+        f"sparse={sparse_list}"
     )
     for model in model_list:
         for reranker in reranker_list:
-            rows = runner.run(model, reranker=reranker, k=k)
-            _print_report(model, reranker, rows, hit_at, verbose)
+            for sp in sparse_list:
+                rows = runner.run(model, reranker=reranker, sparse=sp, k=k)
+                _print_report(_cell_label(model, reranker, sp), rows, hit_at, verbose)
 
 
 @app.command("pool")
 def pool(
     models: str = typer.Option(..., "--models", help="Comma-separated ollama embedding tags."),
     rerankers: str = typer.Option("none", "--rerankers", help="Comma-separated rerankers ('none' = bi-encoder only)."),
+    sparse: str = typer.Option(
+        "none", "--sparse",
+        help="Comma-separated sparse providers ('none' = dense only; 'bm25' = "
+             "hybrid fusion — needs that model's hybrid collection indexed)."),
     k: int = typer.Option(10, "--k", help="Retrieval depth per query."),
     queryset: str = typer.Option(None, "--queryset", help="Path to a query-set JSON (defaults to the frozen set)."),
     json_out: str = typer.Option(None, "--json", help="Also write the candidate pool to this JSON file."),
 ):
     """List candidate references for relevance judging: run the query set over
-    every (model x reranker) cell and pool each query's retrieved references
-    that are not yet judged (in neither expected_refs nor rejected_refs),
-    with the best-ranked snippet as evidence. After judging, move each
-    candidate into the query's expected_refs or rejected_refs — a re-run then
-    reports no new candidates."""
+    every (model x reranker x sparse) cell and pool each query's retrieved
+    references that are not yet judged (in neither expected_refs nor
+    rejected_refs), with the best-ranked snippet as evidence. After judging,
+    move each candidate into the query's expected_refs or rejected_refs — a
+    re-run then reports no new candidates."""
     import json
 
     from qhld_engine.application.evaluation.benchmark import RunBenchmark
     from qhld_engine.domain.evaluation import scoring
 
     runner = RunBenchmark(queryset) if queryset else RunBenchmark()
-    model_list, reranker_list = _split(models), _split(rerankers)
+    model_list, reranker_list, sparse_list = _split(models), _split(rerankers), _split(sparse)
     typer.echo(
         f"Query set: {len(runner.queryset)} queries · retrieval k={k} · "
-        f"models={model_list} · rerankers={reranker_list}"
+        f"models={model_list} · rerankers={reranker_list} · sparse={sparse_list}"
     )
     rows_by_cell = {}
     for model in model_list:
         for reranker in reranker_list:
-            label = model if reranker in ("none", "noop") else f"{model} + {reranker}"
-            rows_by_cell[label] = runner.run(model, reranker=reranker, k=k)
+            for sp in sparse_list:
+                rows_by_cell[_cell_label(model, reranker, sp)] = runner.run(
+                    model, reranker=reranker, sparse=sp, k=k)
     candidates = scoring.pool_candidates(rows_by_cell)
 
     queries = {entry["id"]: entry["query"] for entry in runner.queryset}
@@ -311,10 +331,9 @@ def _print_parse_report(name, rows, verbose):
             f"— counted as empty predictions")
 
 
-def _print_report(model, reranker, rows, hit_at, verbose):
+def _print_report(label, rows, hit_at, verbose):
     from qhld_engine.domain.evaluation import scoring
 
-    label = model if reranker in ("none", "noop") else f"{model} + {reranker}"
     typer.echo(f"\n=== {label} ===")
     typer.echo(
         f"{'id':<4}{'dimension':<13}{'rank':>5}{'hit@'+str(hit_at):>7}"

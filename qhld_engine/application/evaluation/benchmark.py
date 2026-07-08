@@ -22,6 +22,9 @@ DEFAULT_QUERYSET = os.path.join(os.path.dirname(__file__), "queryset.json")
 # Reranker CLI tokens that mean "leave the bi-encoder order untouched".
 _NO_RERANKER = {None, "", "none", "noop"}
 
+# Sparse CLI tokens that mean "dense-only retrieval, no hybrid fusion".
+_NO_SPARSE = {None, "", "none"}
+
 
 def load_queryset(path=DEFAULT_QUERYSET):
     with open(path, encoding="utf-8") as handle:
@@ -33,18 +36,20 @@ def _score_at(hits, rank):
 
 
 class RunBenchmark:
-    """Runs the query set for one (model, reranker) cell at a time."""
+    """Runs the query set for one (model, reranker, sparse) cell at a time."""
 
     def __init__(self, queryset_path=DEFAULT_QUERYSET):
         self.queryset = load_queryset(queryset_path)
 
-    def run(self, model, reranker="none", k=10):
+    def run(self, model, reranker="none", sparse="none", k=10):
         """Return a scored row per query for ``model`` reranked by ``reranker``
-        ("none"/"noop" => bi-encoder order untouched)."""
-        service = self._service(model, reranker)
+        ("none"/"noop" => bi-encoder order untouched) with sparse provider
+        ``sparse`` ("none" => dense-only; e.g. "bm25" => hybrid fusion against
+        that model's hybrid collection)."""
+        service = self._service(model, reranker, sparse)
         return [self._run_entry(service, entry, k) for entry in self.queryset]
 
-    def _service(self, model, reranker):
+    def _service(self, model, reranker, sparse="none"):
         from qhld_engine.application.search.search_speeches import SearchSpeeches
         from qhld_engine.infrastructure.config.settings import get_settings
 
@@ -54,6 +59,7 @@ class RunBenchmark:
             "embedding_model": model,
             "reranker_provider": "noop" if rerank_off else "cross_encoder",
             "reranker_model": "" if rerank_off else reranker,
+            "sparse_provider": "none" if sparse in _NO_SPARSE else sparse,
         })
         return SearchSpeeches(settings=settings)
 

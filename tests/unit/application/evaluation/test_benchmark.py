@@ -40,7 +40,7 @@ def queryset_file(tmp_path):
 def test_run_scores_rows_with_ranked_refs(queryset_file, monkeypatch):
     runner = RunBenchmark(queryset_file)
     fake = _FakeService()
-    monkeypatch.setattr(runner, "_service", lambda model, reranker: fake)
+    monkeypatch.setattr(runner, "_service", lambda model, reranker, sparse="none": fake)
 
     rows = runner.run("some-model", reranker="none", k=10)
 
@@ -50,10 +50,31 @@ def test_run_scores_rows_with_ranked_refs(queryset_file, monkeypatch):
     assert topical["score"] == 0.7
 
 
+def test_service_cell_sets_sparse_provider(queryset_file, monkeypatch):
+    """The sparse axis flows into settings, so the service targets the hybrid
+    collection; "none" keeps the dense-only baseline settings untouched."""
+    captured = {}
+
+    class _SpyService:
+        def __init__(self, settings=None):
+            captured["settings"] = settings
+
+    monkeypatch.setattr(
+        "qhld_engine.application.search.search_speeches.SearchSpeeches", _SpyService)
+    runner = RunBenchmark(queryset_file)
+
+    runner._service("bge-m3:567m", "none", "bm25")
+    assert captured["settings"].sparse_provider == "bm25"
+    assert captured["settings"].embedding_model == "bge-m3:567m"
+
+    runner._service("bge-m3:567m", "none", "none")
+    assert captured["settings"].sparse_provider == "none"
+
+
 def test_crosslingual_entry_runs_filtered_and_unfiltered(queryset_file, monkeypatch):
     runner = RunBenchmark(queryset_file)
     fake = _FakeService()
-    monkeypatch.setattr(runner, "_service", lambda model, reranker: fake)
+    monkeypatch.setattr(runner, "_service", lambda model, reranker, sparse="none": fake)
 
     rows = runner.run("some-model", reranker="none", k=10)
 
