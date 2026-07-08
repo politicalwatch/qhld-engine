@@ -15,11 +15,16 @@ from qhld_engine.infrastructure.vectorstore.naming import collection_name
 
 
 class SearchSpeeches:
-    def __init__(self, settings=None, embedder=None, store=None, reranker=None):
+    def __init__(self, settings=None, embedder=None, store=None, reranker=None,
+                 sparse_embedder=None):
         self.settings = settings or get_settings()
         self.embedder = embedder or create_embedder_from_env(self.settings)
         self.store = store or create_vector_store_from_env(self.settings)
         self.reranker = reranker if reranker is not None else self._reranker_from_settings()
+        self.sparse_embedder = (
+            sparse_embedder if sparse_embedder is not None
+            else self._sparse_from_settings()
+        )
 
     def _reranker_from_settings(self):
         """Build the configured reranker, or ``None`` for the "noop"/unset default
@@ -31,17 +36,35 @@ class SearchSpeeches:
 
         return create_reranker_from_env(self.settings)
 
+    def _sparse_from_settings(self):
+        """Build the configured sparse embedder, or ``None`` for the "none"/unset
+        default so the dense-only baseline path stays byte-identical."""
+        provider = (self.settings.sparse_provider or "").lower()
+        if not provider or provider == "none":
+            return None
+        from qhld_engine.infrastructure.sparse.factory import create_sparse_embedder_from_env
+
+        return create_sparse_embedder_from_env(self.settings)
+
+    def _store_kwargs(self, query):
+        """Hybrid searches pass the lexical query vector as an extra keyword; the
+        dense-only call shape stays exactly as before."""
+        if self.sparse_embedder is None:
+            return {}
+        return {"sparse_vector": self.sparse_embedder.embed_query(query)}
+
     def search(self, query, k=10, filters=None) -> list[SearchHit]:
         vector = self.embedder.embed_query(query)
         # The query vector's length is the model dimension, which is part of the
         # per-model collection name — no separate probe needed.
         collection = collection_name(self.settings, len(vector))
         clean = {key: value for key, value in (filters or {}).items() if value is not None}
+        extra = self._store_kwargs(query)
         if self.reranker is None:
-            return self.store.search(collection, vector, k, clean or None)
+            return self.store.search(collection, vector, k, clean or None, **extra)
         # Over-fetch a wide candidate pool for the cross-encoder to reorder.
         fetch = max(k, self.settings.reranker_top_n)
-        hits = self.store.search(collection, vector, fetch, clean or None)
+        hits = self.store.search(collection, vector, fetch, clean or None, **extra)
         return self.reranker.rerank(query, hits, k)
 
     def search_grouped(
@@ -54,6 +77,7 @@ class SearchSpeeches:
         vector = self.embedder.embed_query(query)
         collection = collection_name(self.settings, len(vector))
         clean = {key: value for key, value in (filters or {}).items() if value is not None}
+        extra = self._store_kwargs(query)
         if self.reranker is None:
             return self.store.search_grouped(
                 collection,
@@ -63,6 +87,7 @@ class SearchSpeeches:
                 group_size=highlights,
                 filters=clean or None,
                 exclude=exclude,
+                **extra,
             )
         # Over-fetch groups (and highlights per group) so the reranker can promote
         # a speech the bi-encoder ranked lower; rerank each group's highlights,
@@ -75,6 +100,7 @@ class SearchSpeeches:
             group_size=max(highlights, 5),
             filters=clean or None,
             exclude=exclude,
+            **extra,
         )
         reranked = []
         for group in groups:

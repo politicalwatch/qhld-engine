@@ -32,6 +32,11 @@ def speeches(
         None, "--reranker",
         help="Cross-encoder model to rerank results (e.g. BAAI/bge-reranker-v2-m3); "
              "omit for bi-encoder order only."),
+    hybrid: bool = typer.Option(
+        False, "--hybrid",
+        help="Fuse dense and lexical (BM25) rankings — better for literal tokens "
+             "such as names, road codes or law numbers. Requires the hybrid "
+             "collection to be indexed (SPARSE_PROVIDER=bm25 qhld embeddings index)."),
 ):
     """Search speeches semantically and print the ranked hits."""
     from qhld_engine.infrastructure.config.settings import get_settings
@@ -40,6 +45,8 @@ def speeches(
     if reranker:
         settings = settings.model_copy(
             update={"reranker_provider": "cross_encoder", "reranker_model": reranker})
+    if hybrid:
+        settings = settings.model_copy(update={"sparse_provider": "bm25"})
 
     if natural:
         from datetime import date

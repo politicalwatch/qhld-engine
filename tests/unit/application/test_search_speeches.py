@@ -3,7 +3,7 @@
 import pytest
 
 from qhld_engine.application.search.search_speeches import SearchSpeeches
-from qhld_engine.domain.ports.vector_store import SearchHit, SpeechGroup
+from qhld_engine.domain.ports.vector_store import SearchHit, SparseVector, SpeechGroup
 from qhld_engine.infrastructure.config.settings import Settings
 
 pytestmark = pytest.mark.unit
@@ -139,6 +139,81 @@ def test_search_overfetches_and_reranks_when_reranker_set():
 def test_reranker_none_by_default_keeps_baseline():
     service = SearchSpeeches(settings=_settings(), embedder=_FakeEmbedder(), store=_FakeStore())
     assert service.reranker is None           # noop provider => no reranking
+
+
+# --- Hybrid (dense + sparse) search -----------------------------------------
+
+_SPARSE = SparseVector(indices=[7], values=[1.0])
+
+
+class _FakeSparseEmbedder:
+    def embed_query(self, text):
+        return _SPARSE
+
+
+class _HybridStore:
+    """Records the sparse_vector keyword the service passes along."""
+
+    def __init__(self):
+        self.searched = None
+        self.grouped = None
+
+    def search(self, name, vector, k, filters=None, sparse_vector=None):
+        self.searched = dict(name=name, k=k, filters=filters, sparse_vector=sparse_vector)
+        return [SearchHit(id="p1", score=0.9, payload={"text": "t"})]
+
+    def search_grouped(self, name, vector, group_by, limit, group_size,
+                       filters=None, exclude=None, sparse_vector=None):
+        self.grouped = dict(name=name, sparse_vector=sparse_vector)
+        return [SpeechGroup(
+            speech_id="A", score=0.9,
+            highlights=[SearchHit(id="p1", score=0.9, payload={})])]
+
+
+def test_sparse_embedder_none_by_default_keeps_baseline():
+    service = SearchSpeeches(settings=_settings(), embedder=_FakeEmbedder(), store=_FakeStore())
+    assert service.sparse_embedder is None    # "none" provider => dense-only search
+
+
+def test_hybrid_search_passes_sparse_vector_and_suffixed_collection():
+    store = _HybridStore()
+    service = SearchSpeeches(
+        settings=_settings(sparse_provider="bm25"), embedder=_FakeEmbedder(),
+        store=store, sparse_embedder=_FakeSparseEmbedder())
+
+    service.search("AP-9", k=5)
+
+    assert store.searched["name"] == "speeches__ollama__qwen3_embedding_0_6b__3__bm25"
+    assert store.searched["k"] == 5
+    assert store.searched["sparse_vector"] == _SPARSE
+
+
+def test_hybrid_search_composes_with_reranker_overfetch():
+    store = _HybridStore()
+    reranker = _FakeReranker()
+    service = SearchSpeeches(
+        settings=_settings(sparse_provider="bm25"), embedder=_FakeEmbedder(),
+        store=store, reranker=reranker, sparse_embedder=_FakeSparseEmbedder())
+
+    hits = service.search("q", k=3)
+
+    assert store.searched["k"] == 50          # over-fetched to reranker_top_n
+    assert store.searched["sparse_vector"] == _SPARSE
+    assert reranker.call[2] == 3
+    assert len(hits) == 1
+
+
+def test_hybrid_search_grouped_passes_sparse_vector():
+    store = _HybridStore()
+    service = SearchSpeeches(
+        settings=_settings(sparse_provider="bm25"), embedder=_FakeEmbedder(),
+        store=store, sparse_embedder=_FakeSparseEmbedder())
+
+    groups = service.search_grouped("q", page_size=2, highlights=1)
+
+    assert store.grouped["name"] == "speeches__ollama__qwen3_embedding_0_6b__3__bm25"
+    assert store.grouped["sparse_vector"] == _SPARSE
+    assert groups[0].speech_id == "A"
 
 
 def test_search_grouped_reranks_highlights_and_resorts():

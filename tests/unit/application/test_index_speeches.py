@@ -10,6 +10,7 @@ import pytest
 
 from qhld_engine.application.speeches import index_speeches as mod
 from qhld_engine.application.speeches.index_speeches import IndexSpeeches
+from qhld_engine.domain.ports.vector_store import SparseVector
 from qhld_engine.infrastructure.config.settings import Settings
 
 from tipi_data.models.speech import Mention, Speech, SpeechText
@@ -209,3 +210,51 @@ def test_targeted_reference_is_always_forced(monkeypatch):
 
     assert _upserted_speech_ids(store) == {"sid1"}
     assert not any(c[0] == "distinct" for c in store.calls)
+
+
+# --- Hybrid (dense + sparse) indexing ----------------------------------------
+
+class _FakeSparseEmbedder:
+    """Encodes each text's length as its single term id, so vectors are distinct."""
+
+    def embed_documents(self, texts):
+        return [SparseVector(indices=[len(t)], values=[1.0]) for t in texts]
+
+
+class _SparseAwareStore(_FakeStore):
+    def ensure_collection(self, name, dim, sparse=False):
+        self.calls.append(("ensure", name, dim, sparse))
+
+
+def test_dense_only_default_leaves_points_without_sparse(monkeypatch):
+    store = _FakeStore()
+    monkeypatch.setattr(
+        mod.Speeches, "by_references", lambda refs: [_bilingual_speech()], raising=False)
+
+    service = IndexSpeeches(settings=_settings(), embedder=_FakeEmbedder(), store=store)
+    service.execute(["172/000001"])
+
+    assert service.sparse_embedder is None
+    _, points = store.upserts[0]
+    assert all(p.sparse is None for p in points)
+
+
+def test_hybrid_indexing_attaches_sparse_vectors(monkeypatch):
+    store = _SparseAwareStore()
+    monkeypatch.setattr(
+        mod.Speeches, "by_references", lambda refs: [_bilingual_speech()], raising=False)
+
+    service = IndexSpeeches(
+        settings=_settings(sparse_provider="bm25"), embedder=_FakeEmbedder(),
+        store=store, sparse_embedder=_FakeSparseEmbedder())
+    service.execute(["172/000001"])
+
+    # hybrid collections get their own suffixed name and a sparse-enabled schema
+    assert service.collection == "speeches__ollama__qwen3_embedding_0_6b__3__bm25"
+    assert ("ensure", service.collection, 3, True) in store.calls
+
+    _, points = store.upserts[0]
+    assert len(points) == 2
+    for point in points:
+        assert point.sparse == SparseVector(
+            indices=[len(point.payload["text"])], values=[1.0])

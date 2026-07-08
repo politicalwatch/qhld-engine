@@ -38,13 +38,30 @@ _NS = uuid5(NAMESPACE_DNS, "speeches.qhld.politicalwatch.es")
 
 
 class IndexSpeeches:
-    def __init__(self, settings=None, embedder=None, store=None):
+    def __init__(self, settings=None, embedder=None, store=None, sparse_embedder=None):
         self.settings = settings or get_settings()
         self.embedder = embedder or create_embedder_from_env(self.settings)
         self.store = store or create_vector_store_from_env(self.settings)
+        self.sparse_embedder = (
+            sparse_embedder if sparse_embedder is not None
+            else self._sparse_from_settings()
+        )
         self.dim = len(self.embedder.embed_query("probe"))
         self.collection = collection_name(self.settings, self.dim)
-        self.store.ensure_collection(self.collection, self.dim)
+        if self.sparse_embedder is None:
+            self.store.ensure_collection(self.collection, self.dim)
+        else:
+            self.store.ensure_collection(self.collection, self.dim, sparse=True)
+
+    def _sparse_from_settings(self):
+        """Build the configured sparse embedder, or ``None`` for the "none"/unset
+        default so dense-only indexing stays byte-identical."""
+        provider = (self.settings.sparse_provider or "").lower()
+        if not provider or provider == "none":
+            return None
+        from qhld_engine.infrastructure.sparse.factory import create_sparse_embedder_from_env
+
+        return create_sparse_embedder_from_env(self.settings)
 
     def execute(self, references=None, incremental=True):
         # Drain the Mongo cursor into memory before the slow embed/upsert loop.
@@ -75,10 +92,17 @@ class IndexSpeeches:
         if not chunks:
             log.debug(f"No text to index for speech {speech.id}")
             return
-        vectors = self.embedder.embed_documents([text for _, _, text in chunks])
+        texts = [text for _, _, text in chunks]
+        vectors = self.embedder.embed_documents(texts)
+        sparse_vectors = (
+            self.sparse_embedder.embed_documents(texts)
+            if self.sparse_embedder is not None
+            else [None] * len(chunks)
+        )
         points = [
-            VectorPoint(id=point_id, vector=vector, payload=payload)
-            for (point_id, payload, _text), vector in zip(chunks, vectors)
+            VectorPoint(id=point_id, vector=vector, payload=payload, sparse=sparse)
+            for (point_id, payload, _text), vector, sparse in zip(
+                chunks, vectors, sparse_vectors)
         ]
         self.store.upsert(self.collection, points)
         log.debug(f"Indexed {len(points)} passages for speech {speech.id}")

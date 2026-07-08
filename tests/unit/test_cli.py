@@ -206,6 +206,17 @@ def test_search_grouped_flag_calls_grouped(monkeypatch):
     assert "172/000001" in result.output
 
 
+def test_search_hybrid_flag_enables_sparse_provider(monkeypatch):
+    mock_cls = MagicMock()
+    monkeypatch.setattr(
+        "qhld_engine.application.search.search_speeches.SearchSpeeches", mock_cls)
+    mock_cls.return_value.search.return_value = []
+    result = runner.invoke(app, ["search", "speeches", "AP-9", "--hybrid"])
+    assert result.exit_code == 0, result.output
+    settings = mock_cls.call_args.kwargs["settings"]
+    assert settings.sparse_provider == "bm25"  # flag overrides the env default
+
+
 def test_search_natural_flag_routes_to_natural_service(monkeypatch):
     from qhld_engine.application.search.natural_search import NaturalResult
     from qhld_engine.application.search.resolve_entities import Resolution
