@@ -43,6 +43,20 @@ def test_id_legislatura_coerced_to_int():
     assert settings.id_legislatura == 15
 
 
+def test_speech_extraction_types_defaults_empty(monkeypatch):
+    # No types configured -> the daily speech sweep must be an explicit no-op;
+    # each environment opts in via SPEECH_EXTRACTION_TYPES.
+    monkeypatch.delenv("SPEECH_EXTRACTION_TYPES", raising=False)
+    settings = Settings(_env_file=None)
+    assert settings.speech_extraction_types == []
+
+
+def test_speech_extraction_types_parses_env_json_list(monkeypatch):
+    monkeypatch.setenv("SPEECH_EXTRACTION_TYPES", '["172", "173", "210", "162"]')
+    settings = Settings(_env_file=None)
+    assert settings.speech_extraction_types == ["172", "173", "210", "162"]
+
+
 def test_defaults(monkeypatch):
     # _env_file=None only ignores the .env *file*; pydantic-settings still reads
     # os.environ. The qhld-engine container injects these as real env vars

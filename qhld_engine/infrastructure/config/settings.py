@@ -14,6 +14,11 @@ class Settings(BaseSettings):
     current_legislature: bool = True
     limit_date_to_sync: str = "2000-01-01"  # str: consumer parses with strptime()
     amendments_feature: bool = False
+    # Initiative types whose debates the daily speech extraction sweeps
+    # (JSON list, e.g. '["172", "173", "210", "162"]'). Empty means the sweep
+    # does nothing: each environment opts in explicitly, since every listed
+    # type costs one API probe per reference on every run.
+    speech_extraction_types: list[str] = []
 
     # Alerts
     use_alerts: bool = False

@@ -17,10 +17,13 @@ import math
 import os
 from collections import OrderedDict
 
+from tqdm import tqdm
+
 from qhld_engine.logger import get_logger
 from qhld_engine.application.speeches.mention_tagging import MentionTagger, es_text
 from qhld_engine.domain.speeches import segmentation
 from qhld_engine.domain.speeches.language_split import split_languages
+from qhld_engine.infrastructure.config.settings import get_settings
 from qhld_engine.infrastructure.language import detect
 from qhld_engine.extractors.spain.congress_api import CongressApi
 from qhld_engine.extractors.spain.initiative_extractors.utils.pdf_parsers import (
@@ -60,12 +63,34 @@ class ExtractSpeeches:
         for reference in references:
             self._extract_reference(reference)
 
+    def execute_incremental(self, references):
+        """Extract only the references whose stored speeches are incomplete.
+
+        Each reference costs one cheap interventions-API probe; the expensive
+        PDF work only happens when the API lists more interventions than we
+        have stored. A reference not yet debated (no interventions) or whose
+        Diario PDF is not yet published (probe succeeds, extraction saves
+        nothing) is simply retried on the next run — no state is kept, so any
+        gap heals itself once the source publishes."""
+        for reference in tqdm(references, desc="Checking speeches", unit="ref"):
+            interventions = self._retrieve_all_interventions(reference)
+            if not interventions:
+                continue
+            stored = Speeches.count_by_reference(reference)
+            if stored >= len(interventions):
+                continue
+            log.info(
+                f"{reference}: {stored}/{len(interventions)} speeches stored, extracting")
+            self._process_interventions(reference, interventions)
+
     def _extract_reference(self, reference):
         log.info(f"Getting speeches from {reference}")
         interventions = self._retrieve_all_interventions(reference)
         if not interventions:
             return
+        self._process_interventions(reference, interventions)
 
+    def _process_interventions(self, reference, interventions):
         surnames = [
             segmentation.speaker_surname_upper(i["orador"]) for i in interventions
         ]
@@ -95,11 +120,10 @@ class ExtractSpeeches:
         the sitting's interventions (identical across them); ``references`` carries
         only this run's reference and is accumulated by the repository."""
         sesion = intervention.get("sesion", {})
-        video = intervention.get("video_intervencion", {})
         videos_fase = sesion.get("videos_fase", {})
         session = Session(
             id=session_id,
-            legislature=str(video["legislatura"]) if video.get("legislatura") else None,
+            legislature=self._legislature(intervention),
             session_link=session_link,
             name=sesion.get("nombre_sesion"),
             code=self._session_code(session_link),
@@ -114,6 +138,16 @@ class ExtractSpeeches:
         """The canonical Diario document code = the PDF filename stem, e.g.
         ``/public_oficiales/L15/CONG/DS/PL/DSCD-15-PL-13.PDF`` -> ``DSCD-15-PL-13``."""
         return os.path.splitext(os.path.basename(session_link))[0]
+
+    def _legislature(self, intervention):
+        """Legislature of the intervention. Right after a session ends the API
+        lists its interventions without ``video_intervencion`` (the video is
+        published later), so fall back to the configured current legislature."""
+        video = intervention.get("video_intervencion") or {}
+        legislature = video.get("legislatura")
+        if legislature:
+            return str(legislature)
+        return str(get_settings().id_legislatura)
 
     def _extract_one(self, intervention, session_link, session_id, segmenter,
                      reference, speaker_regex, upcoming_regex):
@@ -141,10 +175,17 @@ class ExtractSpeeches:
             blocks = [SpeechText(lang=lang, text=t, original=orig)
                       for lang, t, orig in parts]
 
-        video = intervention["video_intervencion"]
+        video = intervention.get("video_intervencion") or {}
         order = int(intervention["doc"])
-        speech_id = self._speech_id(
-            video.get("id01"), session_link, intervention["orador"], order, blocks)
+        fallback_id = self._content_id(
+            session_link, intervention["orador"], order, blocks)
+        video_id = video.get("id01")
+        speech_id = generate_id(video_id) if video_id else fallback_id
+        if speech_id != fallback_id:
+            # A run that happened before the video was published stored this
+            # same intervention under its content identity; drop that copy now
+            # that the canonical id is known.
+            Speeches.delete(fallback_id)
         speech = Speech(
             id=speech_id,
             references=[reference],
@@ -155,7 +196,7 @@ class ExtractSpeeches:
             group=group,
             role=intervention.get("cargo_orador"),
             order=order,
-            legislature=str(video["legislatura"]),
+            legislature=self._legislature(intervention),
             date=intervention.get("fecha"),
             session_name=intervention.get("sesion", {}).get("nombre_sesion"),
             video_link=video.get("enlace_descarga02"),
@@ -167,20 +208,17 @@ class ExtractSpeeches:
         Speeches.save(speech)
 
     @staticmethod
-    def _speech_id(video_id, session_link, orador, order, blocks):
-        """Identity of the *physical* intervention, so an accumulated debate
-        (several initiatives debated jointly) yields one document whose
-        ``references`` roster accumulates, instead of one copy per initiative.
+    def _content_id(session_link, orador, order, blocks):
+        """Fallback identity of the *physical* intervention, used while the
+        Congress intervention id (``video_intervencion.id01``) does not exist
+        yet — it stays empty until the sitting's video is published.
 
-        The Congress intervention id (``video_intervencion.id01``) is that
-        identity and is stable across the debate's initiatives. It is empty
-        until the sitting's video is published, so the fallback keys on the
-        intervention's observable coordinates plus its text: identical-text
-        copies from the same speaker collapse, while a speaker's distinct
-        speeches under the same document number (numbering restarts per
-        initiative within a sitting) stay apart."""
-        if video_id:
-            return generate_id(video_id)
+        The id keys on the intervention's observable coordinates plus its
+        text: identical-text copies from the same speaker collapse (so an
+        accumulated debate — several initiatives debated jointly — yields one
+        document whose ``references`` roster accumulates), while a speaker's
+        distinct speeches under the same document number (numbering restarts
+        per initiative within a sitting) stay apart."""
         text = "||".join(block.text for block in blocks)
         return generate_id(session_link, orador, str(order), text)
 
@@ -238,6 +276,5 @@ class ExtractSpeeches:
         return grouped
 
     def _session_link(self, intervention):
-        legislature = intervention["video_intervencion"]["legislatura"]
         pdia = intervention["pdia"].split("#")[0]
-        return f"{SESSION_PATH}L{legislature}/{pdia}"
+        return f"{SESSION_PATH}L{self._legislature(intervention)}/{pdia}"

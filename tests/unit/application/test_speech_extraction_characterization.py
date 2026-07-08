@@ -60,6 +60,8 @@ def test_extract_speeches_172_000001(monkeypatch, capture):
         raise mod.DoesNotExist(speech_id)
 
     monkeypatch.setattr(mod.Speeches, "get", staticmethod(_no_stored_speech))
+    # published video ids trigger the provisional-twin cleanup; keep it Mongo-free
+    monkeypatch.setattr(mod.Speeches, "delete", staticmethod(lambda id: None))
     monkeypatch.setattr(mod.Sessions, "save", lambda s: saved_sessions.append(s))
     # stub mention tagging: this test locks segmentation/language-split, not NER,
     # and must stay Mongo-free (no deputy catalog) and spaCy-free.
