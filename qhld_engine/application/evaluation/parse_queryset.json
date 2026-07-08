@@ -79,6 +79,8 @@
      "gold": {"group": ["GS", "GP"]}, "gold_topic": "vivienda asequible"},
     {"id": "M2", "dimension": "multi-speaker", "query": "qué han dicho Pedro Sánchez y Santiago Abascal sobre inmigración",
      "gold": {"speaker": ["Sánchez Pérez-Castejón, Pedro", "Abascal Conde, Santiago"]},
-     "gold_topic": "inmigración"}
+     "gold_topic": "inmigración"},
+    {"id": "M3", "dimension": "group-category", "query": "intervenciones de los partidos de izquierda sobre vivienda asequible",
+     "gold": {"group": ["GS", "GSUMAR", "GR", "GEH Bildu"]}, "gold_topic": "vivienda asequible"}
   ]
 }

@@ -9,7 +9,10 @@ service maps that onto what the index actually *stores*:
 - groups/parties -> the payload ``group`` code (== ``ParliamentaryGroup.shortname``),
   resolved from an alias map over group short/long names, party names and a curated
   alias file, plus a token-normalized form that strips the generic words users swap
-  freely ("grupo socialista" / "partido socialista" / "los socialistas").
+  freely ("grupo socialista" / "partido socialista" / "los socialistas"). A curated
+  ideological/bloc category ("izquierda", "independentistas") expands to every group
+  labelled with it — the parser passes categories through verbatim; the labels are
+  editorial data in the alias file, not a model judgment.
 - mentioned persons -> person ids (deputies, or non-deputies such as ministers, the
   King, regional presidents or foreign leaders), matched against the SAME person
   catalog that tags the corpus, then filtered on the payload ``mentions`` list.
@@ -58,10 +61,10 @@ GROUP_ALIASES_FILE = Path(__file__).parent / "group_aliases.json"
 
 # Words that carry no identity within a group/party name — the scaffolding users
 # swap freely ("grupo socialista" / "partido socialista" / "los socialistas").
-# Unaccented forms, matched after accent stripping.
+# Unaccented singular forms, matched after accent stripping and plural folding.
 _GENERIC_GROUP_TOKENS = {
     "grupo", "parlamentario", "parlamentaria", "partido", "politico", "politica",
-    "el", "la", "los", "las", "de", "del", "per",
+    "bloque", "el", "la", "los", "las", "de", "del", "per",
 }
 
 
@@ -93,8 +96,8 @@ class EntityResolver:
         self._distinct = distinct
         if curated_aliases is None:
             curated_aliases = load_curated_group_aliases()
-        self._group_aliases, self._group_aliases_normalized = _build_group_aliases(
-            groups, curated_aliases)
+        (self._group_aliases, self._group_aliases_normalized,
+         self._group_categories) = _build_group_aliases(groups, curated_aliases)
         self._person_index = (
             load_person_index(deputies, mention_threshold,
                               curated=curated, nondeputy_speakers=nondeputy_speakers)
@@ -180,13 +183,17 @@ class EntityResolver:
     def _resolve_groups(self, result, raws):
         matched = []
         for raw in raws:
-            shortname = self._match_group(raw)
-            if shortname:
-                result.notes.append(f"group: '{raw}' → '{shortname}'")
-                if shortname not in matched:
-                    matched.append(shortname)
+            codes = self._group_categories.get(_normalize_group_key(raw))
+            if codes:
+                result.notes.append(f"group: '{raw}' → {', '.join(codes)} (category)")
             else:
-                result.notes.append(f"group: '{raw}' unresolved — not filtered")
+                shortname = self._match_group(raw)
+                if not shortname:
+                    result.notes.append(f"group: '{raw}' unresolved — not filtered")
+                    continue
+                result.notes.append(f"group: '{raw}' → '{shortname}'")
+                codes = [shortname]
+            matched.extend(code for code in codes if code not in matched)
         _set_filter(result, "group", matched)
 
     def _match_group(self, raw):
@@ -241,29 +248,33 @@ def _fold_plural(token: str) -> str:
 
 def _normalize_group_key(text: str) -> str:
     """Reduce a group/party name to its distinctive tokens: lowercase, unaccent,
-    drop generic words, fold plurals. 'los socialistas' and 'Grupo Parlamentario
-    Socialista' both reduce to 'socialista'."""
+    fold plurals, drop generic words. 'los socialistas' and 'Grupo Parlamentario
+    Socialista' both reduce to 'socialista'; 'los partidos de izquierda' to
+    'izquierda'."""
     tokens = re.findall(r"[a-z0-9]+", _strip_accents(text.lower()))
-    kept = [_fold_plural(t) for t in tokens if t not in _GENERIC_GROUP_TOKENS]
-    return " ".join(kept)
+    folded = (_fold_plural(t) for t in tokens)
+    return " ".join(t for t in folded if t not in _GENERIC_GROUP_TOKENS)
 
 
-def _build_group_aliases(groups, curated=None) -> tuple[dict, dict]:
-    """Two maps to the payload ``group`` code (``shortname``): lowercased
-    short/long/party/curated names verbatim, and their token-normalized forms.
-    Single-party groups win over the multi-party Mixto group on a party-name
-    conflict (e.g. 'PSOE' -> GS, not GMx). Curated aliases only apply to codes
-    present in the current catalog."""
-    curated_by_code = {row["code"]: row.get("aliases", []) for row in (curated or [])}
+def _build_group_aliases(groups, curated=None) -> tuple[dict, dict, dict]:
+    """Three maps for group resolution: lowercased short/long/party/curated names
+    verbatim -> code (``shortname``), their token-normalized forms -> code, and
+    normalized curated category ('izquierda', 'independentista') -> every code
+    labelled with it. Single-party groups win over the multi-party Mixto group on
+    a party-name conflict (e.g. 'PSOE' -> GS, not GMx). Curated aliases and
+    categories only apply to codes present in the current catalog."""
+    curated_by_code = {row["code"]: row for row in (curated or [])}
     exact: dict[str, str] = {}
     normalized: dict[str, str] = {}
+    categories: dict[str, list[str]] = {}
     for group in sorted(groups or [], key=lambda g: len(getattr(g, "parties", None) or [])):
         shortname = getattr(group, "shortname", None)
         if not shortname:
             continue
+        row = curated_by_code.get(shortname, {})
         candidates = [shortname, getattr(group, "name", None),
                       *(getattr(group, "parties", None) or []),
-                      *curated_by_code.get(shortname, [])]
+                      *row.get("aliases", [])]
         for alias in candidates:
             if not alias:
                 continue
@@ -271,7 +282,11 @@ def _build_group_aliases(groups, curated=None) -> tuple[dict, dict]:
             key = _normalize_group_key(alias)
             if key:
                 normalized.setdefault(key, shortname)
-    return exact, normalized
+        for category in row.get("categories", []):
+            key = _normalize_group_key(category)
+            if key and shortname not in categories.setdefault(key, []):
+                categories[key].append(shortname)
+    return exact, normalized, categories
 
 
 def _iso_to_int(iso: str) -> int | None:

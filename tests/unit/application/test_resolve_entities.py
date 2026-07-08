@@ -121,6 +121,41 @@ def test_curated_alias_for_absent_group_is_ignored():
     assert "group" not in r.filters
 
 
+CATEGORIZED = [
+    {"code": "GS", "aliases": [], "categories": ["izquierda"]},
+    {"code": "GR", "aliases": ["Esquerra"], "categories": ["izquierda", "independentista"]},
+    {"code": "GVOX", "aliases": [], "categories": ["derecha"]},  # not in the catalog
+]
+
+
+def test_ideological_category_expands_to_every_labelled_group():
+    resolver = _resolver(curated_aliases=CATEGORIZED)
+    for raw in ["izquierda", "la izquierda", "los partidos de izquierda"]:
+        r = resolver.resolve(ParsedQuery(semantic_query="x", groups_or_parties=[raw]))
+        assert r.filters["group"] == ["GR", "GS"], f"'{raw}' → {r.filters.get('group')}"
+        assert any("(category)" in note for note in r.notes)
+
+
+def test_category_with_single_labelled_group_stays_scalar():
+    resolver = _resolver(curated_aliases=CATEGORIZED)
+    r = resolver.resolve(ParsedQuery(semantic_query="x", groups_or_parties=["los independentistas"]))
+    assert r.filters["group"] == "GR"
+
+
+def test_category_of_absent_group_is_ignored():
+    # GVOX is labelled 'derecha' but is not in the catalog → nothing to expand to.
+    resolver = _resolver(curated_aliases=CATEGORIZED)
+    r = resolver.resolve(ParsedQuery(semantic_query="x", groups_or_parties=["la derecha"]))
+    assert "group" not in r.filters
+
+
+def test_category_and_named_group_combine():
+    resolver = _resolver(curated_aliases=CATEGORIZED)
+    r = resolver.resolve(ParsedQuery(
+        semantic_query="x", groups_or_parties=["la izquierda", "PP"]))
+    assert r.filters["group"] == ["GP", "GR", "GS"]
+
+
 def test_multiple_groups_resolve_to_a_list(resolver):
     r = resolver.resolve(ParsedQuery(
         semantic_query="x", groups_or_parties=["Grupo Socialista", "Grupo Popular"]))

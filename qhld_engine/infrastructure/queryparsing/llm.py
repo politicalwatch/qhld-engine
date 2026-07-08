@@ -41,7 +41,11 @@ Ayuso o Putin' → 'any').
 por su nombre (p. ej. 'ministra de economía'). Null en otro caso.
 - groups_or_parties: TODOS los grupos parlamentarios o partidos políticos como \
 filtro, un elemento por grupo/partido (p. ej. 'del PSOE y del PP' → ['PSOE', \
-'PP']; 'del Grupo Socialista' → ['Grupo Socialista']). Null si no hay.
+'PP']; 'del Grupo Socialista' → ['Grupo Socialista']). Si la consulta usa una \
+categoría ideológica o de bloque en vez de nombres concretos ('la izquierda', \
+'los partidos de derecha', 'los independentistas', 'los nacionalistas'), NO la \
+expandas a partidos: emite el término de la categoría tal cual como un único \
+elemento (p. ej. 'los partidos de izquierda' → ['izquierda']). Null si no hay.
 - date_from / date_to: rango de fechas en formato ISO YYYY-MM-DD. Resuelve las \
 expresiones relativas ('el último año', 'últimos tres meses', 'en 2024') tomando \
 como fecha actual {today}. Null si no hay restricción temporal.

@@ -52,7 +52,9 @@ class ParsedQuery(BaseModel):
         description=(
             "Every parliamentary group or political party named as a filter (e.g. "
             "'PSOE', 'Grupo Socialista', 'Partido Popular'), one list item per "
-            "group/party. Null if none."))
+            "group/party. An ideological or bloc category ('izquierda', "
+            "'independentistas') is ONE verbatim item — never expand it into "
+            "party names. Null if none."))
     date_from: str | None = Field(
         default=None,
         description=(
