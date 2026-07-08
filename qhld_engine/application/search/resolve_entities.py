@@ -1,17 +1,24 @@
 """Entity resolution for Query understanding: turn a ``ParsedQuery`` into concrete Qdrant
 payload filters.
 
-The LLM extracts what the user *said* (a name, a title, a party, ISO dates); this
+The LLM extracts what the user *said* (names, titles, parties, ISO dates); this
 service maps that onto what the index actually *stores*:
-- speaker name  -> fuzzy match against the corpus ``speaker`` values ("Apellido,
+- speaker names -> fuzzy match against the corpus ``speaker`` values ("Apellido,
   Nombre"), so it works for deputies AND non-deputies (ministers etc.) alike.
 - speaker title -> fuzzy match against the corpus ``role`` values (full office titles).
-- group/party   -> the payload ``group`` code (== ``ParliamentaryGroup.shortname``),
-  resolved from an alias map over group short/long names and party names.
-- mentioned person -> a person id (a deputy, or a non-deputy such as a minister, the
-  King, a regional president or a foreign leader), matched against the SAME person
+- groups/parties -> the payload ``group`` code (== ``ParliamentaryGroup.shortname``),
+  resolved from an alias map over group short/long names, party names and a curated
+  alias file, plus a token-normalized form that strips the generic words users swap
+  freely ("grupo socialista" / "partido socialista" / "los socialistas").
+- mentioned persons -> person ids (deputies, or non-deputies such as ministers, the
+  King, regional presidents or foreign leaders), matched against the SAME person
   catalog that tags the corpus, then filtered on the payload ``mentions`` list.
 - ISO dates     -> a numeric ``date`` range ({"gte"/"lte": YYYYMMDD}).
+
+When several values resolve for one field, the filter value becomes a list (the
+store treats it as any-of); mentioned persons instead honour the parsed
+``mentions_mode`` — ``{"all": [ids]}`` requires every person to be mentioned,
+a plain list accepts any of them.
 
 Corpus values are read via an injected ``distinct(key)`` callable (wrapping
 ``VectorStorePort.distinct_values`` on the target collection), so the resolver is
@@ -19,7 +26,11 @@ trivially testable with a stub. Each resolution is recorded in ``notes`` so the
 CLI can show what was understood (and what could not be matched).
 """
 
+import json
+import re
+import unicodedata
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from thefuzz import fuzz, process
 
@@ -43,6 +54,22 @@ _LANG_ALIASES = {
     "eu": "eu", "eus": "eu", "euskera": "eu", "euskara": "eu", "vasco": "eu", "vascuence": "eu",
 }
 
+GROUP_ALIASES_FILE = Path(__file__).parent / "group_aliases.json"
+
+# Words that carry no identity within a group/party name — the scaffolding users
+# swap freely ("grupo socialista" / "partido socialista" / "los socialistas").
+# Unaccented forms, matched after accent stripping.
+_GENERIC_GROUP_TOKENS = {
+    "grupo", "parlamentario", "parlamentaria", "partido", "politico", "politica",
+    "el", "la", "los", "las", "de", "del", "per",
+}
+
+
+def load_curated_group_aliases(path=GROUP_ALIASES_FILE):
+    """Read the curated group-alias records (a JSON array of {code, aliases})."""
+    with open(path, encoding="utf-8") as fh:
+        return json.load(fh)
+
 
 @dataclass
 class Resolution:
@@ -54,17 +81,20 @@ class Resolution:
 
 class EntityResolver:
     def __init__(self, distinct, groups, deputies=None, mention_threshold=90,
-                 curated=None, nondeputy_speakers=None):
+                 curated=None, nondeputy_speakers=None, curated_aliases=None):
         """``distinct`` is ``callable(key) -> set`` over the target collection's
         payload; ``groups`` is the list of ``ParliamentaryGroup`` records. ``deputies``
-        (the ``Deputy`` catalog) enables resolving a mentioned person; when given, the
+        (the ``Deputy`` catalog) enables resolving mentioned persons; when given, the
         full person index (deputies + curated non-deputies + bootstrapped speakers) is
         built with the SAME assembler used to tag the corpus, so a query resolves to the
-        same ids that were indexed. ``curated``/``nondeputy_speakers`` may be injected
-        (tests); otherwise they are read from the data file / ``Speeches``. Omit
-        ``deputies`` => mentioned-person queries are left unfiltered."""
+        same ids that were indexed. ``curated``/``nondeputy_speakers``/``curated_aliases``
+        may be injected (tests); otherwise they are read from the data files /
+        ``Speeches``. Omit ``deputies`` => mentioned-person queries are left unfiltered."""
         self._distinct = distinct
-        self._group_aliases = _build_group_aliases(groups)
+        if curated_aliases is None:
+            curated_aliases = load_curated_group_aliases()
+        self._group_aliases, self._group_aliases_normalized = _build_group_aliases(
+            groups, curated_aliases)
         self._person_index = (
             load_person_index(deputies, mention_threshold,
                               curated=curated, nondeputy_speakers=nondeputy_speakers)
@@ -73,18 +103,14 @@ class EntityResolver:
 
     def resolve(self, parsed: ParsedQuery) -> Resolution:
         result = Resolution()
-        if parsed.speaker:
-            self._resolve_fuzzy(
-                result, "speaker", parsed.speaker, "speaker",
-                fuzz.token_set_ratio, _SPEAKER_THRESHOLD)
+        if parsed.speakers:
+            self._resolve_speakers(result, parsed.speakers)
         if parsed.speaker_title:
-            self._resolve_fuzzy(
-                result, "role", parsed.speaker_title, "role",
-                fuzz.token_set_ratio, _ROLE_THRESHOLD)
-        if parsed.mentioned_person:
-            self._resolve_mention(result, parsed.mentioned_person)
-        if parsed.group_or_party:
-            self._resolve_group(result, parsed.group_or_party)
+            self._resolve_role(result, parsed.speaker_title)
+        if parsed.mentioned_persons:
+            self._resolve_mentions(result, parsed.mentioned_persons, parsed.mentions_mode)
+        if parsed.groups_or_parties:
+            self._resolve_groups(result, parsed.groups_or_parties)
         self._resolve_dates(result, parsed)
         if parsed.lang:
             self._resolve_lang(result, parsed.lang)
@@ -92,15 +118,42 @@ class EntityResolver:
             result.filters["legislature"] = parsed.legislature
         return result
 
-    def _resolve_mention(self, result, raw):
-        entry = (resolve_person(raw, self._person_index, self._mention_threshold)
-                 if self._person_index else None)
-        if entry:
-            result.filters["mentions"] = entry.person_id
-            result.notes.append(
-                f"mentions: '{raw}' → '{entry.name}' ({entry.person_type})")
+    def _resolve_speakers(self, result, raws):
+        choices = [v for v in self._distinct("speaker") if v]
+        matched = []
+        for raw in raws:
+            value = self._fuzzy_match(
+                result, "speaker", raw, choices, _SPEAKER_THRESHOLD)
+            if value and value not in matched:
+                matched.append(value)
+        _set_filter(result, "speaker", matched)
+
+    def _resolve_role(self, result, raw):
+        choices = [v for v in self._distinct("role") if v]
+        value = self._fuzzy_match(result, "role", raw, choices, _ROLE_THRESHOLD)
+        if value:
+            result.filters["role"] = value
+
+    def _resolve_mentions(self, result, raws, mode):
+        ids = []
+        for raw in raws:
+            entry = (resolve_person(raw, self._person_index, self._mention_threshold)
+                     if self._person_index else None)
+            if entry:
+                result.notes.append(
+                    f"mentions: '{raw}' → '{entry.name}' ({entry.person_type})")
+                if entry.person_id not in ids:
+                    ids.append(entry.person_id)
+            else:
+                result.notes.append(f"mentions: '{raw}' unresolved — not filtered")
+        if not ids:
+            return
+        if len(ids) == 1:
+            result.filters["mentions"] = ids[0]
+        elif mode == "any":
+            result.filters["mentions"] = sorted(ids)
         else:
-            result.notes.append(f"mentions: '{raw}' unresolved — not filtered")
+            result.filters["mentions"] = {"all": sorted(ids)}
 
     def _resolve_lang(self, result, raw):
         code = _LANG_ALIASES.get(raw.strip().lower())
@@ -111,32 +164,45 @@ class EntityResolver:
         else:
             result.notes.append(f"lang: '{raw}' unresolved — not filtered")
 
-    def _resolve_fuzzy(self, result, payload_key, raw, distinct_key, scorer, threshold):
-        choices = [v for v in self._distinct(distinct_key) if v]
-        match = process.extractOne(raw, choices, scorer=scorer) if choices else None
+    @staticmethod
+    def _fuzzy_match(result, payload_key, raw, choices, threshold):
+        """Best fuzzy match for one raw value, traced in ``notes``; None below
+        ``threshold``."""
+        match = process.extractOne(
+            raw, choices, scorer=fuzz.token_set_ratio) if choices else None
         if match and match[1] >= threshold:
-            result.filters[payload_key] = match[0]
             result.notes.append(f"{payload_key}: '{raw}' → '{match[0]}' ({match[1]})")
-        else:
-            best = f" (best '{match[0]}' {match[1]})" if match else ""
-            result.notes.append(f"{payload_key}: '{raw}' unresolved{best} — not filtered")
+            return match[0]
+        best = f" (best '{match[0]}' {match[1]})" if match else ""
+        result.notes.append(f"{payload_key}: '{raw}' unresolved{best} — not filtered")
+        return None
 
-    def _resolve_group(self, result, raw):
-        shortname = self._match_group(raw)
-        if shortname:
-            result.filters["group"] = shortname
-            result.notes.append(f"group: '{raw}' → '{shortname}'")
-        else:
-            result.notes.append(f"group: '{raw}' unresolved — not filtered")
+    def _resolve_groups(self, result, raws):
+        matched = []
+        for raw in raws:
+            shortname = self._match_group(raw)
+            if shortname:
+                result.notes.append(f"group: '{raw}' → '{shortname}'")
+                if shortname not in matched:
+                    matched.append(shortname)
+            else:
+                result.notes.append(f"group: '{raw}' unresolved — not filtered")
+        _set_filter(result, "group", matched)
 
     def _match_group(self, raw):
         key = raw.strip().lower()
         if key in self._group_aliases:
             return self._group_aliases[key]
+        normalized = _normalize_group_key(raw)
+        if not normalized:
+            return None
+        if normalized in self._group_aliases_normalized:
+            return self._group_aliases_normalized[normalized]
         match = process.extractOne(
-            key, list(self._group_aliases), scorer=fuzz.token_set_ratio)
+            normalized, list(self._group_aliases_normalized),
+            scorer=fuzz.token_set_ratio)
         if match and match[1] >= _GROUP_THRESHOLD:
-            return self._group_aliases[match[0]]
+            return self._group_aliases_normalized[match[0]]
         return None
 
     def _resolve_dates(self, result, parsed):
@@ -151,20 +217,61 @@ class EntityResolver:
             result.notes.append(f"date: {bounds}")
 
 
-def _build_group_aliases(groups) -> dict:
-    """Map lowercased short/long/party names to the payload ``group`` code
-    (``shortname``). Single-party groups win over the multi-party Mixto group on a
-    party-name conflict (e.g. 'PSOE' -> GS, not GMx)."""
-    aliases: dict[str, str] = {}
+def _set_filter(result, key, matched):
+    """A single resolved value stays a scalar (exact match); several become a
+    list (the store treats it as any-of)."""
+    if matched:
+        result.filters[key] = matched[0] if len(matched) == 1 else sorted(matched)
+
+
+def _strip_accents(text: str) -> str:
+    return "".join(
+        c for c in unicodedata.normalize("NFD", text) if not unicodedata.combining(c))
+
+
+def _fold_plural(token: str) -> str:
+    """'populares' -> 'popular', 'socialistas' -> 'socialista'. Applied to aliases
+    and queries alike, so any over-stripping stays symmetric and still matches."""
+    if token.endswith("es") and len(token) > 4:
+        return token[:-2]
+    if token.endswith("s") and len(token) > 3:
+        return token[:-1]
+    return token
+
+
+def _normalize_group_key(text: str) -> str:
+    """Reduce a group/party name to its distinctive tokens: lowercase, unaccent,
+    drop generic words, fold plurals. 'los socialistas' and 'Grupo Parlamentario
+    Socialista' both reduce to 'socialista'."""
+    tokens = re.findall(r"[a-z0-9]+", _strip_accents(text.lower()))
+    kept = [_fold_plural(t) for t in tokens if t not in _GENERIC_GROUP_TOKENS]
+    return " ".join(kept)
+
+
+def _build_group_aliases(groups, curated=None) -> tuple[dict, dict]:
+    """Two maps to the payload ``group`` code (``shortname``): lowercased
+    short/long/party/curated names verbatim, and their token-normalized forms.
+    Single-party groups win over the multi-party Mixto group on a party-name
+    conflict (e.g. 'PSOE' -> GS, not GMx). Curated aliases only apply to codes
+    present in the current catalog."""
+    curated_by_code = {row["code"]: row.get("aliases", []) for row in (curated or [])}
+    exact: dict[str, str] = {}
+    normalized: dict[str, str] = {}
     for group in sorted(groups or [], key=lambda g: len(getattr(g, "parties", None) or [])):
         shortname = getattr(group, "shortname", None)
         if not shortname:
             continue
-        candidates = [shortname, getattr(group, "name", None), *(getattr(group, "parties", None) or [])]
+        candidates = [shortname, getattr(group, "name", None),
+                      *(getattr(group, "parties", None) or []),
+                      *curated_by_code.get(shortname, [])]
         for alias in candidates:
-            if alias:
-                aliases.setdefault(alias.lower(), shortname)
-    return aliases
+            if not alias:
+                continue
+            exact.setdefault(alias.lower(), shortname)
+            key = _normalize_group_key(alias)
+            if key:
+                normalized.setdefault(key, shortname)
+    return exact, normalized
 
 
 def _iso_to_int(iso: str) -> int | None:

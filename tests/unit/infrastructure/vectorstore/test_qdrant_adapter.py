@@ -61,6 +61,29 @@ def test_search_applies_numeric_range_filter(adapter):
     assert [h.payload["speech_id"] for h in hits] == ["mid"]
 
 
+def test_search_list_filter_matches_any_value(adapter):
+    adapter.ensure_collection("c", 3)
+    adapter.upsert("c", [
+        _point({"speech_id": "a", "group": "GS"}),
+        _point({"speech_id": "b", "group": "GP"}),
+        _point({"speech_id": "c", "group": "GVOX"}),
+    ])
+    hits = adapter.search("c", [0.1, 0.2, 0.3], k=5, filters={"group": ["GS", "GP"]})
+    assert {h.payload["speech_id"] for h in hits} == {"a", "b"}
+
+
+def test_search_all_filter_requires_every_value_in_list_payload(adapter):
+    adapter.ensure_collection("c", 3)
+    adapter.upsert("c", [
+        _point({"speech_id": "both", "mentions": ["ayuso", "putin"]}),
+        _point({"speech_id": "one", "mentions": ["ayuso"]}),
+        _point({"speech_id": "other", "mentions": ["putin", "sanchez"]}),
+    ])
+    hits = adapter.search(
+        "c", [0.1, 0.2, 0.3], k=5, filters={"mentions": {"all": ["ayuso", "putin"]}})
+    assert [h.payload["speech_id"] for h in hits] == ["both"]
+
+
 def test_search_combines_range_and_exact_filters(adapter):
     adapter.ensure_collection("c", 3)
     adapter.upsert("c", [
@@ -215,6 +238,17 @@ def test_hybrid_search_applies_filters_to_both_branches(adapter):
     ])
     hits = _query(adapter, {7: 1.0}, filters={"lang": "es", "date": {"gte": 20250101}})
     assert [h.payload["speech_id"] for h in hits] == ["a"]
+
+
+def test_hybrid_search_applies_list_filter_to_both_branches(adapter):
+    adapter.ensure_collection("h", 3, sparse=True)
+    adapter.upsert("h", [
+        _hybrid_point({"speech_id": "a", "group": "GS"}, [1.0, 0.0, 0.0], {7: 1.0}),
+        _hybrid_point({"speech_id": "b", "group": "GP"}, [0.0, 1.0, 0.0], {7: 1.0}),
+        _hybrid_point({"speech_id": "c", "group": "GVOX"}, [1.0, 0.0, 0.0], {7: 1.0}),
+    ])
+    hits = _query(adapter, {7: 1.0}, filters={"group": ["GS", "GP"]})
+    assert {h.payload["speech_id"] for h in hits} == {"a", "b"}
 
 
 def test_hybrid_upsert_accepts_empty_sparse_vector(adapter):

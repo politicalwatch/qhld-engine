@@ -8,9 +8,10 @@ group, date, lang, legislature) we count TP/FP/FN → precision/recall/F1, plus 
 per-query exact-match and a soft topic-overlap score for the residual query.
 
 No I/O — takes predicted filter dicts and the gold labels, so it is unit-testable
-offline. Gold values may be a scalar, a list (any-of accepted), or a date range
-``{"gte"/"lte": YYYYMMDD}`` scored with a few days' tolerance (LLM relative-date
-arithmetic is often a day off).
+offline. Gold values may be a scalar, a list (the exact multi-value set expected,
+order-insensitive — a prediction missing one of the values is wrong), or a date
+range ``{"gte"/"lte": YYYYMMDD}`` scored with a few days' tolerance (LLM
+relative-date arithmetic is often a day off).
 """
 
 from collections import defaultdict
@@ -38,12 +39,14 @@ def date_matches(pred: dict | None, gold: dict, tol_days=_DATE_TOLERANCE_DAYS) -
 
 
 def value_matches(pred, gold, slot) -> bool:
+    """Scalar and list values compare as sets, so a multi-value slot matches
+    regardless of order but fails when a value is missing or extra."""
     if pred is None:
         return False
     if slot == "date":
         return date_matches(pred, gold)
-    accepted = gold if isinstance(gold, list) else [gold]
-    return pred in accepted
+    as_set = lambda v: set(v) if isinstance(v, list) else {v}  # noqa: E731
+    return as_set(pred) == as_set(gold)
 
 
 def slot_counts(pred_filters: dict, gold: dict, slot: str) -> tuple[int, int, int]:

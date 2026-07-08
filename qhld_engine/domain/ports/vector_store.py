@@ -75,8 +75,10 @@ class VectorStorePort(Protocol):
     ) -> list[SearchHit]:
         """Return the ``k`` nearest points, optionally filtered by payload.
 
-        ``filters`` is ``{key: value}``: a scalar value is an exact match; a dict
-        value is a numeric range with ``gte``/``gt``/``lte``/``lt`` keys, e.g.
+        ``filters`` is ``{key: value}``: a scalar value is an exact match; a list
+        matches any of its values; ``{"all": [...]}`` requires a list payload to
+        contain every value (e.g. all mentioned persons); any other dict value is
+        a numeric range with ``gte``/``gt``/``lte``/``lt`` keys, e.g.
         ``{"date": {"gte": 20250403, "lte": 20250703}}`` (``date`` is a YYYYMMDD int).
 
         With ``sparse_vector`` (a lexical encoding of the same query) the store
@@ -96,8 +98,8 @@ class VectorStorePort(Protocol):
         sparse_vector: SparseVector | None = None,
     ) -> list["SpeechGroup"]:
         """Return the ``limit`` best groups (by payload ``group_by``), each with up
-        to ``group_size`` passages as highlights. ``filters`` follow the same
-        scalar-or-range form as ``search``; ``exclude`` is a set of ``group_by``
+        to ``group_size`` passages as highlights. ``filters`` take the same form
+        as in ``search``; ``exclude`` is a set of ``group_by``
         values to omit — a stateless pagination cursor ("load more" = re-query
         excluding seen ids); ``sparse_vector`` enables hybrid ranking as in
         ``search``."""

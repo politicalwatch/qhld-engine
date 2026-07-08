@@ -66,6 +66,19 @@
     {"id": "H7", "dimension": "hard-group", "query": "de qué ha hablado Vox sobre inmigración recientemente",
      "gold": {"group": "GVOX"}, "gold_topic": "inmigración"},
     {"id": "H8", "dimension": "hard-group", "query": "qué opina el psoe sobre la amnistía",
-     "gold": {"group": "GS"}, "gold_topic": "amnistía"}
+     "gold": {"group": "GS"}, "gold_topic": "amnistía"},
+
+    {"id": "A1", "dimension": "group-alias", "query": "intervenciones del partido socialista sobre vivienda asequible",
+     "gold": {"group": "GS"}, "gold_topic": "vivienda asequible"},
+    {"id": "A2", "dimension": "group-alias", "query": "propuestas del Partido Socialista Obrero Español sobre pensiones",
+     "gold": {"group": "GS"}, "gold_topic": "pensiones"},
+    {"id": "A3", "dimension": "group-alias", "query": "qué dice esquerra sobre la financiación autonómica",
+     "gold": {"group": "GR"}, "gold_topic": "financiación autonómica"},
+
+    {"id": "M1", "dimension": "multi-group", "query": "intervenciones del grupo socialista y del grupo popular sobre vivienda asequible",
+     "gold": {"group": ["GS", "GP"]}, "gold_topic": "vivienda asequible"},
+    {"id": "M2", "dimension": "multi-speaker", "query": "qué han dicho Pedro Sánchez y Santiago Abascal sobre inmigración",
+     "gold": {"speaker": ["Sánchez Pérez-Castejón, Pedro", "Abascal Conde, Santiago"]},
+     "gold_topic": "inmigración"}
   ]
 }

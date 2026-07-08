@@ -52,7 +52,7 @@ def _service(parsed, resolution):
 
 
 def test_searches_residual_topic_with_resolved_filters():
-    parsed = ParsedQuery(semantic_query="financiación autonómica", speaker="Montero")
+    parsed = ParsedQuery(semantic_query="financiación autonómica", speakers=["Montero"])
     resolution = Resolution(filters={"speaker": "Montero Cuadrado, María Jesús",
                                      "date": {"gte": 20240703}})
     service = _service(parsed, resolution)
@@ -67,7 +67,7 @@ def test_searches_residual_topic_with_resolved_filters():
 
 
 def test_mentioned_person_filter_is_forwarded_to_search():
-    parsed = ParsedQuery(semantic_query="vivienda", mentioned_person="Zapatero")
+    parsed = ParsedQuery(semantic_query="vivienda", mentioned_persons=["Zapatero"])
     resolution = Resolution(filters={"mentions": "dep-zapatero"})
     service = _service(parsed, resolution)
     service.execute("intervenciones sobre vivienda que mencionen a Zapatero",
@@ -93,7 +93,7 @@ def test_no_filters_passes_none():
 
 def test_pure_filter_query_falls_back_to_full_text():
     # No topic extracted (semantic_query empty) but a group filter present.
-    parsed = ParsedQuery(semantic_query="", group_or_party="PSOE")
+    parsed = ParsedQuery(semantic_query="", groups_or_parties=["PSOE"])
     resolution = Resolution(filters={"group": "GS"})
     service = _service(parsed, resolution)
     service.execute("intervenciones del PSOE", today=date(2025, 7, 3))

@@ -20,9 +20,17 @@ def test_date_matches_rejects_missing_bound():
     assert not ps.date_matches({"gte": 20240703}, {"gte": 20240101, "lte": 20241231})
 
 
-def test_value_matches_any_of():
-    assert ps.value_matches("GS", ["GS", "GMx"], "group")
-    assert not ps.value_matches("GP", ["GS", "GMx"], "group")
+def test_value_matches_multi_value_as_set():
+    # A list gold is the exact expected set: order-insensitive, but a prediction
+    # missing one of the values (or adding one) is wrong.
+    assert ps.value_matches(["GP", "GS"], ["GS", "GP"], "group")
+    assert not ps.value_matches("GS", ["GS", "GP"], "group")
+    assert not ps.value_matches(["GS", "GP", "GVOX"], ["GS", "GP"], "group")
+
+
+def test_value_matches_scalar_and_single_item_list_are_equivalent():
+    assert ps.value_matches(["GS"], "GS", "group")
+    assert ps.value_matches("GS", ["GS"], "group")
 
 
 def test_slot_counts_true_positive():

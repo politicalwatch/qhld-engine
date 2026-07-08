@@ -1,7 +1,7 @@
 """Rule-based query parser — the baseline against the LLM parser.
 
-A conventional NLP pipeline: spaCy ``es_core_news_lg`` NER (PER → speaker,
-ORG/MISC → group/party) + light regex for titles/languages/legislature + a
+A conventional NLP pipeline: spaCy ``es_core_news_lg`` NER (PER → speakers,
+ORG/MISC → groups/parties) + light regex for titles/languages/legislature + a
 relative-date regex backed by ``dateparser`` for absolute dates. It is
 deliberately *not* a re-implementation of the LLM's reasoning — it shows where an
 off-the-shelf rule/NER stack trails a structured-output LLM: it cannot tell a
@@ -66,12 +66,14 @@ class RuleBasedQueryParser:
     def parse(self, query: str, today: date) -> ParsedQuery:
         doc = self._model()(query)
         spans = []
-        speaker = group = None
+        speakers, groups = [], []
         for ent in doc.ents:
-            if ent.label_ == "PER" and speaker is None:
-                speaker, _ = ent.text, spans.append(ent.text)
-            elif ent.label_ in ("ORG", "MISC") and group is None:
-                group, _ = ent.text, spans.append(ent.text)
+            if ent.label_ == "PER":
+                speakers.append(ent.text)
+                spans.append(ent.text)
+            elif ent.label_ in ("ORG", "MISC"):
+                groups.append(ent.text)
+                spans.append(ent.text)
 
         title = self._match(_TITLE_RE, query, spans)
         lang_word = self._match(_LANG_RE, query, spans, group=1)
@@ -81,9 +83,9 @@ class RuleBasedQueryParser:
 
         return ParsedQuery(
             semantic_query=self._residual(query, spans),
-            speaker=speaker,
+            speakers=speakers or None,
             speaker_title=title,
-            group_or_party=group,
+            groups_or_parties=groups or None,
             date_from=date_from,
             date_to=date_to,
             lang=lang,

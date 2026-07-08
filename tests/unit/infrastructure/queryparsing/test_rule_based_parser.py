@@ -25,13 +25,18 @@ def parser():
 
 def test_person_entity_becomes_speaker(parser):
     parsed = parser.parse("intervenciones de María Jesús Montero sobre vivienda", TODAY)
-    assert parsed.speaker == "María Jesús Montero"
+    assert parsed.speakers == ["María Jesús Montero"]
     assert "montero" not in parsed.semantic_query.lower()
 
 
 def test_org_entity_becomes_group(parser):
     parsed = parser.parse("intervenciones del PSOE sobre vivienda", TODAY)
-    assert parsed.group_or_party == "PSOE"
+    assert parsed.groups_or_parties == ["PSOE"]
+
+
+def test_every_org_entity_is_collected(parser):
+    parsed = parser.parse("intervenciones del PSOE y del PP sobre vivienda", TODAY)
+    assert parsed.groups_or_parties == ["PSOE", "PP"]
 
 
 def test_title_regex_and_language(parser):
@@ -45,3 +50,9 @@ def test_relative_date_range(parser):
     parsed = parser.parse("intervenciones de Pedro Sánchez en los últimos tres meses", TODAY)
     assert parsed.date_from == "2026-04-03"
     assert parsed.date_to == "2026-07-03"
+
+
+def test_every_person_entity_is_collected(parser):
+    parsed = parser.parse(
+        "qué han dicho Pedro Sánchez y Santiago Abascal sobre inmigración", TODAY)
+    assert parsed.speakers == ["Pedro Sánchez", "Santiago Abascal"]

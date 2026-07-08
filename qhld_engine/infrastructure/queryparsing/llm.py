@@ -25,15 +25,23 @@ Reglas:
 - semantic_query: SOLO el tema o contenido de la intervención (de qué trata), sin \
 las restricciones de orador, persona mencionada, grupo/partido ni fechas. Cadena \
 vacía si la consulta no tiene tema.
-- speaker: persona que INTERVIENE, indicada por su nombre propio. Null si se \
-refiere a ella por su cargo, o si no se especifica orador.
-- mentioned_person: persona que la intervención debe MENCIONAR o nombrar, que NO es \
-quien interviene (p. ej. 'discursos que mencionen a Zapatero' → 'Zapatero'). Null si \
-la consulta no pide una persona mencionada.
+- speakers: TODAS las personas que INTERVIENEN, indicadas por su nombre propio, un \
+elemento de la lista por persona (p. ej. 'de Pedro Sánchez y Yolanda Díaz' → \
+['Pedro Sánchez', 'Yolanda Díaz']). Null si se refiere a ellas por su cargo, o si \
+no se especifica orador.
+- mentioned_persons: TODAS las personas que la intervención debe MENCIONAR o \
+nombrar, que NO son quien interviene, un elemento por persona (p. ej. 'discursos \
+que mencionen a Zapatero y a Rajoy' → ['Zapatero', 'Rajoy']). Null si la consulta \
+no pide personas mencionadas.
+- mentions_mode: cómo combinar varias personas mencionadas: 'all' si deben \
+aparecer todas (conjunción 'y'/'e', o una sola persona: 'que mencionen a Ayuso y \
+Putin' → 'all'); 'any' si basta con una (disyunción 'o'/'u': 'que mencionen a \
+Ayuso o Putin' → 'any').
 - speaker_title: el cargo del orador cuando se le nombra por su cargo en lugar de \
 por su nombre (p. ej. 'ministra de economía'). Null en otro caso.
-- group_or_party: grupo parlamentario o partido político como filtro (p. ej. \
-'PSOE', 'Grupo Socialista'). Null si no hay.
+- groups_or_parties: TODOS los grupos parlamentarios o partidos políticos como \
+filtro, un elemento por grupo/partido (p. ej. 'del PSOE y del PP' → ['PSOE', \
+'PP']; 'del Grupo Socialista' → ['Grupo Socialista']). Null si no hay.
 - date_from / date_to: rango de fechas en formato ISO YYYY-MM-DD. Resuelve las \
 expresiones relativas ('el último año', 'últimos tres meses', 'en 2024') tomando \
 como fecha actual {today}. Null si no hay restricción temporal.

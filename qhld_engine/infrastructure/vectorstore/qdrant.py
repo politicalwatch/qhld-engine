@@ -120,7 +120,7 @@ class QdrantAdapter(VectorStorePort):
     def delete_by(self, name: str, key: str, value) -> None:
         self._retry(lambda: self.client.delete(
             collection_name=name,
-            points_selector=models.Filter(must=[self._condition(key, value)]),
+            points_selector=models.Filter(must=self._conditions(key, value)),
         ))
 
     def distinct_values(self, name: str, key: str) -> set:
@@ -250,17 +250,30 @@ class QdrantAdapter(VectorStorePort):
     @classmethod
     def _build_conditions(cls, filters: dict | None) -> list[models.FieldCondition]:
         """Translate a ``{key: value}`` filter dict into Qdrant conditions. A scalar
-        value is an exact ``MatchValue``; a dict value is a numeric ``Range`` whose
-        keys are ``gte``/``gt``/``lte``/``lt`` (used for the ``date`` YYYYMMDD int)."""
-        return [cls._condition(key, value) for key, value in (filters or {}).items()]
+        value is an exact ``MatchValue``; a list is a ``MatchAny`` (any-of); a dict
+        is either ``{"all": [...]}`` — one condition per element, so a list payload
+        must contain every one — or a numeric ``Range`` whose keys are
+        ``gte``/``gt``/``lte``/``lt`` (used for the ``date`` YYYYMMDD int)."""
+        return [
+            condition
+            for key, value in (filters or {}).items()
+            for condition in cls._conditions(key, value)
+        ]
 
     @staticmethod
-    def _condition(key: str, value) -> models.FieldCondition:
+    def _conditions(key: str, value) -> list[models.FieldCondition]:
         if isinstance(value, dict):
+            if "all" in value:
+                return [
+                    models.FieldCondition(key=key, match=models.MatchValue(value=v))
+                    for v in value["all"]
+                ]
             allowed = {"gte", "gt", "lte", "lt"}
             bounds = {k: v for k, v in value.items() if k in allowed}
-            return models.FieldCondition(key=key, range=models.Range(**bounds))
-        return models.FieldCondition(key=key, match=models.MatchValue(value=value))
+            return [models.FieldCondition(key=key, range=models.Range(**bounds))]
+        if isinstance(value, (list, tuple, set)):
+            return [models.FieldCondition(key=key, match=models.MatchAny(any=list(value)))]
+        return [models.FieldCondition(key=key, match=models.MatchValue(value=value))]
 
 
 @_register("qdrant")

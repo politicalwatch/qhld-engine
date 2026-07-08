@@ -35,7 +35,7 @@ class _FakeChat:
 @pytest.fixture
 def fake_llm(monkeypatch):
     captured = {}
-    result = ParsedQuery(semantic_query="financiación autonómica", speaker="Montero")
+    result = ParsedQuery(semantic_query="financiación autonómica", speakers=["Montero"])
 
     def fake_create(settings):
         captured["settings"] = settings
@@ -61,7 +61,7 @@ def test_parse_binds_schema_and_returns_structured_result(fake_llm):
     result = parser.parse("intervenciones de Montero sobre financiación", date(2025, 7, 3))
     assert fake_llm["schema"] is ParsedQuery
     assert result.semantic_query == "financiación autonómica"
-    assert result.speaker == "Montero"
+    assert result.speakers == ["Montero"]
 
 
 def test_parse_injects_today_into_system_prompt(fake_llm):

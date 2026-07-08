@@ -12,7 +12,7 @@ concern — this port only extracts what the user asked for, verbatim-ish.
 """
 
 from datetime import date
-from typing import Protocol
+from typing import Literal, Protocol
 
 from pydantic import BaseModel, Field
 
@@ -23,28 +23,36 @@ class ParsedQuery(BaseModel):
             "The thematic content to search for — what the speech is ABOUT — with "
             "speaker, mentioned-person, group/party and date constraints removed. "
             "Empty string if the query is purely a filter with no topic."))
-    speaker: str | None = Field(
+    speakers: list[str] | None = Field(
         default=None,
         description=(
-            "Person named as the one who SPEAKS/intervenes, given by proper name "
-            "(e.g. 'María Jesús Montero'). Null if the speaker is only referred to "
-            "by office/title, or if no speaker is specified."))
-    mentioned_person: str | None = Field(
+            "Every person named as one who SPEAKS/intervenes, each given by proper "
+            "name (e.g. 'María Jesús Montero'), one list item per person. Null if "
+            "speakers are only referred to by office/title, or if none is specified."))
+    mentioned_persons: list[str] | None = Field(
         default=None,
         description=(
-            "Person that the speech must MENTION or refer to, who is NOT the speaker "
-            "(e.g. 'discursos que mencionen a Zapatero' → 'Zapatero'). Given by proper "
-            "name. Null if the query does not ask for a mentioned person."))
+            "Every person that the speech must MENTION or refer to, who is NOT the "
+            "speaker (e.g. 'discursos que mencionen a Zapatero y a Rajoy' → "
+            "['Zapatero', 'Rajoy']). Each given by proper name, one list item per "
+            "person. Null if the query does not ask for mentioned persons."))
+    mentions_mode: Literal["all", "any"] = Field(
+        default="all",
+        description=(
+            "How multiple mentioned persons combine: 'all' when the speech must "
+            "mention every one of them (connective 'y'/'e', or a single person), "
+            "'any' when mentioning one suffices (connective 'o'/'u')."))
     speaker_title: str | None = Field(
         default=None,
         description=(
             "The speaker's office or role when referred to by title instead of name "
             "(e.g. 'ministra de economía', 'presidente del gobierno'). Null otherwise."))
-    group_or_party: str | None = Field(
+    groups_or_parties: list[str] | None = Field(
         default=None,
         description=(
-            "Parliamentary group or political party named as a filter (e.g. 'PSOE', "
-            "'Grupo Socialista', 'Partido Popular'). Null if none."))
+            "Every parliamentary group or political party named as a filter (e.g. "
+            "'PSOE', 'Grupo Socialista', 'Partido Popular'), one list item per "
+            "group/party. Null if none."))
     date_from: str | None = Field(
         default=None,
         description=(
