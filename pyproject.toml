@@ -28,6 +28,7 @@ dependencies = [
     "qhld-tasks",
     "py3langid==0.3.0",
     "qdrant-client==1.18.0",
+    "fastembed==0.8.0",
     "sentence-transformers>=3.3.0",
     "spacy>=3.8,<3.9",
     "es-core-news-lg @ https://github.com/explosion/spacy-models/releases/download/es_core_news_lg-3.8.0/es_core_news_lg-3.8.0-py3-none-any.whl",

@@ -82,6 +82,22 @@ class Settings(BaseSettings):
     reranker_model: str = ""
     reranker_top_n: int = 50
 
+    # Sparse lexical embeddings (hybrid retrieval). "none" keeps pure dense
+    # retrieval — existing collections and search behavior untouched. When set
+    # (e.g. "bm25"), indexing writes a second, lexical vector per passage and
+    # search fuses the dense and lexical rankings, which keeps literal tokens
+    # (names, road codes, law numbers) from being blurred by the dense embedding.
+    sparse_provider: str = "none"
+    sparse_model: str = "Qdrant/bm25"
+    # Stemmer/stopword language for BM25 tokenization; it must match between
+    # indexing and querying. The corpus is multilingual, but "spanish" covers
+    # the dominant blocks and proper names are barely affected by stemming.
+    sparse_language: str = "spanish"
+    # Hybrid fusion tuning: candidates fetched per branch (dense / lexical)
+    # before fusion, and the fusion algorithm ("rrf" or "dbsf").
+    hybrid_prefetch_limit: int = 50
+    hybrid_fusion: str = "rrf"
+
     # Mention extraction (index-time NER → resolved deputies on Speech.mentions).
     # PER spans are found by spaCy over the Spanish text block, then fuzzy-matched
     # against the deputies catalog; token_set_ratio scores subset matches high, so
