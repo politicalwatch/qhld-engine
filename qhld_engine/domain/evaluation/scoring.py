@@ -68,6 +68,43 @@ def average_precision(ranked_refs, expected_refs):
     return score / len(expected)
 
 
+def pool_candidates(rows_by_cell):
+    """Merge per-query results from several benchmark cells into an
+    adjudication pool: every retrieved reference not yet judged for its query
+    (neither in ``expected_refs`` nor ``rejected_refs``) becomes a candidate,
+    keeping the best-ranked hit across cells as reviewing evidence.
+
+    ``rows_by_cell`` maps a cell label to its ``RunBenchmark`` rows. Returns
+    ``{query_id: [candidate, ...]}`` ordered by rank, where a candidate carries
+    ``ref``, ``cell``, ``rank``, ``score`` and the hit's ``speaker``/``lang``/
+    ``text`` payload. Queries with nothing new map to an empty list.
+    """
+    pool = {}
+    for cell, rows in rows_by_cell.items():
+        for row in rows:
+            judged = set(row.get("expected_refs") or []) | set(row.get("rejected_refs") or [])
+            candidates = pool.setdefault(row["id"], {})
+            for position, hit in enumerate(row.get("hits") or [], start=1):
+                for ref in hit.payload.get("references") or []:
+                    if ref in judged:
+                        continue
+                    best = candidates.get(ref)
+                    if best is None or position < best["rank"]:
+                        candidates[ref] = {
+                            "ref": ref,
+                            "cell": cell,
+                            "rank": position,
+                            "score": round(hit.score, 4),
+                            "speaker": hit.payload.get("speaker"),
+                            "lang": hit.payload.get("lang"),
+                            "text": hit.payload.get("text"),
+                        }
+    return {
+        query_id: sorted(candidates.values(), key=lambda candidate: candidate["rank"])
+        for query_id, candidates in pool.items()
+    }
+
+
 def aggregate(rows, k=5):
     """Aggregate per dimension (and overall). Each row is a dict carrying
     ``dimension``, ``rank``, ``ranked_refs`` and ``expected_refs``. Returns

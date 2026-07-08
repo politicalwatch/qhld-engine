@@ -70,6 +70,58 @@ def test_average_precision():
     assert scoring.average_precision(ranked, []) == 0.0
 
 
+def _row(query_id, hits, expected=(), rejected=()):
+    return {
+        "id": query_id,
+        "hits": hits,
+        "expected_refs": list(expected),
+        "rejected_refs": list(rejected),
+    }
+
+
+def test_pool_candidates_excludes_judged_refs():
+    rows = [_row("T1", [_hit("A/1"), _hit("B/2"), _hit("C/3")],
+                 expected=["A/1"], rejected=["B/2"])]
+    pooled = scoring.pool_candidates({"cell": rows})
+    assert [c["ref"] for c in pooled["T1"]] == ["C/3"]
+    assert pooled["T1"][0]["rank"] == 3
+
+
+def test_pool_candidates_keeps_best_rank_across_cells():
+    cell_a = [_row("T1", [_hit("X/9"), _hit("A/1", score=0.4)])]
+    cell_b = [_row("T1", [_hit("A/1", score=0.9), _hit("Y/8")])]
+    pooled = scoring.pool_candidates({"a": cell_a, "b": cell_b})
+    best = next(c for c in pooled["T1"] if c["ref"] == "A/1")
+    assert (best["cell"], best["rank"], best["score"]) == ("b", 1, 0.9)
+
+
+def test_pool_candidates_covers_every_reference_of_an_accumulated_debate():
+    rows = [_row("T1", [_hit("A/1", "B/2")], expected=["A/1"])]
+    pooled = scoring.pool_candidates({"cell": rows})
+    assert [c["ref"] for c in pooled["T1"]] == ["B/2"]
+
+
+def test_pool_candidates_orders_by_rank_and_reports_empty_queries():
+    rows = [
+        _row("T1", [_hit("B/2"), _hit("A/1")]),
+        _row("T2", [_hit("Z/9")], expected=["Z/9"]),
+    ]
+    pooled = scoring.pool_candidates({"cell": rows})
+    assert [c["ref"] for c in pooled["T1"]] == ["B/2", "A/1"]
+    assert pooled["T2"] == []
+
+
+def test_pool_candidates_carries_hit_payload_evidence():
+    hit = SearchHit(id="x", score=0.71234, payload={
+        "references": ["A/1"], "speaker": "Montero", "lang": "es", "text": "snippet"})
+    pooled = scoring.pool_candidates({"cell": [_row("T1", [hit])]})
+    candidate = pooled["T1"][0]
+    assert candidate["speaker"] == "Montero"
+    assert candidate["lang"] == "es"
+    assert candidate["text"] == "snippet"
+    assert candidate["score"] == 0.7123
+
+
 def test_aggregate_per_dimension_and_overall():
     rows = [
         {"dimension": "topical", "rank": 1, "ranked_refs": ["A/1", "B/2"], "expected_refs": ["A/1"]},

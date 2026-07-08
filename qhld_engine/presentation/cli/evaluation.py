@@ -1,10 +1,13 @@
 """`qhld eval` — A/B benchmark CLI.
 
-Two sibling benchmarks, one per task:
+One benchmark per task:
 - ``retrieval`` — semantic search across an embedding-model x reranker grid
   (rank / MRR / hit@k / recall@k / MAP), over ``RunBenchmark``.
+- ``pool`` — relevance-judging aid for the retrieval query set: pools each
+  query's retrieved-but-unjudged references across cells for review.
 - ``parse`` — the NL query parser across LLMs / rule-based (per-slot P/R/F1,
   cost + latency via LangSmith), over ``RunParseBenchmark``.
+- ``mentions`` — index-time mention extraction against its gold set.
 
 Run in-container (repo volume-mounted), where ``Settings`` already reaches
 Qdrant + ollama:
@@ -48,6 +51,61 @@ def retrieval(
         for reranker in reranker_list:
             rows = runner.run(model, reranker=reranker, k=k)
             _print_report(model, reranker, rows, hit_at, verbose)
+
+
+@app.command("pool")
+def pool(
+    models: str = typer.Option(..., "--models", help="Comma-separated ollama embedding tags."),
+    rerankers: str = typer.Option("none", "--rerankers", help="Comma-separated rerankers ('none' = bi-encoder only)."),
+    k: int = typer.Option(10, "--k", help="Retrieval depth per query."),
+    queryset: str = typer.Option(None, "--queryset", help="Path to a query-set JSON (defaults to the frozen set)."),
+    json_out: str = typer.Option(None, "--json", help="Also write the candidate pool to this JSON file."),
+):
+    """List candidate references for relevance judging: run the query set over
+    every (model x reranker) cell and pool each query's retrieved references
+    that are not yet judged (in neither expected_refs nor rejected_refs),
+    with the best-ranked snippet as evidence. After judging, move each
+    candidate into the query's expected_refs or rejected_refs — a re-run then
+    reports no new candidates."""
+    import json
+
+    from qhld_engine.application.evaluation.benchmark import RunBenchmark
+    from qhld_engine.domain.evaluation import scoring
+
+    runner = RunBenchmark(queryset) if queryset else RunBenchmark()
+    model_list, reranker_list = _split(models), _split(rerankers)
+    typer.echo(
+        f"Query set: {len(runner.queryset)} queries · retrieval k={k} · "
+        f"models={model_list} · rerankers={reranker_list}"
+    )
+    rows_by_cell = {}
+    for model in model_list:
+        for reranker in reranker_list:
+            label = model if reranker in ("none", "noop") else f"{model} + {reranker}"
+            rows_by_cell[label] = runner.run(model, reranker=reranker, k=k)
+    candidates = scoring.pool_candidates(rows_by_cell)
+
+    queries = {entry["id"]: entry["query"] for entry in runner.queryset}
+    total = 0
+    for query_id, query_candidates in candidates.items():
+        typer.echo(f"\n=== {query_id} {queries[query_id]!r} ===")
+        if not query_candidates:
+            typer.echo("  (no new candidates)")
+            continue
+        total += len(query_candidates)
+        for candidate in query_candidates:
+            typer.echo(
+                f"  {candidate['ref']:<12} rank={candidate['rank']:<3} "
+                f"score={candidate['score']:<7} [{candidate['cell']}] "
+                f"{candidate.get('lang')} · {candidate.get('speaker')}"
+            )
+            snippet = " ".join((candidate.get("text") or "").split())
+            typer.echo(f"      {snippet[:300]}")
+    typer.echo(f"\n{total} new candidates across {len(candidates)} queries")
+    if json_out:
+        with open(json_out, "w", encoding="utf-8") as handle:
+            json.dump(candidates, handle, ensure_ascii=False, indent=2)
+        typer.echo(f"Pool written to {json_out}")
 
 
 @app.command("parse")
