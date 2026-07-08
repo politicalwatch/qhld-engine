@@ -18,6 +18,7 @@ from qdrant_client.http.exceptions import ResponseHandlingException
 
 from qhld_engine.domain.ports.vector_store import (
     SearchHit,
+    SparseVector,
     SpeechGroup,
     VectorPoint,
     VectorStorePort,
@@ -27,6 +28,11 @@ from qhld_engine.logger import get_logger
 from .factory import _register
 
 log = get_logger(__name__)
+
+# Named vectors of a hybrid collection (dense-only collections keep the
+# original unnamed vector, so they need no migration).
+_DENSE = "dense"
+_SPARSE = "sparse"
 
 
 class QdrantAdapter(VectorStorePort):
@@ -43,6 +49,8 @@ class QdrantAdapter(VectorStorePort):
                 grpc_port=settings.qdrant_grpc_port,
                 prefer_grpc=settings.qdrant_prefer_grpc,
             )
+        self._prefetch_limit = settings.hybrid_prefetch_limit
+        self._fusion = models.Fusion(settings.hybrid_fusion.lower())
 
     def _retry(self, operation):
         """Run a Qdrant client call, retrying transient connection drops (stale
@@ -58,9 +66,27 @@ class QdrantAdapter(VectorStorePort):
                     f"retrying: {exc}")
                 time.sleep(self._BACKOFF_SECONDS * attempt)
 
-    def ensure_collection(self, name: str, dim: int) -> None:
+    def ensure_collection(self, name: str, dim: int, sparse: bool = False) -> None:
         def _ensure():
-            if not self.client.collection_exists(name):
+            if self.client.collection_exists(name):
+                return
+            if sparse:
+                # Hybrid collection: a named dense vector plus a named sparse
+                # (lexical) vector. The IDF modifier makes Qdrant weight sparse
+                # matches by term rarity server-side, so the client only sends
+                # corpus-independent term weights.
+                self.client.create_collection(
+                    collection_name=name,
+                    vectors_config={
+                        _DENSE: models.VectorParams(
+                            size=dim, distance=models.Distance.COSINE),
+                    },
+                    sparse_vectors_config={
+                        _SPARSE: models.SparseVectorParams(
+                            modifier=models.Modifier.IDF),
+                    },
+                )
+            else:
                 self.client.create_collection(
                     collection_name=name,
                     vectors_config=models.VectorParams(
@@ -74,10 +100,22 @@ class QdrantAdapter(VectorStorePort):
         self._retry(lambda: self.client.upsert(
             collection_name=name,
             points=[
-                models.PointStruct(id=p.id, vector=p.vector, payload=p.payload)
+                models.PointStruct(id=p.id, vector=self._vector(p), payload=p.payload)
                 for p in points
             ],
         ))
+
+    @staticmethod
+    def _vector(point: VectorPoint):
+        """A point with a sparse vector targets a hybrid collection's named
+        vectors; without one, the original unnamed dense layout."""
+        if point.sparse is None:
+            return point.vector
+        return {
+            _DENSE: point.vector,
+            _SPARSE: models.SparseVector(
+                indices=point.sparse.indices, values=point.sparse.values),
+        }
 
     def delete_by(self, name: str, key: str, value) -> None:
         self._retry(lambda: self.client.delete(
@@ -112,6 +150,7 @@ class QdrantAdapter(VectorStorePort):
         group_size: int,
         filters: dict | None = None,
         exclude: set | None = None,
+        sparse_vector: SparseVector | None = None,
     ) -> list[SpeechGroup]:
         must = self._build_conditions(filters)
         must_not = (
@@ -124,15 +163,27 @@ class QdrantAdapter(VectorStorePort):
             if (must or must_not)
             else None
         )
-        response = self._retry(lambda: self.client.query_points_groups(
-            collection_name=name,
-            group_by=group_by,
-            query=vector,
-            limit=limit,
-            group_size=group_size,
-            query_filter=query_filter,
-            with_payload=True,
-        ))
+        if sparse_vector is None:
+            response = self._retry(lambda: self.client.query_points_groups(
+                collection_name=name,
+                group_by=group_by,
+                query=vector,
+                limit=limit,
+                group_size=group_size,
+                query_filter=query_filter,
+                with_payload=True,
+            ))
+        else:
+            fetch = max(limit * group_size, self._prefetch_limit)
+            response = self._retry(lambda: self.client.query_points_groups(
+                collection_name=name,
+                group_by=group_by,
+                prefetch=self._hybrid_prefetch(vector, sparse_vector, fetch, query_filter),
+                query=models.FusionQuery(fusion=self._fusion),
+                limit=limit,
+                group_size=group_size,
+                with_payload=True,
+            ))
         groups = []
         for group in response.groups:
             highlights = [
@@ -146,20 +197,54 @@ class QdrantAdapter(VectorStorePort):
         return groups
 
     def search(
-        self, name: str, vector: list[float], k: int, filters: dict | None = None
+        self,
+        name: str,
+        vector: list[float],
+        k: int,
+        filters: dict | None = None,
+        sparse_vector: SparseVector | None = None,
     ) -> list[SearchHit]:
         must = self._build_conditions(filters)
         query_filter = models.Filter(must=must) if must else None
-        response = self._retry(lambda: self.client.query_points(
-            collection_name=name,
-            query=vector,
-            limit=k,
-            query_filter=query_filter,
-            with_payload=True,
-        ))
+        if sparse_vector is None:
+            response = self._retry(lambda: self.client.query_points(
+                collection_name=name,
+                query=vector,
+                limit=k,
+                query_filter=query_filter,
+                with_payload=True,
+            ))
+        else:
+            response = self._retry(lambda: self.client.query_points(
+                collection_name=name,
+                prefetch=self._hybrid_prefetch(
+                    vector, sparse_vector, max(k, self._prefetch_limit), query_filter),
+                query=models.FusionQuery(fusion=self._fusion),
+                limit=k,
+                with_payload=True,
+            ))
         return [
             SearchHit(id=str(point.id), score=point.score, payload=point.payload or {})
             for point in response.points
+        ]
+
+    def _hybrid_prefetch(
+        self,
+        vector: list[float],
+        sparse_vector: SparseVector,
+        fetch: int,
+        query_filter: models.Filter | None,
+    ) -> list[models.Prefetch]:
+        """Dense and sparse candidate branches for a fusion query. The payload
+        filter goes on each branch: a top-level filter is not applied to
+        prefetched candidates under fusion, so it would be silently ignored."""
+        return [
+            models.Prefetch(
+                query=vector, using=_DENSE, limit=fetch, filter=query_filter),
+            models.Prefetch(
+                query=models.SparseVector(
+                    indices=sparse_vector.indices, values=sparse_vector.values),
+                using=_SPARSE, limit=fetch, filter=query_filter),
         ]
 
     @classmethod

@@ -5,7 +5,7 @@ from uuid import uuid4
 import pytest
 from qdrant_client.http.exceptions import ResponseHandlingException
 
-from qhld_engine.domain.ports.vector_store import VectorPoint
+from qhld_engine.domain.ports.vector_store import SparseVector, VectorPoint
 from qhld_engine.infrastructure.config.settings import Settings
 from qhld_engine.infrastructure.vectorstore import qdrant as qdrant_mod
 from qhld_engine.infrastructure.vectorstore.qdrant import QdrantAdapter
@@ -165,6 +165,102 @@ def test_search_grouped_applies_exact_filter(adapter):
         "c", [0.1, 0.2, 0.3], group_by="speech_id", limit=10, group_size=3,
         filters={"lang": "gl"})
     assert [g.speech_id for g in groups] == ["B"]
+
+
+# --- Hybrid (dense + sparse) collections -----------------------------------
+
+def _hybrid_point(payload, dense, terms):
+    """A point with a dense vector and a sparse vector given as {term_id: weight}."""
+    return VectorPoint(
+        id=str(uuid4()),
+        vector=dense,
+        payload=payload,
+        sparse=SparseVector(indices=list(terms), values=list(terms.values())),
+    )
+
+
+def _query(adapter, terms, k=5, filters=None):
+    return adapter.search(
+        "h", [1.0, 0.0, 0.0], k=k, filters=filters,
+        sparse_vector=SparseVector(indices=list(terms), values=list(terms.values())))
+
+
+def test_ensure_sparse_collection_is_idempotent(adapter):
+    adapter.ensure_collection("h", 3, sparse=True)
+    adapter.ensure_collection("h", 3, sparse=True)  # no error on second call
+    assert adapter.client.collection_exists("h")
+
+
+def test_hybrid_search_surfaces_lexical_only_match(adapter):
+    adapter.ensure_collection("h", 3, sparse=True)
+    adapter.upsert("h", [
+        # Semantically close to the query vector, no shared terms.
+        _hybrid_point({"speech_id": "sem"}, [1.0, 0.0, 0.0], {11: 1.0}),
+        # Semantically orthogonal, but shares the query's term.
+        _hybrid_point({"speech_id": "lex"}, [0.0, 1.0, 0.0], {7: 1.0}),
+    ])
+    hits = _query(adapter, {7: 1.0})
+    assert {h.payload["speech_id"] for h in hits} == {"sem", "lex"}
+    assert [h.score for h in hits] == sorted((h.score for h in hits), reverse=True)
+
+
+def test_hybrid_search_applies_filters_to_both_branches(adapter):
+    # Regression guard: under a fusion query a top-level filter is not applied,
+    # so the filter must ride on each prefetch branch.
+    adapter.ensure_collection("h", 3, sparse=True)
+    adapter.upsert("h", [
+        _hybrid_point({"speech_id": "a", "lang": "es", "date": 20250501}, [1.0, 0.0, 0.0], {7: 1.0}),
+        _hybrid_point({"speech_id": "b", "lang": "gl", "date": 20250501}, [1.0, 0.0, 0.0], {7: 1.0}),
+        _hybrid_point({"speech_id": "c", "lang": "es", "date": 20240101}, [1.0, 0.0, 0.0], {7: 1.0}),
+    ])
+    hits = _query(adapter, {7: 1.0}, filters={"lang": "es", "date": {"gte": 20250101}})
+    assert [h.payload["speech_id"] for h in hits] == ["a"]
+
+
+def test_hybrid_upsert_accepts_empty_sparse_vector(adapter):
+    # A stopword-only passage encodes to an empty sparse vector; the point must
+    # still be stored and reachable through the dense branch.
+    adapter.ensure_collection("h", 3, sparse=True)
+    adapter.upsert("h", [
+        _hybrid_point({"speech_id": "empty"}, [1.0, 0.0, 0.0], {}),
+    ])
+    hits = _query(adapter, {7: 1.0})
+    assert [h.payload["speech_id"] for h in hits] == ["empty"]
+
+
+def test_hybrid_search_grouped_fuses_and_caps_highlights(adapter):
+    adapter.ensure_collection("h", 3, sparse=True)
+    adapter.upsert("h", [
+        _hybrid_point({"speech_id": "A"}, [1.0, 0.0, 0.0], {7: 1.0}),
+        _hybrid_point({"speech_id": "A"}, [0.9, 0.1, 0.0], {7: 1.0}),
+        _hybrid_point({"speech_id": "A"}, [0.8, 0.2, 0.0], {7: 1.0}),
+        _hybrid_point({"speech_id": "B"}, [0.0, 1.0, 0.0], {7: 1.0}),
+    ])
+    groups = adapter.search_grouped(
+        "h", [1.0, 0.0, 0.0], group_by="speech_id", limit=10, group_size=2,
+        sparse_vector=SparseVector(indices=[7], values=[1.0]))
+    by_id = {g.speech_id: g for g in groups}
+    assert set(by_id) == {"A", "B"}
+    assert len(by_id["A"].highlights) == 2      # 3 passages, capped at group_size
+    assert by_id["A"].score == by_id["A"].highlights[0].score
+
+
+def test_hybrid_search_grouped_applies_filters_and_exclude(adapter):
+    adapter.ensure_collection("h", 3, sparse=True)
+    adapter.upsert("h", [
+        _hybrid_point({"speech_id": "A", "lang": "es"}, [1.0, 0.0, 0.0], {7: 1.0}),
+        _hybrid_point({"speech_id": "B", "lang": "es"}, [0.9, 0.1, 0.0], {7: 1.0}),
+        _hybrid_point({"speech_id": "C", "lang": "gl"}, [0.8, 0.2, 0.0], {7: 1.0}),
+    ])
+    sparse = SparseVector(indices=[7], values=[1.0])
+    groups = adapter.search_grouped(
+        "h", [1.0, 0.0, 0.0], group_by="speech_id", limit=10, group_size=1,
+        filters={"lang": "es"}, sparse_vector=sparse)
+    assert {g.speech_id for g in groups} == {"A", "B"}
+    nxt = adapter.search_grouped(
+        "h", [1.0, 0.0, 0.0], group_by="speech_id", limit=10, group_size=1,
+        filters={"lang": "es"}, exclude={"A"}, sparse_vector=sparse)
+    assert {g.speech_id for g in nxt} == {"B"}
 
 
 def test_retry_recovers_after_transient_disconnect(adapter, monkeypatch):

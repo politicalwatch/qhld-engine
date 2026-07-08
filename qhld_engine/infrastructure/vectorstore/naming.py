@@ -16,4 +16,10 @@ def collection_name(settings: Settings, dim: int) -> str:
         return settings.qdrant_collection
     provider = settings.embedding_provider.lower()
     model = re.sub(r"[^a-z0-9]+", "_", settings.embedding_model.lower()).strip("_")
-    return f"speeches__{provider}__{model}__{dim}"
+    name = f"speeches__{provider}__{model}__{dim}"
+    # Hybrid collections carry an extra sparse (lexical) vector per point, so
+    # they get their own name — dense-only collections stay untouched.
+    sparse = (settings.sparse_provider or "").lower()
+    if sparse and sparse != "none":
+        name += f"__{sparse}"
+    return name
