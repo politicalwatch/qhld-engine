@@ -33,7 +33,7 @@ def _parse_date(iso):
 
 class RunParseBenchmark:
     def __init__(self, queryset_path=DEFAULT_QUERYSET, settings=None):
-        from qhld_engine.infrastructure.config.settings import get_settings
+        from qhld_ai.infrastructure.config.settings import get_settings
 
         data = load_queryset(queryset_path)
         self.today = _parse_date(data["today"])
@@ -48,7 +48,7 @@ class RunParseBenchmark:
         query-parser model for this run (used by the ``--models`` A/B sweep) and are
         ignored by ``rule_based``.
         """
-        from qhld_engine.domain.ports.query_parser import ParsedQuery
+        from qhld_ai.domain.ports.query_parser import ParsedQuery
 
         parser = self._parser(parser_name, llm_provider, llm_model)
         resolver = self._resolver_obj()
@@ -77,7 +77,7 @@ class RunParseBenchmark:
         return rows
 
     def _parser(self, name, llm_provider=None, llm_model=None):
-        from qhld_engine.infrastructure.queryparsing.factory import create_query_parser_from_env
+        from qhld_ai.infrastructure.queryparsing.factory import create_query_parser_from_env
 
         update = {"query_parser_provider": name}
         if llm_provider:
@@ -90,10 +90,10 @@ class RunParseBenchmark:
         """The shared resolver, bound to the target collection's corpus values and
         the ParliamentaryGroups alias source (built once, reused across parsers)."""
         if self._resolver is None:
-            from qhld_engine.application.search.resolve_entities import EntityResolver
-            from qhld_engine.infrastructure.embeddings.factory import create_embedder_from_env
-            from qhld_engine.infrastructure.vectorstore.factory import create_vector_store_from_env
-            from qhld_engine.infrastructure.vectorstore.naming import collection_name
+            from qhld_ai.application.search.resolve_entities import EntityResolver
+            from qhld_ai.infrastructure.embeddings.factory import create_embedder_from_env
+            from qhld_ai.infrastructure.vectorstore.factory import create_vector_store_from_env
+            from qhld_ai.infrastructure.vectorstore.naming import collection_name
             from tipi_data.repositories.parliamentarygroups import ParliamentaryGroups
 
             embedder = create_embedder_from_env(self.settings)

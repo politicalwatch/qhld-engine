@@ -5,7 +5,7 @@ import json
 import pytest
 
 from qhld_engine.application.evaluation.benchmark import RunBenchmark
-from qhld_engine.domain.ports.vector_store import SearchHit
+from qhld_ai.domain.ports.vector_store import SearchHit
 
 pytestmark = pytest.mark.unit
 
@@ -60,7 +60,7 @@ def test_service_cell_sets_sparse_provider(queryset_file, monkeypatch):
             captured["settings"] = settings
 
     monkeypatch.setattr(
-        "qhld_engine.application.search.search_speeches.SearchSpeeches", _SpyService)
+        "qhld_ai.application.search.search_speeches.SearchSpeeches", _SpyService)
     runner = RunBenchmark(queryset_file)
 
     runner._service("bge-m3:567m", "none", "bm25")

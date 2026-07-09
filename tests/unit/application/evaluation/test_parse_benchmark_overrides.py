@@ -3,7 +3,7 @@
 import pytest
 
 from qhld_engine.application.evaluation.parse_benchmark import RunParseBenchmark
-from qhld_engine.infrastructure.config.settings import Settings
+from qhld_ai.infrastructure.config.settings import Settings
 
 pytestmark = pytest.mark.unit
 
@@ -18,7 +18,7 @@ def captured(monkeypatch):
         return object()
 
     monkeypatch.setattr(
-        "qhld_engine.infrastructure.queryparsing.factory.create_query_parser_from_env",
+        "qhld_ai.infrastructure.queryparsing.factory.create_query_parser_from_env",
         fake_create)
     return seen
 

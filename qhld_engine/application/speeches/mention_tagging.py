@@ -11,15 +11,15 @@ Spanish translation alongside the original, so one Spanish model covers the whol
 corpus and we never NER Basque/Galician/Catalan (where the model is weak).
 """
 
-from qhld_engine.application.speeches.persons_catalog import load_person_index
-from qhld_engine.domain.speeches.mentions import (
+from qhld_ai.application.persons_catalog import load_person_index
+from qhld_ai.domain.mentions import (
     COMMON_WORD_SURNAMES,
     build_surname_gazetteer,
     context_excluded_surnames,
     resolve_mentions,
 )
-from qhld_engine.infrastructure.config.settings import get_settings
-from qhld_engine.infrastructure.ner.factory import create_ner_from_env
+from qhld_ai.infrastructure.config.settings import get_settings
+from qhld_ai.infrastructure.ner.factory import create_ner_from_env
 
 
 def es_text(blocks) -> str:

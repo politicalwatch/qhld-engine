@@ -10,9 +10,9 @@ only stub. Guarded so it skips on a qhld-data pin that predates those methods
 
 import pytest
 
-from qhld_engine.domain.ports.vector_store import SparseVector
-from qhld_engine.infrastructure.config.settings import Settings
-from qhld_engine.infrastructure.vectorstore.qdrant import QdrantAdapter
+from qhld_ai.domain.ports.vector_store import SparseVector
+from qhld_ai.infrastructure.config.settings import Settings
+from qhld_ai.infrastructure.vectorstore.qdrant import QdrantAdapter
 
 from tipi_data.models.speech import Speech, SpeechText
 from tipi_data.repositories.speeches import Speeches
@@ -63,7 +63,7 @@ def _bilingual_speech():
 
 def test_index_all_then_search_uses_real_speeches_repo(mongo_db):
     from qhld_engine.application.speeches.index_speeches import IndexSpeeches
-    from qhld_engine.application.search.search_speeches import SearchSpeeches
+    from qhld_ai.application.search.search_speeches import SearchSpeeches
 
     Speeches.save(_bilingual_speech())
 
@@ -117,7 +117,7 @@ class _FakeSparseEmbedder:
 
 def test_hybrid_index_and_search_surfaces_literal_token(mongo_db):
     from qhld_engine.application.speeches.index_speeches import IndexSpeeches
-    from qhld_engine.application.search.search_speeches import SearchSpeeches
+    from qhld_ai.application.search.search_speeches import SearchSpeeches
 
     ap9 = _bilingual_speech()
     ap9.id = "x2"
@@ -145,7 +145,7 @@ def test_hybrid_index_and_search_surfaces_literal_token(mongo_db):
 
 def test_index_by_reference_uses_real_repo(mongo_db):
     from qhld_engine.application.speeches.index_speeches import IndexSpeeches
-    from qhld_engine.application.search.search_speeches import SearchSpeeches
+    from qhld_ai.application.search.search_speeches import SearchSpeeches
 
     Speeches.save(_bilingual_speech())
 

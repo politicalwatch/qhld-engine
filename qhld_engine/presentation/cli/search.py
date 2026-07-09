@@ -39,7 +39,7 @@ def speeches(
              "collection to be indexed (SPARSE_PROVIDER=bm25 qhld embeddings index)."),
 ):
     """Search speeches semantically and print the ranked hits."""
-    from qhld_engine.infrastructure.config.settings import get_settings
+    from qhld_ai.infrastructure.config.settings import get_settings
 
     settings = get_settings()
     if reranker:
@@ -51,7 +51,7 @@ def speeches(
     if natural:
         from datetime import date
 
-        from qhld_engine.application.search.natural_search import NaturalSearchSpeeches
+        from qhld_ai.application.search.natural_search import NaturalSearchSpeeches
 
         result = NaturalSearchSpeeches(settings=settings).execute(
             query, today=date.today(), k=k, grouped=grouped, highlights=highlights)
@@ -62,7 +62,7 @@ def speeches(
             _print_grouped(result.hits) if grouped else _print_hits(result.hits)
         return
 
-    from qhld_engine.application.search.search_speeches import SearchSpeeches
+    from qhld_ai.application.search.search_speeches import SearchSpeeches
 
     filters = {
         "group": group,

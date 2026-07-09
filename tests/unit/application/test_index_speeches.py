@@ -10,8 +10,8 @@ import pytest
 
 from qhld_engine.application.speeches import index_speeches as mod
 from qhld_engine.application.speeches.index_speeches import IndexSpeeches
-from qhld_engine.domain.ports.vector_store import SparseVector
-from qhld_engine.infrastructure.config.settings import Settings
+from qhld_ai.domain.ports.vector_store import SparseVector
+from qhld_ai.infrastructure.config.settings import Settings
 
 from tipi_data.models.speech import Mention, Speech, SpeechText
 

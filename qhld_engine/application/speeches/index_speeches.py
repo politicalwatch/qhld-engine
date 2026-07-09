@@ -21,12 +21,12 @@ from uuid import NAMESPACE_DNS, uuid5
 from tqdm import tqdm
 
 from qhld_engine.logger import get_logger
-from qhld_engine.domain.speeches.chunking import chunk_text
-from qhld_engine.domain.ports.vector_store import VectorPoint
-from qhld_engine.infrastructure.config.settings import get_settings
-from qhld_engine.infrastructure.embeddings.factory import create_embedder_from_env
-from qhld_engine.infrastructure.vectorstore.factory import create_vector_store_from_env
-from qhld_engine.infrastructure.vectorstore.naming import collection_name
+from qhld_ai.domain.chunking import chunk_text
+from qhld_ai.domain.ports.vector_store import VectorPoint
+from qhld_ai.infrastructure.config.settings import get_settings
+from qhld_ai.infrastructure.embeddings.factory import create_embedder_from_env
+from qhld_ai.infrastructure.vectorstore.factory import create_vector_store_from_env
+from qhld_ai.infrastructure.vectorstore.naming import collection_name
 
 from tipi_data.repositories.speeches import Speeches
 
@@ -59,7 +59,7 @@ class IndexSpeeches:
         provider = (self.settings.sparse_provider or "").lower()
         if not provider or provider == "none":
             return None
-        from qhld_engine.infrastructure.sparse.factory import create_sparse_embedder_from_env
+        from qhld_ai.infrastructure.sparse.factory import create_sparse_embedder_from_env
 
         return create_sparse_embedder_from_env(self.settings)
 

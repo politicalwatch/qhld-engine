@@ -12,7 +12,7 @@ import pytest
 from typer.testing import CliRunner
 
 from qhld_engine.cli import app
-from qhld_engine.domain.ports.vector_store import SearchHit, SpeechGroup
+from qhld_ai.domain.ports.vector_store import SearchHit, SpeechGroup
 
 pytestmark = pytest.mark.unit
 
@@ -179,7 +179,7 @@ def test_topic_alignment_without_id(monkeypatch):
 
 def test_search_default_is_passage_level(monkeypatch):
     svc = _patch_class(
-        monkeypatch, "qhld_engine.application.search.search_speeches.SearchSpeeches")
+        monkeypatch, "qhld_ai.application.search.search_speeches.SearchSpeeches")
     svc.search.return_value = []
     result = runner.invoke(app, ["search", "speeches", "financiación autonómica", "--k", "7"])
     assert result.exit_code == 0, result.output
@@ -191,7 +191,7 @@ def test_search_default_is_passage_level(monkeypatch):
 
 def test_search_grouped_flag_calls_grouped(monkeypatch):
     svc = _patch_class(
-        monkeypatch, "qhld_engine.application.search.search_speeches.SearchSpeeches")
+        monkeypatch, "qhld_ai.application.search.search_speeches.SearchSpeeches")
     svc.search_grouped.return_value = [
         SpeechGroup(speech_id="A", score=0.8, highlights=[
             SearchHit(id="p1", score=0.8, payload={
@@ -209,7 +209,7 @@ def test_search_grouped_flag_calls_grouped(monkeypatch):
 def test_search_hybrid_flag_enables_sparse_provider(monkeypatch):
     mock_cls = MagicMock()
     monkeypatch.setattr(
-        "qhld_engine.application.search.search_speeches.SearchSpeeches", mock_cls)
+        "qhld_ai.application.search.search_speeches.SearchSpeeches", mock_cls)
     mock_cls.return_value.search.return_value = []
     result = runner.invoke(app, ["search", "speeches", "AP-9", "--hybrid"])
     assert result.exit_code == 0, result.output
@@ -218,12 +218,12 @@ def test_search_hybrid_flag_enables_sparse_provider(monkeypatch):
 
 
 def test_search_natural_flag_routes_to_natural_service(monkeypatch):
-    from qhld_engine.application.search.natural_search import NaturalResult
-    from qhld_engine.application.search.resolve_entities import Resolution
-    from qhld_engine.domain.ports.query_parser import ParsedQuery
+    from qhld_ai.application.search.natural_search import NaturalResult
+    from qhld_ai.application.search.resolve_entities import Resolution
+    from qhld_ai.domain.ports.query_parser import ParsedQuery
 
     svc = _patch_class(
-        monkeypatch, "qhld_engine.application.search.natural_search.NaturalSearchSpeeches")
+        monkeypatch, "qhld_ai.application.search.natural_search.NaturalSearchSpeeches")
     svc.execute.return_value = NaturalResult(
         parsed=ParsedQuery(semantic_query="financiación autonómica"),
         resolution=Resolution(
@@ -249,13 +249,13 @@ def test_search_natural_flag_routes_to_natural_service(monkeypatch):
 
 
 def test_search_natural_blocked_resolution_explains_zero_results(monkeypatch):
-    from qhld_engine.application.search.natural_search import NaturalResult
-    from qhld_engine.application.search.resolve_entities import (
+    from qhld_ai.application.search.natural_search import NaturalResult
+    from qhld_ai.application.search.resolve_entities import (
         Resolution, UnresolvedEntity)
-    from qhld_engine.domain.ports.query_parser import ParsedQuery
+    from qhld_ai.domain.ports.query_parser import ParsedQuery
 
     svc = _patch_class(
-        monkeypatch, "qhld_engine.application.search.natural_search.NaturalSearchSpeeches")
+        monkeypatch, "qhld_ai.application.search.natural_search.NaturalSearchSpeeches")
     svc.execute.return_value = NaturalResult(
         parsed=ParsedQuery(semantic_query="vivienda",
                            mentioned_persons=["Santiago Segura"]),

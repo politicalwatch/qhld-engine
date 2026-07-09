@@ -3,7 +3,7 @@
 import pytest
 
 from qhld_engine.domain.evaluation import scoring
-from qhld_engine.domain.ports.vector_store import SearchHit
+from qhld_ai.domain.ports.vector_store import SearchHit
 
 pytestmark = pytest.mark.unit
 

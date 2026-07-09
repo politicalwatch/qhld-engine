@@ -24,7 +24,7 @@ from qhld_engine.application.speeches.mention_tagging import MentionTagger, es_t
 from qhld_engine.domain.speeches import segmentation
 from qhld_engine.domain.speeches.language_split import split_languages
 from qhld_engine.infrastructure.config.settings import get_settings
-from qhld_engine.infrastructure.language import detect
+from qhld_ai.infrastructure.language import detect
 from qhld_engine.extractors.spain.congress_api import CongressApi
 from qhld_engine.extractors.spain.initiative_extractors.utils.pdf_parsers import (
     PDFExtractor,

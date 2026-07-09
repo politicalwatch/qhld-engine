@@ -50,8 +50,8 @@ class RunBenchmark:
         return [self._run_entry(service, entry, k) for entry in self.queryset]
 
     def _service(self, model, reranker, sparse="none"):
-        from qhld_engine.application.search.search_speeches import SearchSpeeches
-        from qhld_engine.infrastructure.config.settings import get_settings
+        from qhld_ai.application.search.search_speeches import SearchSpeeches
+        from qhld_ai.infrastructure.config.settings import get_settings
 
         rerank_off = reranker in _NO_RERANKER
         settings = get_settings().model_copy(update={
