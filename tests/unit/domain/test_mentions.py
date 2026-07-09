@@ -13,6 +13,7 @@ from qhld_engine.domain.speeches.mentions import (
     build_surname_gazetteer,
     context_excluded_surnames,
     make_person_entry,
+    match_person,
     normalize_span,
     resolve_mentions,
     resolve_person,
@@ -230,6 +231,32 @@ def test_resolve_person_unknown_is_none():
 
 def test_resolve_person_empty_after_normalize_is_none():
     assert resolve_person("Su Señoría", INDEX, 90) is None
+
+
+def test_match_person_success_carries_score_and_no_candidates():
+    match = match_person("Montero", INDEX, 90)
+    assert match.entry.person_id == "d2"
+    assert match.best_score >= 90
+    assert match.candidates == []
+
+
+def test_match_person_below_threshold_reports_near_miss():
+    match = match_person("Monteros Cuadrados", INDEX, 101)  # force a miss
+    assert match.entry is None
+    assert 0 < match.best_score < 101
+    assert "Montero Cuadrado, María Jesús" in match.candidates
+
+
+def test_match_person_ambiguous_reports_tied_names():
+    match = match_person("García", INDEX, 90)
+    assert match.entry is None
+    assert match.best_score >= 90
+    assert set(match.candidates) == {"García López, Ana", "García Ruiz, Juan"}
+
+
+def test_match_person_empty_span_has_no_diagnostics():
+    match = match_person("Su Señoría", INDEX, 90)
+    assert (match.entry, match.best_score, match.candidates) == (None, 0, [])
 
 
 # --- surname gazetteer -----------------------------------------------------

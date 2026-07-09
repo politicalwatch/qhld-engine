@@ -25,7 +25,7 @@ testable offline with no Mongo, mirroring ``domain.speeches.segmentation``.
 
 import re
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from thefuzz import fuzz
 
@@ -225,21 +225,43 @@ def _break_tie(norm: str, tied: list[PersonEntry]) -> list[PersonEntry]:
     return [e for score, e in scored if score == top]
 
 
+@dataclass
+class PersonMatch:
+    """Outcome of matching one span against the catalog. ``entry`` is the resolved
+    person, or ``None`` on failure; ``best_score`` and ``candidates`` then describe the
+    failure — the top fuzzy score with the near-miss names when nothing cleared the
+    threshold, or the still-tied names when a surname stayed ambiguous."""
+    entry: PersonEntry | None
+    best_score: int = 0
+    candidates: list[str] = field(default_factory=list)
+
+
 def resolve_person(name: str, index: list[PersonEntry], threshold: int) -> PersonEntry | None:
     """Resolve a free-text person name (as typed in a search query, e.g. "Zapatero",
     "María Jesús Montero", "Ayuso") to a catalog person, or ``None`` if it does not clear
     the threshold or stays ambiguous. Runs the span through the SAME normalization + fuzzy
     match + ambiguity guard used to tag the corpus, so a query resolves consistently with
     what was indexed."""
+    return match_person(name, index, threshold).entry
+
+
+def match_person(name: str, index: list[PersonEntry], threshold: int) -> PersonMatch:
+    """Like ``resolve_person`` but returns the full ``PersonMatch``, so a caller can
+    tell WHY a name failed (out of catalog vs near miss vs ambiguous) and suggest the
+    closest candidates."""
     norm = normalize_span(name)
     if not norm:
-        return None
-    return _resolve_one(norm, index, threshold)
+        return PersonMatch(None)
+    return _match_one(norm, index, threshold)
 
 
 def _resolve_one(norm: str, index: list[PersonEntry], threshold: int):
     """Best-scoring person for a normalized span, or ``None`` when nothing clears the
     threshold or the top score stays shared after tie-breaking (ambiguous surname)."""
+    return _match_one(norm, index, threshold).entry
+
+
+def _match_one(norm: str, index: list[PersonEntry], threshold: int) -> PersonMatch:
     best_score = 0
     tied: list[PersonEntry] = []
     for entry in index:
@@ -249,7 +271,7 @@ def _resolve_one(norm: str, index: list[PersonEntry], threshold: int):
         elif score == best_score and best_score > 0:
             tied.append(entry)
     if best_score < threshold:
-        return None
+        return PersonMatch(None, best_score, [e.name for e in tied])
     if len(tied) > 1:
         # An override only applies when the span names the override's OWN first surname —
         # not when it merely shares a secondary token (the ex-PM "Aznar López" must not
@@ -274,7 +296,9 @@ def _resolve_one(norm: str, index: list[PersonEntry], threshold: int):
             tied = [e for e in tied if e.person_type == "deputy"]
     if len(tied) > 1:
         tied = _break_tie(norm, tied)
-    return tied[0] if len(tied) == 1 else None
+    if len(tied) == 1:
+        return PersonMatch(tied[0], best_score)
+    return PersonMatch(None, best_score, [e.name for e in tied])
 
 
 def _prefer_overrides(norm: str, tied: list[PersonEntry]) -> list[PersonEntry]:

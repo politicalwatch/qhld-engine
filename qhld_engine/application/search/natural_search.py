@@ -11,6 +11,7 @@ service for now.
 relative-date resolution stays deterministic and testable.
 """
 
+import logging
 from dataclasses import dataclass, field
 
 from qhld_engine.application.search.resolve_entities import EntityResolver, Resolution
@@ -18,6 +19,8 @@ from qhld_engine.domain.ports.query_parser import ParsedQuery
 from qhld_engine.infrastructure.config.settings import get_settings
 from qhld_engine.infrastructure.queryparsing.factory import create_query_parser_from_env
 from qhld_engine.infrastructure.vectorstore.naming import collection_name
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -66,11 +69,25 @@ class NaturalSearchSpeeches:
     def execute(self, query, today, k=10, grouped=False, highlights=3) -> NaturalResult:
         parsed = self.parser.parse(query, today)
         resolution = self.resolver().resolve(parsed)
+        # Unresolved values are the raw material for catalog curation (a missing
+        # alias scores a near miss; an out-of-catalog person scores low), so keep
+        # a trace of every one.
+        for entity in resolution.unresolved:
+            logger.info(
+                "unresolved %s %r in query %r (blocking=%s, suggestion=%s)",
+                entity.field, entity.value, query, entity.blocking, entity.suggestion)
         filters = resolution.filters or None
         # Search the topic only. If the query was pure-filter (no topic), fall back
         # to the full text so there is still a vector to rank the filtered set by.
         semantic = parsed.semantic_query.strip() if parsed.semantic_query else ""
         semantic = semantic or query
+        if resolution.blocked:
+            # Some filter is unsatisfiable (e.g. a mentioned person absent from the
+            # catalog): the honest answer is zero hits. Searching without that
+            # filter would return results that LOOK like matches, so skip retrieval.
+            return NaturalResult(
+                parsed=parsed, resolution=resolution, semantic_query=semantic,
+                grouped=grouped)
         if grouped:
             hits = self.search.search_grouped(
                 semantic, page_size=k, highlights=highlights, filters=filters)

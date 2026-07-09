@@ -59,9 +59,13 @@ def test_resolves_speaker_name_with_token_reordering(resolver):
     assert r.filters["speaker"] == "Abascal Conde, Santiago"
 
 
-def test_unresolvable_speaker_is_not_filtered(resolver):
+def test_unresolvable_speaker_blocks(resolver):
     r = resolver.resolve(ParsedQuery(semantic_query="x", speakers=["Fulano de Tal"]))
     assert "speaker" not in r.filters
+    assert r.blocked
+    entity = r.unresolved[0]
+    assert (entity.field, entity.value, entity.blocking) == ("speaker", "Fulano de Tal", True)
+    assert entity.suggestion  # the best sub-threshold corpus speaker, for triage
     assert any("unresolved" in note for note in r.notes)
 
 
@@ -73,10 +77,14 @@ def test_multiple_speakers_resolve_to_a_list(resolver):
 
 
 def test_partially_resolved_speakers_keep_the_resolved_one(resolver):
+    # Several speakers are an any-of list: dropping one member still honours the
+    # query, so it is recorded but does not block.
     r = resolver.resolve(ParsedQuery(
         semantic_query="x", speakers=["Santiago Abascal", "Fulano de Tal"]))
     assert r.filters["speaker"] == "Abascal Conde, Santiago"
-    assert any("unresolved" in note for note in r.notes)
+    assert not r.blocked
+    assert [(e.field, e.value, e.blocking) for e in r.unresolved] == [
+        ("speaker", "Fulano de Tal", False)]
 
 
 def test_resolves_title_to_role(resolver):
@@ -115,10 +123,11 @@ def test_curated_alias_resolves_when_code_is_in_catalog():
     assert r.filters["group"] == "GR"
 
 
-def test_curated_alias_for_absent_group_is_ignored():
+def test_curated_alias_for_absent_group_blocks():
     resolver = _resolver(curated_aliases=[{"code": "GCUP", "aliases": ["Esquerra"]}])
     r = resolver.resolve(ParsedQuery(semantic_query="x", groups_or_parties=["esquerra"]))
     assert "group" not in r.filters
+    assert r.blocked
 
 
 CATEGORIZED = [
@@ -142,11 +151,12 @@ def test_category_with_single_labelled_group_stays_scalar():
     assert r.filters["group"] == "GR"
 
 
-def test_category_of_absent_group_is_ignored():
+def test_category_of_absent_group_blocks():
     # GVOX is labelled 'derecha' but is not in the catalog → nothing to expand to.
     resolver = _resolver(curated_aliases=CATEGORIZED)
     r = resolver.resolve(ParsedQuery(semantic_query="x", groups_or_parties=["la derecha"]))
     assert "group" not in r.filters
+    assert r.blocked
 
 
 def test_category_and_named_group_combine():
@@ -193,9 +203,16 @@ def test_lang_names_and_variants_normalize_to_iso_code(resolver):
     assert resolver.resolve(ParsedQuery(semantic_query="x", lang="euskera")).filters["lang"] == "eu"
 
 
-def test_unknown_lang_is_not_filtered(resolver):
+def test_unknown_lang_blocks(resolver):
     r = resolver.resolve(ParsedQuery(semantic_query="x", lang="klingon"))
     assert "lang" not in r.filters
+    assert r.blocked
+
+
+def test_nothing_unresolved_means_not_blocked(resolver):
+    r = resolver.resolve(ParsedQuery(semantic_query="x", speakers=["Santiago Abascal"]))
+    assert not r.blocked
+    assert r.unresolved == []
 
 
 def test_no_filters_when_nothing_extracted(resolver):
@@ -208,10 +225,14 @@ def test_mentioned_person_resolves_to_deputy_id(resolver):
     assert any("mentions:" in note for note in r.notes)
 
 
-def test_unresolvable_mentioned_person_is_not_filtered(resolver):
+def test_unresolvable_mentioned_person_blocks(resolver):
+    # The corpus is tagged with the same catalog: a person absent from it cannot
+    # appear in any payload, so the query is unsatisfiable.
     r = resolver.resolve(ParsedQuery(semantic_query="x", mentioned_persons=["Winston Churchill"]))
     assert "mentions" not in r.filters
-    assert any("unresolved" in note for note in r.notes)
+    assert r.blocked
+    entity = r.unresolved[0]
+    assert (entity.field, entity.value, entity.blocking) == ("mentions", "Winston Churchill", True)
 
 
 def test_multiple_mentions_default_to_requiring_all(resolver):
@@ -226,18 +247,53 @@ def test_multiple_mentions_any_mode_becomes_a_list(resolver):
     assert r.filters["mentions"] == ["dep-abascal", "dep-montero"]
 
 
-def test_partially_resolved_mentions_keep_the_resolved_one(resolver):
+def test_partially_resolved_mentions_in_all_mode_block(resolver):
+    # 'all' requires EVERY person to be mentioned; one unsatisfiable member makes
+    # the whole conjunction unsatisfiable — no partial filter is emitted.
     r = resolver.resolve(ParsedQuery(
         semantic_query="x", mentioned_persons=["Montero", "Winston Churchill"]))
+    assert "mentions" not in r.filters
+    assert r.blocked
+
+
+def test_partially_resolved_mentions_in_any_mode_keep_the_resolved_one(resolver):
+    r = resolver.resolve(ParsedQuery(
+        semantic_query="x", mentioned_persons=["Montero", "Winston Churchill"],
+        mentions_mode="any"))
     assert r.filters["mentions"] == "dep-montero"
+    assert not r.blocked
+    assert [(e.field, e.blocking) for e in r.unresolved] == [("mentions", False)]
+
+
+def test_wholly_unresolved_mentions_in_any_mode_block(resolver):
+    r = resolver.resolve(ParsedQuery(
+        semantic_query="x", mentioned_persons=["Winston Churchill", "Napoleón"],
+        mentions_mode="any"))
+    assert "mentions" not in r.filters
+    assert r.blocked
+
+
+def test_ambiguous_mention_blocks_with_candidates():
+    resolver = _resolver(deputies=[
+        _FakeDeputy("dep-g1", "García López, Juan"),
+        _FakeDeputy("dep-g2", "García Ruiz, Ana"),
+    ])
+    r = resolver.resolve(ParsedQuery(semantic_query="x", mentioned_persons=["García"]))
+    assert "mentions" not in r.filters
+    assert r.blocked
+    assert "ambiguous" in r.unresolved[0].suggestion
+    assert "García López, Juan" in r.unresolved[0].suggestion
 
 
 def test_mentioned_person_ignored_without_deputies_catalog():
-    # A resolver built without the catalog cannot resolve a mention → no filter.
+    # A resolver built without the catalog knowingly opts out of mention
+    # filtering — that must NOT read as an unsatisfiable query.
     resolver = EntityResolver(
         distinct=lambda key: CORPUS.get(key, set()), groups=GROUPS, curated_aliases=[])
     r = resolver.resolve(ParsedQuery(semantic_query="x", mentioned_persons=["Montero"]))
     assert "mentions" not in r.filters
+    assert not r.blocked
+    assert any("no person catalog" in note for note in r.notes)
 
 
 def test_mentioned_non_deputy_resolves_via_curated():

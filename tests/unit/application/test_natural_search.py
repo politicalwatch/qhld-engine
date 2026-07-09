@@ -5,7 +5,7 @@ from datetime import date
 import pytest
 
 from qhld_engine.application.search.natural_search import NaturalSearchSpeeches
-from qhld_engine.application.search.resolve_entities import Resolution
+from qhld_engine.application.search.resolve_entities import Resolution, UnresolvedEntity
 from qhld_engine.domain.ports.query_parser import ParsedQuery
 from qhld_engine.infrastructure.config.settings import Settings
 
@@ -100,6 +100,40 @@ def test_pure_filter_query_falls_back_to_full_text():
     _, query, _, filters = service.search.calls[0]
     assert query == "intervenciones del PSOE"   # fallback so there's a vector to rank by
     assert filters == {"group": "GS"}
+
+
+def test_blocked_resolution_skips_retrieval():
+    # An unsatisfiable filter (person not in the catalog) must yield zero hits,
+    # not hits that silently ignore the filter.
+    parsed = ParsedQuery(semantic_query="vivienda", mentioned_persons=["Santiago Segura"])
+    resolution = Resolution(unresolved=[
+        UnresolvedEntity("mentions", "Santiago Segura", blocking=True)])
+    service = _service(parsed, resolution)
+    result = service.execute("vivienda que mencionen a Santiago Segura",
+                             today=date(2025, 7, 3))
+    assert result.hits == []
+    assert service.search.calls == []
+    assert result.resolution.blocked
+
+
+def test_blocked_resolution_skips_grouped_retrieval_too():
+    resolution = Resolution(unresolved=[
+        UnresolvedEntity("speaker", "Fulano de Tal", blocking=True)])
+    service = _service(ParsedQuery(semantic_query="x"), resolution)
+    result = service.execute("x", today=date(2025, 7, 3), grouped=True)
+    assert result.hits == []
+    assert service.search.calls == []
+
+
+def test_nonblocking_unresolved_still_searches():
+    # A member dropped from an any-of list is a warning, not a dead end.
+    resolution = Resolution(
+        filters={"speaker": "Abascal Conde, Santiago"},
+        unresolved=[UnresolvedEntity("speaker", "Fulano de Tal", blocking=False)])
+    service = _service(ParsedQuery(semantic_query="pensiones"), resolution)
+    result = service.execute("pensiones", today=date(2025, 7, 3))
+    assert result.hits == ["hit"]
+    assert service.search.calls[0][3] == {"speaker": "Abascal Conde, Santiago"}
 
 
 def test_today_is_forwarded_to_parser():

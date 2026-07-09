@@ -23,6 +23,15 @@ store treats it as any-of); mentioned persons instead honour the parsed
 ``mentions_mode`` — ``{"all": [ids]}`` requires every person to be mentioned,
 a plain list accepts any of them.
 
+Because every one of these fields resolves against the very values the corpus was
+tagged/indexed with, a value that resolves to nothing is not ignorable noise — the
+constraint is unsatisfiable and the honest answer is zero results. Failed values are
+therefore recorded as structured ``UnresolvedEntity`` entries: *blocking* when the
+query as asked cannot be satisfied (search should short-circuit to no hits), or
+non-blocking when only some members of an any-of list dropped out. A single mention
+in the default ``all`` mode blocks; an unresolved member of an ``any`` list only
+blocks when no member resolved.
+
 Corpus values are read via an injected ``distinct(key)`` callable (wrapping
 ``VectorStorePort.distinct_values`` on the target collection), so the resolver is
 trivially testable with a stub. Each resolution is recorded in ``notes`` so the
@@ -39,7 +48,7 @@ from thefuzz import fuzz, process
 
 from qhld_engine.application.speeches.persons_catalog import load_person_index
 from qhld_engine.domain.ports.query_parser import ParsedQuery
-from qhld_engine.domain.speeches.mentions import resolve_person
+from qhld_engine.domain.speeches.mentions import PersonMatch, match_person
 
 # token_set_ratio scores a subset match ~100 ("María Jesús Montero" ⊆ "Montero
 # Cuadrado, María Jesús", or a surname-only "Montero") while an unrelated name
@@ -75,11 +84,30 @@ def load_curated_group_aliases(path=GROUP_ALIASES_FILE):
 
 
 @dataclass
+class UnresolvedEntity:
+    """A query value that matched nothing in the catalog/corpus. ``blocking`` means
+    the query as asked is unsatisfiable and search must return no hits; non-blocking
+    entries are members dropped from an any-of list that still has resolved members.
+    ``suggestion`` carries the closest sub-threshold candidate (or the tied names of
+    an ambiguous surname), when known."""
+    field: str
+    value: str
+    blocking: bool
+    suggestion: str | None = None
+
+
+@dataclass
 class Resolution:
     """The store-ready filters plus a human-readable trace of how each field
     resolved (or why it did not)."""
     filters: dict = field(default_factory=dict)
     notes: list[str] = field(default_factory=list)
+    unresolved: list[UnresolvedEntity] = field(default_factory=list)
+
+    @property
+    def blocked(self) -> bool:
+        """True when some filter is unsatisfiable — the search must yield no hits."""
+        return any(entity.blocking for entity in self.unresolved)
 
 
 class EntityResolver:
@@ -123,33 +151,54 @@ class EntityResolver:
 
     def _resolve_speakers(self, result, raws):
         choices = [v for v in self._distinct("speaker") if v]
-        matched = []
+        matched, misses = [], []
         for raw in raws:
-            value = self._fuzzy_match(
+            value, suggestion = self._fuzzy_match(
                 result, "speaker", raw, choices, _SPEAKER_THRESHOLD)
-            if value and value not in matched:
-                matched.append(value)
+            if value:
+                if value not in matched:
+                    matched.append(value)
+            else:
+                misses.append((raw, suggestion))
+        for raw, suggestion in misses:
+            _record_unresolved(result, "speaker", raw, blocking=not matched,
+                               suggestion=suggestion)
         _set_filter(result, "speaker", matched)
 
     def _resolve_role(self, result, raw):
         choices = [v for v in self._distinct("role") if v]
-        value = self._fuzzy_match(result, "role", raw, choices, _ROLE_THRESHOLD)
+        value, suggestion = self._fuzzy_match(
+            result, "role", raw, choices, _ROLE_THRESHOLD)
         if value:
             result.filters["role"] = value
+        else:
+            _record_unresolved(result, "role", raw, blocking=True,
+                               suggestion=suggestion)
 
     def _resolve_mentions(self, result, raws, mode):
-        ids = []
+        if not self._person_index:
+            # No person catalog was injected (see __init__): mentioned persons are
+            # knowingly left unfiltered rather than treated as unsatisfiable.
+            for raw in raws:
+                result.notes.append(f"mentions: '{raw}' ignored — no person catalog")
+            return
+        ids, misses = [], []
         for raw in raws:
-            entry = (resolve_person(raw, self._person_index, self._mention_threshold)
-                     if self._person_index else None)
-            if entry:
+            match = match_person(raw, self._person_index, self._mention_threshold)
+            if match.entry:
                 result.notes.append(
-                    f"mentions: '{raw}' → '{entry.name}' ({entry.person_type})")
-                if entry.person_id not in ids:
-                    ids.append(entry.person_id)
+                    f"mentions: '{raw}' → '{match.entry.name}' ({match.entry.person_type})")
+                if match.entry.person_id not in ids:
+                    ids.append(match.entry.person_id)
             else:
-                result.notes.append(f"mentions: '{raw}' unresolved — not filtered")
-        if not ids:
+                misses.append((raw, self._person_suggestion(match)))
+        # ``all`` requires every person, so a single miss is unsatisfiable; ``any``
+        # survives on the resolved subset and only blocks when nobody resolved.
+        blocking = bool(misses) if mode != "any" else not ids
+        for raw, suggestion in misses:
+            _record_unresolved(result, "mentions", raw, blocking=blocking,
+                               suggestion=suggestion)
+        if blocking or not ids:
             return
         if len(ids) == 1:
             result.filters["mentions"] = ids[0]
@@ -158,6 +207,15 @@ class EntityResolver:
         else:
             result.filters["mentions"] = {"all": sorted(ids)}
 
+    def _person_suggestion(self, match: PersonMatch) -> str | None:
+        """Human-readable hint for a failed person match: the tied names when the
+        span was ambiguous, the closest near-miss otherwise."""
+        if not match.candidates:
+            return None
+        if match.best_score >= self._mention_threshold:
+            return "ambiguous: " + " / ".join(f"'{name}'" for name in match.candidates)
+        return f"'{match.candidates[0]}' ({match.best_score})"
+
     def _resolve_lang(self, result, raw):
         code = _LANG_ALIASES.get(raw.strip().lower())
         if code:
@@ -165,23 +223,22 @@ class EntityResolver:
             if code != raw:
                 result.notes.append(f"lang: '{raw}' → '{code}'")
         else:
-            result.notes.append(f"lang: '{raw}' unresolved — not filtered")
+            _record_unresolved(result, "lang", raw, blocking=True)
 
     @staticmethod
     def _fuzzy_match(result, payload_key, raw, choices, threshold):
-        """Best fuzzy match for one raw value, traced in ``notes``; None below
-        ``threshold``."""
+        """Best fuzzy match for one raw value, traced in ``notes`` when it clears
+        ``threshold``; otherwise ``(None, suggestion)`` with the best sub-threshold
+        candidate for the caller to report."""
         match = process.extractOne(
             raw, choices, scorer=fuzz.token_set_ratio) if choices else None
         if match and match[1] >= threshold:
             result.notes.append(f"{payload_key}: '{raw}' → '{match[0]}' ({match[1]})")
-            return match[0]
-        best = f" (best '{match[0]}' {match[1]})" if match else ""
-        result.notes.append(f"{payload_key}: '{raw}' unresolved{best} — not filtered")
-        return None
+            return match[0], None
+        return None, (f"'{match[0]}' ({match[1]})" if match else None)
 
     def _resolve_groups(self, result, raws):
-        matched = []
+        matched, misses = [], []
         for raw in raws:
             codes = self._group_categories.get(_normalize_group_key(raw))
             if codes:
@@ -189,11 +246,13 @@ class EntityResolver:
             else:
                 shortname = self._match_group(raw)
                 if not shortname:
-                    result.notes.append(f"group: '{raw}' unresolved — not filtered")
+                    misses.append(raw)
                     continue
                 result.notes.append(f"group: '{raw}' → '{shortname}'")
                 codes = [shortname]
             matched.extend(code for code in codes if code not in matched)
+        for raw in misses:
+            _record_unresolved(result, "group", raw, blocking=not matched)
         _set_filter(result, "group", matched)
 
     def _match_group(self, raw):
@@ -222,6 +281,15 @@ class EntityResolver:
         if bounds:
             result.filters["date"] = bounds
             result.notes.append(f"date: {bounds}")
+
+
+def _record_unresolved(result, field_name, raw, blocking, suggestion=None):
+    """Record one failed value both machine-readably (``unresolved``) and in the
+    human trace (``notes``)."""
+    result.unresolved.append(UnresolvedEntity(field_name, raw, blocking, suggestion))
+    hint = f" (closest: {suggestion})" if suggestion else ""
+    outcome = "no results" if blocking else "dropped from any-of"
+    result.notes.append(f"{field_name}: '{raw}' unresolved{hint} — {outcome}")
 
 
 def _set_filter(result, key, matched):

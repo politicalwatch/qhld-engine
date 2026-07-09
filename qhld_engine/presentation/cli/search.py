@@ -56,7 +56,10 @@ def speeches(
         result = NaturalSearchSpeeches(settings=settings).execute(
             query, today=date.today(), k=k, grouped=grouped, highlights=highlights)
         _print_parse(result)
-        _print_grouped(result.hits) if grouped else _print_hits(result.hits)
+        if result.resolution.blocked:
+            _print_blocked(result.resolution)
+        else:
+            _print_grouped(result.hits) if grouped else _print_hits(result.hits)
         return
 
     from qhld_engine.application.search.search_speeches import SearchSpeeches
@@ -85,6 +88,27 @@ def _print_parse(result):
     typer.echo("")
 
 
+_FIELD_LABELS = {
+    "speaker": "any speaker in the corpus",
+    "mentions": "any person in the catalog",
+    "group": "any parliamentary group",
+    "role": "any role in the corpus",
+    "lang": "a known language",
+}
+
+
+def _print_blocked(resolution):
+    """Explain WHY there are no results: which value(s) matched nothing, with the
+    closest candidate when one exists."""
+    for entity in resolution.unresolved:
+        if not entity.blocking:
+            continue
+        target = _FIELD_LABELS.get(entity.field, entity.field)
+        hint = f" Closest match: {entity.suggestion}." if entity.suggestion else ""
+        typer.echo(
+            f"No results — '{entity.value}' did not match {target}.{hint}")
+
+
 def _references(payload):
     """All initiative references the speech addresses (an accumulated debate
     covers several), joined for display."""
@@ -94,6 +118,19 @@ def _references(payload):
 def _snippet(payload, length=240):
     text = (payload.get("text") or "").strip().replace("\n", " ")
     return text[:length] + "…" if len(text) > length else text
+
+
+def _date(payload):
+    """The payload date (numeric YYYYMMDD) as YYYY-MM-DD."""
+    raw = str(payload.get("date") or "")
+    return f"{raw[:4]}-{raw[4:6]}-{raw[6:]}" if len(raw) == 8 else "?"
+
+
+def _turn(payload):
+    """The speech's turn number within its debate — with the date, pins down the
+    exact document when a speaker takes several turns in one session."""
+    order = payload.get("order")
+    return f"#{order}" if order is not None else "#?"
 
 
 def _print_hits(hits):
@@ -106,7 +143,8 @@ def _print_hits(hits):
         group_line = payload.get("group") or payload.get("role") or "-"
         typer.echo(
             f"[{hit.score:.3f}] {speaker} ({group_line}) "
-            f"· {_references(payload)} · {payload.get('lang')}\n    {_snippet(payload)}\n")
+            f"· {_references(payload)} · {_date(payload)} · {_turn(payload)} "
+            f"· {payload.get('lang')}\n    {_snippet(payload)}\n")
 
 
 def _print_grouped(groups):
@@ -119,7 +157,7 @@ def _print_grouped(groups):
         group_line = head.get("group") or head.get("role") or "-"
         typer.echo(
             f"[{group.score:.3f}] {speaker} ({group_line}) · {_references(head)} "
-            f"· {len(group.highlights)} passage(s)")
+            f"· {_date(head)} · {_turn(head)} · {len(group.highlights)} passage(s)")
         for hit in group.highlights:
             typer.echo(f"    · [{hit.score:.3f}] {hit.payload.get('lang')}  {_snippet(hit.payload, 200)}")
         typer.echo("")

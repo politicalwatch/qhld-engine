@@ -231,7 +231,8 @@ def test_search_natural_flag_routes_to_natural_service(monkeypatch):
             notes=["speaker: 'Montero' → 'Montero Cuadrado, María Jesús' (95)"]),
         semantic_query="financiación autonómica",
         hits=[SearchHit(id="p1", score=0.7, payload={
-            "speaker": "Montero", "references": ["172/000006"], "lang": "es", "text": "hola"})])
+            "speaker": "Montero", "references": ["172/000006"], "lang": "es",
+            "date": 20260514, "order": 23, "text": "hola"})])
     result = runner.invoke(app, [
         "search", "speeches",
         "intervenciones de Montero sobre financiación del último año", "--natural", "--k", "5"])
@@ -243,6 +244,33 @@ def test_search_natural_flag_routes_to_natural_service(monkeypatch):
     assert "financiación autonómica" in result.output   # residual topic echoed
     assert "Montero Cuadrado" in result.output           # resolved filter echoed
     assert "172/000006" in result.output                 # hit printed
+    assert "2026-05-14" in result.output                 # date locates the sitting
+    assert "#23" in result.output                        # turn number within the debate
+
+
+def test_search_natural_blocked_resolution_explains_zero_results(monkeypatch):
+    from qhld_engine.application.search.natural_search import NaturalResult
+    from qhld_engine.application.search.resolve_entities import (
+        Resolution, UnresolvedEntity)
+    from qhld_engine.domain.ports.query_parser import ParsedQuery
+
+    svc = _patch_class(
+        monkeypatch, "qhld_engine.application.search.natural_search.NaturalSearchSpeeches")
+    svc.execute.return_value = NaturalResult(
+        parsed=ParsedQuery(semantic_query="vivienda",
+                           mentioned_persons=["Santiago Segura"]),
+        resolution=Resolution(
+            notes=["mentions: 'Santiago Segura' unresolved — no results"],
+            unresolved=[UnresolvedEntity(
+                "mentions", "Santiago Segura", blocking=True,
+                suggestion="'Segura Sáez, Andrés' (62)")]),
+        semantic_query="vivienda",
+        hits=[])
+    result = runner.invoke(app, [
+        "search", "speeches", "vivienda que mencione a Santiago Segura", "--natural"])
+    assert result.exit_code == 0, result.output
+    assert "No results — 'Santiago Segura' did not match" in result.output
+    assert "Segura Sáez, Andrés" in result.output   # the closest-candidate hint
 
 
 # --- debug -----------------------------------------------------------------
