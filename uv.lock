@@ -2625,7 +2625,7 @@ dependencies = [
 [[package]]
 name = "qhld-data"
 version = "2.0.1"
-source = { git = "https://github.com/politicalwatch/qhld-data.git?branch=feat%2Fparliamentary-speech-analysis#b9a73c3b5528bafb4c56e41ce68d1d228e42da8a" }
+source = { git = "https://github.com/politicalwatch/qhld-data.git?branch=feat%2Fparliamentary-speech-analysis#f6279992d080fee16ac4613ca10d863f55bb614a" }
 dependencies = [
     { name = "pydantic" },
     { name = "pymongo" },
