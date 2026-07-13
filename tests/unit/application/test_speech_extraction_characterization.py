@@ -68,7 +68,10 @@ def test_extract_speeches_172_000001(monkeypatch, capture):
     monkeypatch.setattr(mod.Deputies, "get_all", staticmethod(lambda: []))
     monkeypatch.setattr(
         mod, "MentionTagger",
-        lambda deputies: type("T", (), {"tag": staticmethod(lambda text: [])})())
+        lambda deputies: type("T", (), {
+            "tag": staticmethod(lambda text: []),
+            "tag_interruptions": staticmethod(lambda text, speaker=None: []),
+        })())
 
     mod.ExtractSpeeches().execute(["172/000001"])
 

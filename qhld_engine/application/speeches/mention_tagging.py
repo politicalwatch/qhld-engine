@@ -9,9 +9,21 @@ catalog load and loads the spaCy model once.
 NER runs only over the Spanish text block: co-official speeches always carry a
 Spanish translation alongside the original, so one Spanish model covers the whole
 corpus and we never NER Basque/Galician/Catalan (where the model is weak).
+
+Stenographer annotations — the parenthesized stage directions of the Diario de
+Sesiones — are stripped before mention NER (they are the transcript's voice, not
+the speaker's: an interjection like "(El señor Tellado Filgueira: Ábalos…)" must
+not credit the speaker with mentioning either name). The same annotations feed
+``tag_interruptions``, which records who interjected instead.
 """
 
 from qhld_ai.application.persons_catalog import load_person_index
+from qhld_ai.domain.annotations import (
+    extract_annotations,
+    parse_utterances,
+    resolve_interruptions,
+    strip_annotations,
+)
 from qhld_ai.domain.mentions import (
     COMMON_WORD_SURNAMES,
     build_surname_gazetteer,
@@ -44,16 +56,38 @@ class MentionTagger:
             self._ner = create_ner_from_env(self.settings, gazetteer=gazetteer)
 
     def tag(self, text: str):
-        """Return the ``Mention``s named in ``text`` (already the Spanish block).
+        """Return the ``Mention``s named in ``text`` (already the Spanish block),
+        with stenographer annotations stripped first — only the speaker's own
+        words are tagged.
 
         A span resolves to a deputy or a non-deputy in the person catalog. The
         exclusion set only guards DEPUTY resolutions — common-word false friends
         ("Bueno") and surnames the speech's own wording marks as a non-deputy office
         holder (magistrate/judge/prosecutor/Franco-the-dictator); a resolved
         non-deputy is never dropped."""
-        spans = self._ner.person_spans(text)
-        excluded = COMMON_WORD_SURNAMES | context_excluded_surnames(text)
+        spoken = strip_annotations(text)
+        spans = self._ner.person_spans(spoken)
+        excluded = COMMON_WORD_SURNAMES | context_excluded_surnames(spoken)
         return resolve_mentions(spans, self._index, self._threshold, excluded)
+
+    def tag_interruptions(self, text: str, speaker: str | None = None):
+        """Return the ``Interruption``s recorded in ``text``'s stenographer
+        annotations: who interjected while the speech was delivered, their quotes
+        and reactions, and the people named inside the quotes (resolved with the
+        same NER + catalog as mentions). ``speaker`` (the speech's own orator, as
+        stored in ``Speech.speaker``) filters out annotations about the speaker
+        themself, e.g. their speech-closing applause."""
+        utterances = [
+            utterance
+            for annotation in extract_annotations(text)
+            for utterance in parse_utterances(annotation)]
+        if not utterances:
+            return []
+        excluded = (COMMON_WORD_SURNAMES
+                    | context_excluded_surnames(strip_annotations(text)))
+        return resolve_interruptions(
+            utterances, self._index, self._threshold, self._ner.person_spans,
+            excluded, speaker_name=speaker)
 
     def tag_speech(self, speech):
         """Convenience: tag a ``Speech`` from its stored Spanish block(s)."""

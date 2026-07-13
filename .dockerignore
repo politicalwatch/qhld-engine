@@ -4,3 +4,4 @@ __pycache__
 .coverage
 htmlcov/
 local_config.py
+.env

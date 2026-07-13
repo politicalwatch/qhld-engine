@@ -88,7 +88,11 @@ def _stub_environment(monkeypatch, page, saved, saved_sessions, existing=None,
     monkeypatch.setattr(
         mod, "MentionTagger",
         lambda deputies: type(
-            "T", (), {"tag": staticmethod(lambda text: collector.append(text) or [])})())
+            "T", (), {
+                "tag": staticmethod(lambda text: collector.append(text) or []),
+                "tag_interruptions":
+                    staticmethod(lambda text, speaker=None: []),
+            })())
     # patch the detector so the test never loads py3langid and is deterministic
     monkeypatch.setattr(mod, "detect", lambda text: "es")
 

@@ -186,6 +186,7 @@ class ExtractSpeeches:
             # same intervention under its content identity; drop that copy now
             # that the canonical id is known.
             Speeches.delete(fallback_id)
+        mentions, interruptions = self._mentions(speech_id, blocks, speaker)
         speech = Speech(
             id=speech_id,
             references=[reference],
@@ -203,7 +204,8 @@ class ExtractSpeeches:
             session_link=session_link,
             speech=blocks,
             original_language=original_language,
-            mentions=self._mentions(speech_id, blocks),
+            mentions=mentions,
+            interruptions=interruptions,
         )
         Speeches.save(speech)
 
@@ -222,18 +224,20 @@ class ExtractSpeeches:
         text = "||".join(block.text for block in blocks)
         return generate_id(session_link, orador, str(order), text)
 
-    def _mentions(self, speech_id, blocks):
-        """Run NER over the Spanish text — unless this intervention was already
-        extracted with the same text (the earlier initiative of an accumulated
-        debate), in which case its stored mentions are reused."""
+    def _mentions(self, speech_id, blocks, speaker):
+        """Mentions and interruptions from NER over the Spanish text — unless
+        this intervention was already extracted with the same text (the earlier
+        initiative of an accumulated debate), in which case its stored tags are
+        reused."""
         text = es_text(blocks)
         try:
             existing = Speeches.get(speech_id)
         except DoesNotExist:
             existing = None
         if existing is not None and es_text(existing.speech) == text:
-            return existing.mentions
-        return self.tagger.tag(text)
+            return existing.mentions, existing.interruptions
+        return (self.tagger.tag(text),
+                self.tagger.tag_interruptions(text, speaker=speaker))
 
     # -- API retrieval ---------------------------------------------------------
 

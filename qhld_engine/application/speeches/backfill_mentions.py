@@ -1,16 +1,19 @@
-"""Backfill ``Speech.mentions`` over already-extracted speeches.
+"""Backfill ``Speech.mentions`` and ``Speech.interruptions`` over already-extracted
+speeches.
 
-New speeches get their mentions at extract time (``ExtractSpeeches``); this
-one-shot service re-tags the existing corpus, which was extracted before the field
-existed. It re-uses the stored Spanish text block — no Congress API / Diario PDF
-refetch — so it is cheap to re-run.
+New speeches get both at extract time (``ExtractSpeeches``); this one-shot service
+re-tags the existing corpus, which was extracted before the fields existed. It
+re-uses the stored Spanish text block — no Congress API / Diario PDF refetch — so
+it is cheap to re-run.
 
 Follows ``IndexSpeeches``: drain the Mongo cursor into memory before the slow NER
 loop (a live cursor held open across NER trips MongoDB's idle-cursor timeout).
 Incremental by default: speeches that already carry mentions are skipped; ``--all``
-re-tags everything (needed after a threshold or model change). A speech whose text
-genuinely names no deputy resolves to ``[]`` and so is revisited by a later
-incremental run — harmless for a one-shot backfill.
+re-tags everything (needed after a threshold or model change — and after the
+annotation-stripping change, which reshapes the mentions of every speech that
+carries stenographer annotations). A speech whose text genuinely names no deputy
+resolves to ``[]`` and so is revisited by a later incremental run — harmless for a
+one-shot backfill.
 """
 
 from tqdm import tqdm
@@ -43,8 +46,11 @@ class BackfillMentions:
         log.info(f"Tagging mentions for {len(speeches)} speeches")
         tagged = 0
         for speech in tqdm(speeches, desc="Tagging mentions", unit="speech"):
-            mentions = self.tagger.tag(es_text(speech.speech))
+            text = es_text(speech.speech)
+            mentions = self.tagger.tag(text)
             speech.mentions = mentions
+            speech.interruptions = self.tagger.tag_interruptions(
+                text, speaker=speech.speaker)
             Speeches.save(speech)
             if mentions:
                 tagged += 1
