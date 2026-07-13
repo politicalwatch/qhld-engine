@@ -4,6 +4,7 @@ delete-before-upsert, per-model collection naming and dim probing without any
 network, Qdrant or Mongo.
 """
 
+from types import SimpleNamespace
 from uuid import NAMESPACE_DNS, uuid5
 
 import pytest
@@ -58,6 +59,18 @@ class _FakeStore:
     def distinct_values(self, name, key):
         self.calls.append(("distinct", name, key))
         return set(self.indexed)
+
+
+@pytest.fixture(autouse=True)
+def _deputy_catalog(monkeypatch):
+    """The constituency join reads the deputy catalog; keep unit tests off Mongo."""
+    monkeypatch.setattr(
+        mod.Deputies, "get_all",
+        lambda: [
+            SimpleNamespace(name="Rego Candamil, Néstor", constituency="Coruña (A)"),
+            SimpleNamespace(name="Sin Provincia, Ana", constituency=None),
+        ],
+        raising=False)
 
 
 def _bilingual_speech():
@@ -131,10 +144,27 @@ def test_indexes_both_language_blocks_as_separate_points(monkeypatch):
         assert point.payload["mention_counts"] == {"d9": 2, "isabel-diaz-ayuso": 1}
         assert point.payload["mention_types"] == {
             "d9": "deputy", "isabel-diaz-ayuso": "regional_president"}
+        # the speaker is a deputy → their province of election rides on every point
+        assert point.payload["constituency"] == "Coruña (A)"
 
     # deterministic point ids
     assert by_lang["gl"].id == str(uuid5(_NS, "sid1:0:0"))
     assert by_lang["es"].id == str(uuid5(_NS, "sid1:1:0"))
+
+
+def test_non_deputy_speaker_gets_no_constituency_key(monkeypatch):
+    """A minister/witness (or a deputy without a recorded province) must not carry
+    the key at all — absent, not null — so filters and facets never see them."""
+    store = _FakeStore()
+    speech = _bilingual_speech()
+    speech.speaker = "García García, Ministra"
+    monkeypatch.setattr(mod.Speeches, "by_references", lambda refs: [speech], raising=False)
+
+    service = IndexSpeeches(settings=_settings(), embedder=_FakeEmbedder(), store=store)
+    service.execute(["172/000001"])
+
+    _, points = store.upserts[0]
+    assert all("constituency" not in p.payload for p in points)
 
 
 def test_empty_speech_is_deleted_but_not_upserted(monkeypatch):

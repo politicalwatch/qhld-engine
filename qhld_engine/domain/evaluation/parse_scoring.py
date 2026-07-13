@@ -17,7 +17,7 @@ relative-date arithmetic is often a day off).
 from collections import defaultdict
 from datetime import date
 
-SLOTS = ("speaker", "role", "group", "date", "lang", "legislature")
+SLOTS = ("speaker", "role", "group", "constituency", "date", "lang", "legislature")
 _DATE_TOLERANCE_DAYS = 7
 
 

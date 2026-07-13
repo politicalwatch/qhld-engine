@@ -28,6 +28,7 @@ from qhld_ai.infrastructure.embeddings.factory import create_embedder_from_env
 from qhld_ai.infrastructure.vectorstore.factory import create_vector_store_from_env
 from qhld_ai.infrastructure.vectorstore.naming import collection_name
 
+from tipi_data.repositories.deputies import Deputies
 from tipi_data.repositories.speeches import Speeches
 
 
@@ -48,6 +49,7 @@ class IndexSpeeches:
         )
         self.dim = len(self.embedder.embed_query("probe"))
         self.collection = collection_name(self.settings, self.dim)
+        self._constituencies = None
         if self.sparse_embedder is None:
             self.store.ensure_collection(self.collection, self.dim)
         else:
@@ -122,8 +124,17 @@ class IndexSpeeches:
                 result.append((point_id, payload, text))
         return result
 
-    @staticmethod
-    def _payload(speech, block, block_index, chunk_index, text):
+    def _constituency_map(self):
+        """Speaker name -> province of election, from the deputy catalog. Deputy
+        names match the corpus ``speaker`` values verbatim, so a plain dict lookup
+        is the whole join; non-deputy speakers (ministers, witnesses) simply miss."""
+        if self._constituencies is None:
+            self._constituencies = {
+                d.name: d.constituency
+                for d in Deputies.get_all() if d.name and d.constituency}
+        return self._constituencies
+
+    def _payload(self, speech, block, block_index, chunk_index, text):
         # People named within the speech, resolved at extraction time (deputies plus
         # non-deputies — ministers, the King, regional presidents, foreign leaders).
         # Speech-level, so the same lists ride on every passage-point. `mentions` is the
@@ -135,7 +146,7 @@ class IndexSpeeches:
         mentions = [m.person_id for m in resolved]
         mention_types = {m.person_id: m.person_type for m in resolved}
         mention_counts = {m.person_id: m.count for m in resolved}
-        return {
+        payload = {
             "speech_id": speech.id,
             "session_id": speech.session_id,
             "references": speech.references,
@@ -156,3 +167,9 @@ class IndexSpeeches:
             "chunk_index": chunk_index,
             "text": text,
         }
+        # Key absent (not null) for non-deputy speakers, so a constituency filter
+        # never matches them and faceting sees only real provinces.
+        constituency = self._constituency_map().get(speech.speaker)
+        if constituency:
+            payload["constituency"] = constituency
+        return payload
