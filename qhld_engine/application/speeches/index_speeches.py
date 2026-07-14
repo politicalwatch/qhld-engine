@@ -161,6 +161,9 @@ class IndexSpeeches:
             "mentions": mentions,
             "mention_types": mention_types,
             "mention_counts": mention_counts,
+            # Non-person entities as canonical keys, speech-level like mentions;
+            # the NL-search entities filter matches membership of this list.
+            "entities": sorted({e.key for e in (speech.entities or []) if e.key}),
             "lang": block.lang,
             "original": block.original,
             "block_index": block_index,

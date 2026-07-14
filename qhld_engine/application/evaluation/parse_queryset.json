@@ -84,7 +84,7 @@
      "gold": {"group": ["GS", "GSUMAR", "GR", "GEH Bildu"]}, "gold_topic": "vivienda asequible"},
 
     {"id": "C1", "dimension": "constituency", "query": "discursos sobre carga de trabajo en Navantia de diputados de Cádiz",
-     "gold": {"constituency": "Cádiz"}, "gold_topic": "carga de trabajo en Navantia"},
+     "gold": {"constituency": "Cádiz", "entities": "navantia"}, "gold_topic": "carga de trabajo en Navantia"},
     {"id": "C2", "dimension": "group+constituency", "query": "intervenciones sobre turistificación de diputados del PSOE por Málaga",
      "gold": {"group": "GS", "constituency": "Málaga"}, "gold_topic": "turistificación"},
     {"id": "C3", "dimension": "constituency-demonym", "query": "qué han dicho los diputados malagueños sobre vivienda",
@@ -92,6 +92,17 @@
     {"id": "C4", "dimension": "constituency-bilingual", "query": "intervenciones de diputados por Alacant sobre turismo",
      "gold": {"constituency": "Alicante/Alacant"}, "gold_topic": "turismo"},
     {"id": "C5", "dimension": "constituency-trap", "query": "intervenciones sobre la sequía en Málaga",
-     "gold": {}, "gold_topic": "sequía en Málaga"}
+     "gold": {"entities": "malaga"}, "gold_topic": "sequía en Málaga"},
+
+    {"id": "E1", "dimension": "speaker+entity", "query": "qué ha dicho Pedro Sánchez sobre Eurovisión",
+     "gold": {"speaker": "Sánchez Pérez-Castejón, Pedro", "entities": "eurovision"}, "gold_topic": "Eurovisión"},
+    {"id": "E2", "dimension": "multi-entity", "query": "intervenciones que hablen de Gaza y de Ucrania",
+     "gold": {"entities": ["gaza", "ucrania"]}, "gold_topic": "Gaza y Ucrania"},
+    {"id": "E3", "dimension": "entity-party-trap", "query": "intervenciones de Vox sobre Eurovisión",
+     "gold": {"group": "GVOX", "entities": "eurovision"}, "gold_topic": "Eurovisión"},
+    {"id": "E4", "dimension": "entity-person-trap", "query": "discursos que mencionen a Zapatero sobre Gaza",
+     "gold": {"entities": "gaza"}, "gold_topic": "Gaza"},
+    {"id": "E5", "dimension": "entity-trap", "query": "debates sobre el precio de los alquileres",
+     "gold": {}, "gold_topic": "precio de los alquileres"}
   ]
 }

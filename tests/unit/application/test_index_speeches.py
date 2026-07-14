@@ -14,7 +14,7 @@ from qhld_engine.application.speeches.index_speeches import IndexSpeeches
 from qhld_ai.domain.ports.vector_store import SparseVector
 from qhld_ai.infrastructure.config.settings import Settings
 
-from tipi_data.models.speech import Mention, Speech, SpeechText
+from tipi_data.models.speech import Mention, NamedEntity, Speech, SpeechText
 
 pytestmark = pytest.mark.unit
 
@@ -101,6 +101,11 @@ def _bilingual_speech():
             # unresolved (no person_id) → must not leak into the filterable payload
             Mention(person_id=None, name="Unknown", surface_forms=["Unknown"], count=1),
         ],
+        entities=[
+            NamedEntity(key="eurovision", surface_forms=["Eurovisión"], count=3),
+            NamedEntity(key="guerra de gaza",
+                        surface_forms=["la guerra de Gaza"], count=1),
+        ],
     )
 
 
@@ -146,10 +151,27 @@ def test_indexes_both_language_blocks_as_separate_points(monkeypatch):
             "d9": "deputy", "isabel-diaz-ayuso": "regional_president"}
         # the speaker is a deputy → their province of election rides on every point
         assert point.payload["constituency"] == "Coruña (A)"
+        # non-person entity keys ride on every point, sorted and deduped
+        assert point.payload["entities"] == ["eurovision", "guerra de gaza"]
 
     # deterministic point ids
     assert by_lang["gl"].id == str(uuid5(_NS, "sid1:0:0"))
     assert by_lang["es"].id == str(uuid5(_NS, "sid1:1:0"))
+
+
+def test_untagged_speech_stamps_empty_entities(monkeypatch):
+    """A speech with no (or not-yet-tagged) entities carries an empty list — the
+    key is always present, so an entities filter simply never matches it."""
+    store = _FakeStore()
+    speech = _bilingual_speech()
+    speech.entities = []
+    monkeypatch.setattr(mod.Speeches, "by_references", lambda refs: [speech], raising=False)
+
+    service = IndexSpeeches(settings=_settings(), embedder=_FakeEmbedder(), store=store)
+    service.execute(["172/000001"])
+
+    _, points = store.upserts[0]
+    assert all(p.payload["entities"] == [] for p in points)
 
 
 def test_non_deputy_speaker_gets_no_constituency_key(monkeypatch):

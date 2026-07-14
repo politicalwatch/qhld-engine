@@ -4,8 +4,9 @@ Scores each parser at the *resolved-filter* level — the end-to-end useful sign
 Because both parsers share the same ``EntityResolver``, the resolver is a
 constant and the metric isolates the difference in *parsing* (slot assignment,
 relative-date reasoning, entity extraction). Per structured slot (speaker, role,
-group, date, lang, legislature) we count TP/FP/FN → precision/recall/F1, plus a
-per-query exact-match and a soft topic-overlap score for the residual query.
+group, constituency, entities, date, lang, legislature) we count TP/FP/FN →
+precision/recall/F1, plus a per-query exact-match and a soft topic-overlap score
+for the residual query.
 
 No I/O — takes predicted filter dicts and the gold labels, so it is unit-testable
 offline. Gold values may be a scalar, a list (the exact multi-value set expected,
@@ -17,7 +18,8 @@ relative-date arithmetic is often a day off).
 from collections import defaultdict
 from datetime import date
 
-SLOTS = ("speaker", "role", "group", "constituency", "date", "lang", "legislature")
+SLOTS = ("speaker", "role", "group", "constituency", "entities", "date", "lang",
+         "legislature")
 _DATE_TOLERANCE_DAYS = 7
 
 
@@ -40,13 +42,16 @@ def date_matches(pred: dict | None, gold: dict, tol_days=_DATE_TOLERANCE_DAYS) -
 
 def value_matches(pred, gold, slot) -> bool:
     """Scalar and list values compare as sets, so a multi-value slot matches
-    regardless of order but fails when a value is missing or extra."""
+    regardless of order but fails when a value is missing or extra. An all-mode
+    filter (``{"all": [...]}``, entities/mentions conjunctions) compares by its
+    member set — the mode itself is not scored."""
     if pred is None:
         return False
     if slot == "date":
         return date_matches(pred, gold)
+    unwrap = lambda v: v["all"] if isinstance(v, dict) and "all" in v else v  # noqa: E731
     as_set = lambda v: set(v) if isinstance(v, list) else {v}  # noqa: E731
-    return as_set(pred) == as_set(gold)
+    return as_set(unwrap(pred)) == as_set(unwrap(gold))
 
 
 def slot_counts(pred_filters: dict, gold: dict, slot: str) -> tuple[int, int, int]:

@@ -1,4 +1,5 @@
-"""Tag a speech with the people it mentions (index-time NER → resolved names).
+"""Tag a speech with the people it mentions (index-time NER → resolved names)
+and the non-person entities it references (``tag_entities``).
 
 Composition seam between the NER adapter (``NerPort``) and the pure resolver
 (``domain.speeches.mentions``). The person index — deputies plus non-deputies
@@ -24,6 +25,7 @@ from qhld_ai.domain.annotations import (
     resolve_interruptions,
     strip_annotations,
 )
+from qhld_ai.domain.entities import aggregate_entities
 from qhld_ai.domain.mentions import (
     COMMON_WORD_SURNAMES,
     build_surname_gazetteer,
@@ -69,6 +71,18 @@ class MentionTagger:
         spans = self._ner.person_spans(spoken)
         excluded = COMMON_WORD_SURNAMES | context_excluded_surnames(spoken)
         return resolve_mentions(spans, self._index, self._threshold, excluded)
+
+    def tag_entities(self, text: str):
+        """Return the ``NamedEntity``s referenced in ``text`` (already the Spanish
+        block): every non-person NER span, aggregated by canonical key. Same
+        annotation-stripping as ``tag`` — the stenographer's stage directions are
+        not the speaker's references.
+
+        Call right after ``tag`` (before ``tag_interruptions``): both run over the
+        identical stripped string, so the NER adapter's doc memo makes the pair
+        cost a single spaCy parse."""
+        spoken = strip_annotations(text)
+        return aggregate_entities(self._ner.entity_spans(spoken))
 
     def tag_interruptions(self, text: str, speaker: str | None = None):
         """Return the ``Interruption``s recorded in ``text``'s stenographer

@@ -186,7 +186,7 @@ class ExtractSpeeches:
             # same intervention under its content identity; drop that copy now
             # that the canonical id is known.
             Speeches.delete(fallback_id)
-        mentions, interruptions = self._mentions(speech_id, blocks, speaker)
+        mentions, entities, interruptions = self._mentions(speech_id, blocks, speaker)
         speech = Speech(
             id=speech_id,
             references=[reference],
@@ -206,6 +206,7 @@ class ExtractSpeeches:
             original_language=original_language,
             mentions=mentions,
             interruptions=interruptions,
+            entities=entities,
         )
         Speeches.save(speech)
 
@@ -225,18 +226,20 @@ class ExtractSpeeches:
         return generate_id(session_link, orador, str(order), text)
 
     def _mentions(self, speech_id, blocks, speaker):
-        """Mentions and interruptions from NER over the Spanish text — unless
-        this intervention was already extracted with the same text (the earlier
-        initiative of an accumulated debate), in which case its stored tags are
-        reused."""
+        """Mentions, entities and interruptions from NER over the Spanish text —
+        unless this intervention was already extracted with the same text (the
+        earlier initiative of an accumulated debate), in which case its stored
+        tags are reused. ``tag_entities`` runs right after ``tag`` so both share
+        one spaCy parse (the NER adapter memoizes the doc)."""
         text = es_text(blocks)
         try:
             existing = Speeches.get(speech_id)
         except DoesNotExist:
             existing = None
         if existing is not None and es_text(existing.speech) == text:
-            return existing.mentions, existing.interruptions
+            return existing.mentions, existing.entities, existing.interruptions
         return (self.tagger.tag(text),
+                self.tagger.tag_entities(text),
                 self.tagger.tag_interruptions(text, speaker=speaker))
 
     # -- API retrieval ---------------------------------------------------------

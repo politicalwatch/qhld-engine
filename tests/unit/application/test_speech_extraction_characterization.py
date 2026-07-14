@@ -70,6 +70,7 @@ def test_extract_speeches_172_000001(monkeypatch, capture):
         mod, "MentionTagger",
         lambda deputies: type("T", (), {
             "tag": staticmethod(lambda text: []),
+            "tag_entities": staticmethod(lambda text: []),
             "tag_interruptions": staticmethod(lambda text, speaker=None: []),
         })())
 

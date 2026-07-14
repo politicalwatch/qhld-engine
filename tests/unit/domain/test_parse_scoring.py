@@ -33,6 +33,20 @@ def test_value_matches_scalar_and_single_item_list_are_equivalent():
     assert ps.value_matches("GS", ["GS"], "group")
 
 
+def test_value_matches_unwraps_all_mode_filter():
+    # An entities/mentions conjunction resolves to {"all": [...]}; it compares by
+    # member set against a plain-list (or scalar) gold — the mode is not scored.
+    assert ps.value_matches({"all": ["gaza", "ucrania"]}, ["ucrania", "gaza"], "entities")
+    assert ps.value_matches({"all": ["gaza"]}, "gaza", "entities")
+    assert not ps.value_matches({"all": ["gaza"]}, ["gaza", "ucrania"], "entities")
+
+
+def test_entities_slot_is_scored():
+    rows = [{"pred_filters": {"entities": "eurovision"},
+             "gold": {"entities": "eurovision"}}]
+    assert ps.score(rows)["slots"]["entities"]["f1"] == 1.0
+
+
 def test_slot_counts_true_positive():
     assert ps.slot_counts({"group": "GS"}, {"group": "GS"}, "group") == (1, 0, 0)
 

@@ -90,6 +90,7 @@ def _stub_environment(monkeypatch, page, saved, saved_sessions, existing=None,
         lambda deputies: type(
             "T", (), {
                 "tag": staticmethod(lambda text: collector.append(text) or []),
+                "tag_entities": staticmethod(lambda text: []),
                 "tag_interruptions":
                     staticmethod(lambda text, speaker=None: []),
             })())
@@ -241,13 +242,14 @@ def test_video_id_arrival_deletes_provisional_twin(monkeypatch):
 
 
 def test_reextraction_with_same_text_reuses_stored_mentions(monkeypatch):
-    from tipi_data.models.speech import Mention, Speech, SpeechText
+    from tipi_data.models.speech import Mention, NamedEntity, Speech, SpeechText
 
     stored = Speech(
         id=generate_id("776209"),
         references=["210/000151"],
         speech=[SpeechText(lang="es", text="Hola.", original=True)],
         mentions=[Mention(person_id="garcia-ana", name="Garcia, Ana", count=1)],
+        entities=[NamedEntity(key="eurovision", surface_forms=["Eurovisión"], count=1)],
     )
     saved = []
     tagged_texts = []
@@ -258,3 +260,4 @@ def test_reextraction_with_same_text_reuses_stored_mentions(monkeypatch):
 
     assert tagged_texts == []  # NER skipped: same intervention, unchanged text
     assert saved[0].mentions == stored.mentions
+    assert saved[0].entities == stored.entities

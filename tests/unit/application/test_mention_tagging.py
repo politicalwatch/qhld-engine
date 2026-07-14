@@ -28,13 +28,18 @@ class FakeDeputy:
 class RecordingNer:
     """Stub NerPort: records the text it was asked to parse, returns fixed spans."""
 
-    def __init__(self, spans):
+    def __init__(self, spans, entities=()):
         self.spans = spans
+        self.entities = list(entities)
         self.seen = None
 
     def person_spans(self, text):
         self.seen = text
         return self.spans
+
+    def entity_spans(self, text):
+        self.seen = text
+        return self.entities
 
 
 SETTINGS = SimpleNamespace(mention_match_threshold=90)
@@ -82,6 +87,24 @@ def test_tag_strips_stenographer_annotations_before_ner():
                            curated=[], nondeputy_speakers=[])
     tagger.tag("Eso lo saben. (El señor Rufián: ¡No es verdad!) Y lo repito.")
     assert ner.seen == "Eso lo saben. Y lo repito."
+
+
+def test_tag_entities_aggregates_non_person_spans():
+    ner = RecordingNer([], entities=["Eurovisión", "la guerra de Gaza",
+                                     "guerra de Gaza", "El Gobierno"])
+    tagger = MentionTagger(DEPUTIES, ner=ner, settings=SETTINGS,
+                           curated=[], nondeputy_speakers=[])
+    entities = tagger.tag_entities("Hablemos de Eurovisión y de la guerra de Gaza.")
+    assert [(e.key, e.count) for e in entities] == [
+        ("guerra de gaza", 2), ("eurovision", 1)]  # furniture dropped
+
+
+def test_tag_entities_strips_stenographer_annotations_before_ner():
+    ner = RecordingNer([], entities=[])
+    tagger = MentionTagger(DEPUTIES, ner=ner, settings=SETTINGS,
+                           curated=[], nondeputy_speakers=[])
+    tagger.tag_entities("Sobre Eurovisión. (Rumores.) Y sobre Gaza.")
+    assert ner.seen == "Sobre Eurovisión. Y sobre Gaza."
 
 
 def test_tag_interruptions_resolves_interrupter_and_their_quote_mentions():
