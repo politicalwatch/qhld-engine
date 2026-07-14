@@ -29,7 +29,10 @@ from thefuzz import fuzz
 # plus any downstream colon (e.g. a page-header footer "...- D C S D :") forms a
 # bogus heading that truncates the speech. MUST be matched WITHOUT re.IGNORECASE,
 # or the uppercase character classes would match lowercase too and reopen the bug.
-SPEAKER_PATTERN = r"(El señor|La señora)\s+([A-ZÁÀÉÈÍÏÓÒÚÜÇÑ][^:()a-zß-ÿ]*?)(\s*\([^)]*\))?:"
+# Newlines are excluded throughout: the normalized text keeps paragraph breaks as
+# "\n\n" and a real heading never spans one.
+SPEAKER_PATTERN = (r"(El señor|La señora) "
+                   r"([A-ZÁÀÉÈÍÏÓÒÚÜÇÑ][^:()a-zß-ÿ\n]*?)( ?\([^)\n]*\))?:")
 
 # The chair interrupting a speaker.
 INTERRUPTER_PATTERNS = (
@@ -37,17 +40,36 @@ INTERRUPTER_PATTERNS = (
     r"(La señora VICEPRESIDENTA|El señor VICEPRESIDENTE)\s+?([a-zá-ú\s+]*[()])*:",
 )
 
-# Boilerplate to strip from extracted speech text (stage directions, page
-# headers/footers, footnotes). Encodes the Diario layout; tune as it changes.
+# Boilerplate to strip from extracted speech text (stage directions, footnotes).
+# Encodes the Diario layout; tune as it changes.
 REMOVABLE_PATTERNS = (
     r"[(]rumores[)]\.?",
     r"[(]aplausos[)]\.?",
     r"\d+ En aplicación del punto Tercero\.7 del Acuerdo de la Mesa del Congreso "
     r"de los Diputados relativo al régimen lingüístico de los debates en los "
-    r"órganos parlamentarios\. ",
-    r"\d+(\s\d+)*\s-\s?[A-Z\s]+\s-\s\d+(\s\d+)*\s-\s[A-Z\s]+\s[A-Z]+\s[A-Z]+\s?:"
-    r"\s?.*?DIARIO DE SESIONES DEL CONGRESO DE LOS DIPUTADOS.*?Pág\.\s?\d+\s",
+    r"órganos parlamentarios\.\s?",
 )
+
+# The margin apparatus pdfminer emits wherever a page break falls (possibly
+# mid-sentence): the "cve: DSCD-…" code printed vertically (one character per
+# line), then the running header down to the page number. Removed from the raw
+# text before paragraphs are reconstructed, so a page turn never fabricates a
+# paragraph break.
+PAGE_JUNK_PATTERN = re.compile(
+    r"(?:\n[^\n]{0,3})*"
+    r"\n[^\S\n]*DIARIO DE SESIONES DEL CONGRESO DE LOS DIPUTADOS\n"
+    r"(?:[^\n]*\n)+?"
+    r"[^\S\n]*Pág\.\s?\d+[^\n]*\s*"
+)
+
+# A line break marks a paragraph boundary only when the line ends a sentence:
+# in the pdfminer output wrapped lines keep a trailing space while
+# paragraph-final lines end flush at their punctuation, and the next paragraph
+# opens with an uppercase/opening character.
+PARAGRAPH_END_CHARS = ".!?…»:\"”)"
+# Digits deliberately excluded: "art.\n5" is a wrapped citation, not a new
+# paragraph, and speech paragraphs opening with a bare number are rare.
+PARAGRAPH_START_PATTERN = re.compile(r"[A-ZÁÀÉÈÍÏÓÒÚÜÇÑ¿¡«\"“—-]")
 
 
 def parse_speaker(orador):
@@ -99,11 +121,13 @@ def build_speaker_regex(orador):
     shortened = " ".join(words)
     if len(re.split(r"[-\s]+", shortened)) >= 2:  # one word alone is too ambiguous
         variants.append(shortened)
-    variants = [re.sub(r"[-\s]+", r"[-\\s]+", v) for v in variants]
+    variants = [re.sub(r"[-\s]+", r"[- ]+", v) for v in variants]
     alternatives = "|".join(rf"\(?{v}\)?" for v in variants)
     # The optional parenthetical before the colon covers the inverted government
-    # form "DÍAZ PÉREZ (vicepresidenta segunda y ministra de …):".
-    return rf"(?<!\()(La señora|El señor)\s+[^:]*?(?:{alternatives})(\s*\([^)]*\))?:"
+    # form "DÍAZ PÉREZ (vicepresidenta segunda y ministra de …):". Newlines are
+    # excluded so a heading match never spans a paragraph break.
+    return (rf"(?<!\()(La señora|El señor) [^:\n]*?(?:{alternatives})"
+            rf"( ?\([^)\n]*\))?:")
 
 
 def build_role_regex(role):
@@ -115,13 +139,53 @@ def build_role_regex(role):
     on the Government's behalf), where no surname-based heading exists."""
     if not role:
         return None
-    role = re.sub(r"\s+", r"\\s+", role.strip().upper())
-    return rf"(La señora|El señor)\s+{role}\s*\([^)]*\):"
+    role = re.sub(r"\s+", " ", role.strip().upper())
+    return rf"(La señora|El señor) {re.escape(role)} ?\([^)\n]*\):"
+
+
+def flatten_paragraphs(raw):
+    """Collapse the raw PDF text to single-spaced paragraphs joined by ``\\n\\n``.
+
+    In the pdfminer output a paragraph break and a mere line wrap both come out
+    as newlines — and how many (one, or a blank line) varies by document vintage:
+    some Diarios interleave blank lines mid-sentence, even inside a speaker
+    heading. What *is* reliable is how the previous line ends: wrapped lines
+    keep a trailing space (justified text), while a paragraph-final line ends
+    flush at its sentence punctuation, with the next paragraph opening
+    upper-case. So every line boundary, blank or not, is judged by that rule.
+
+    Page-boundary junk is stripped first (see ``PAGE_JUNK_PATTERN``) so a page
+    turn joins back per the same rules instead of fabricating a break."""
+    text = PAGE_JUNK_PATTERN.sub("\n", raw)
+    paragraphs = []
+    current = []
+    for line in text.split("\n"):
+        if not line.strip():
+            continue
+        if current and _ends_paragraph(current[-1], line):
+            paragraphs.append(current)
+            current = []
+        current.append(line)
+    if current:
+        paragraphs.append(current)
+    # [^\S\n] = any whitespace but a newline, so non-breaking spaces and tabs
+    # collapse along with plain spaces.
+    return "\n\n".join(
+        re.sub(r"[^\S\n]+", " ", " ".join(p)).strip() for p in paragraphs)
+
+
+def _ends_paragraph(prev, line):
+    """Whether the bare newline between ``prev`` and ``line`` is a paragraph
+    boundary rather than a line wrap."""
+    if prev != prev.rstrip():
+        return False
+    return (prev[-1] in PARAGRAPH_END_CHARS
+            and bool(PARAGRAPH_START_PATTERN.match(line.lstrip())))
 
 
 def normalize_session_text(raw, reference, speaker_regexes=()):
-    """Collapse whitespace, unify dashes and trim the PDF text to the
-    initiative's debate.
+    """Collapse whitespace to single-spaced ``\\n\\n``-separated paragraphs,
+    unify dashes and trim the PDF text to the initiative's debate.
 
     The Diario prints ``(Número de expediente <ref>)`` in several places: the
     opening summary, the debate's own section heading, and — for initiative
@@ -134,7 +198,7 @@ def normalize_session_text(raw, reference, speaker_regexes=()):
     can latch onto a similar heading in someone else's debate.
 
     Without ``speaker_regexes`` the last occurrence is used."""
-    flat = re.sub(r"\s+", " ", raw)
+    flat = flatten_paragraphs(raw)
     flat = flat.replace("‑", "-").replace("–", "-").replace("—", "-")
     candidates = _anchor_candidates(flat, reference)
     if not candidates:
@@ -201,6 +265,11 @@ def is_interrupter(heading):
 def clean_speech(text):
     for pattern in REMOVABLE_PATTERNS:
         text = re.sub(pattern, "", text, flags=re.IGNORECASE | re.MULTILINE)
+    # Tidy what the removals (and interruption stitching) leave behind: doubled
+    # spaces, spaces hugging a paragraph break, paragraphs emptied entirely.
+    text = re.sub(r"[^\S\n]+", " ", text)
+    text = re.sub(r" ?\n ?", "\n", text)
+    text = re.sub(r"\n{2,}", "\n\n", text)
     return text.strip()
 
 

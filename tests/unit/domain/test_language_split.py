@@ -113,3 +113,23 @@ def test_empty_text():
     original_language, blocks = split_languages("   ", _fake_detect())
     assert original_language == "es"
     assert blocks == []
+
+
+def test_split_preserves_paragraph_breaks_in_both_blocks():
+    # The boundary is cut by slicing the text, not re-joining sentences, so the
+    # "\n\n" paragraph separators survive inside each language block.
+    text = (
+        "Grazas, señora presidenta.\n\n"
+        "Quero falar do problema da silicose. Moito obrigado.\n\n"
+        "Muchas gracias, señora presidenta.\n\n"
+        "Quiero hablar del problema de la silicosis. Muchas gracias."
+    )
+    original_language, blocks = split_languages(text, _fake_detect())
+
+    assert original_language == "gl"
+    (_, original, _), (_, castellano, _) = blocks
+    assert original == ("Grazas, señora presidenta.\n\n"
+                        "Quero falar do problema da silicose. Moito obrigado.")
+    assert castellano == (
+        "Muchas gracias, señora presidenta.\n\n"
+        "Quiero hablar del problema de la silicosis. Muchas gracias.")

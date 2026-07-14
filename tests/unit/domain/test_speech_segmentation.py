@@ -211,6 +211,135 @@ def test_clean_speech_removes_stage_directions():
     assert cleaned.startswith("Hola")
 
 
+def test_clean_speech_drops_paragraphs_emptied_by_removal():
+    cleaned = segmentation.clean_speech(
+        "Primer párrafo.\n\n(Aplausos).\n\nSegundo párrafo.")
+    assert cleaned == "Primer párrafo.\n\nSegundo párrafo."
+
+
+# --- flatten_paragraphs ---------------------------------------------------------
+
+def test_flatten_blank_line_is_a_paragraph_break():
+    raw = "Fin del primer párrafo.\n\nEl segundo empieza aquí."
+    assert segmentation.flatten_paragraphs(raw) == (
+        "Fin del primer párrafo.\n\nEl segundo empieza aquí.")
+
+
+def test_flatten_spurious_blank_line_mid_sentence_is_a_wrap():
+    # Some Diario vintages (seen live: DSCD-15-PL-101, 2025) interleave blank
+    # lines mid-sentence; a blank boundary obeys the same end-of-sentence rule
+    # as a bare newline instead of breaking unconditionally.
+    raw = "le agradezco su presencia en \n\nesta interpelación.\n\nQueremos demostrar."
+    assert segmentation.flatten_paragraphs(raw) == (
+        "le agradezco su presencia en esta interpelación.\n\nQueremos demostrar.")
+
+
+def test_flatten_spurious_blank_line_inside_heading_is_a_wrap():
+    # Seen live in DSCD-15-PL-101: a blank line falls inside the heading's
+    # parenthetical; the heading must come out whole or its speech is lost.
+    raw = ("El señor MINISTRO DE ASUNTOS EXTERIORES, UNIÓN EUROPEA Y "
+           "COOPERACIÓN (Albares\n\nBueno): Gracias, presidenta.")
+    flat = segmentation.flatten_paragraphs(raw)
+    assert "(Albares Bueno):" in flat
+    assert re.search(segmentation.SPEAKER_PATTERN, flat)
+
+
+def test_flatten_joins_wrapped_lines_and_collapses_spacing():
+    # Justified Diario lines wrap with a trailing space and double word spacing.
+    raw = "para  defender  os  intereses \ndos  traballadores  galegas."
+    assert segmentation.flatten_paragraphs(raw) == (
+        "para defender os intereses dos traballadores galegas.")
+
+
+def test_flatten_collapses_non_breaking_spaces():
+    # pdfminer emits non-breaking spaces in justified runs; they must collapse
+    # to plain spaces like any other intra-line whitespace.
+    raw = "pode\xa0apreciarse\xa0a  importancia \ndo sector."
+    assert segmentation.flatten_paragraphs(raw) == (
+        "pode apreciarse a importancia do sector.")
+
+
+def test_flatten_bare_newline_after_sentence_end_is_a_paragraph_break():
+    # An intra-speech paragraph break renders as a bare newline whose previous
+    # line ends flush at its punctuation (no trailing space).
+    raw = "Grazas, señora presidenta.\nAntes ca min subiu a esta tribuna."
+    assert segmentation.flatten_paragraphs(raw) == (
+        "Grazas, señora presidenta.\n\nAntes ca min subiu a esta tribuna.")
+
+
+def test_flatten_sentence_end_with_trailing_space_is_a_wrap():
+    # A sentence that happens to end exactly at the right margin keeps the wrap's
+    # trailing space and must NOT break the paragraph.
+    raw = "causada pola inhalación prolongada. \nAlgunhas empresas non actúan."
+    assert segmentation.flatten_paragraphs(raw) == (
+        "causada pola inhalación prolongada. Algunhas empresas non actúan.")
+
+
+def test_flatten_lowercase_continuation_is_a_wrap():
+    # Punctuation + newline followed by a lowercase start (an abbreviation or a
+    # mid-sentence break) does not open a paragraph.
+    raw = "segundo o art.\n5 da norma, e o Real Decreto:\nnon se aplica."
+    assert segmentation.flatten_paragraphs(raw) == (
+        "segundo o art. 5 da norma, e o Real Decreto: non se aplica.")
+
+
+def test_flatten_heading_wrapped_across_lines_stays_whole():
+    raw = ("El  señor  MINISTRO  DE  LA  PRESIDENCIA,  JUSTICIA  Y  MEMORIA  "
+           "DEMOCRÁTICA  (Bolaños \nGarcía): Fíjense qué poco les pido.")
+    flat = segmentation.flatten_paragraphs(raw)
+    assert re.search(segmentation.SPEAKER_PATTERN, flat)
+    assert "(Bolaños García):" in flat
+
+
+def test_flatten_removes_page_junk_and_joins_the_split_sentence():
+    # The margin apparatus (vertical cve code + running header + page number)
+    # lands wherever the page break falls — here mid-sentence — and must vanish
+    # without fabricating a paragraph break.
+    raw = (
+        "que non estabamos cumprindo co noso traballo. Só hai que \n"
+        "\n3\n1\n-\nL\nP\n-\n5\n1\n-\nD\nC\nS\nD\n\n:\ne\nv\nc\n\n \n"
+        "DIARIO DE SESIONES DEL CONGRESO DE LOS DIPUTADOS\n"
+        "PLENO Y DIPUTACIÓN PERMANENTE\n\nNúm. 13 \n\n13 de diciembre de 2023 \n\n"
+        "Pág. 41\n\n"
+        "ver, só hai que ollar agora para as bancadas."
+    )
+    flat = segmentation.flatten_paragraphs(raw)
+    assert flat == ("que non estabamos cumprindo co noso traballo. "
+                    "Só hai que ver, só hai que ollar agora para as bancadas.")
+
+
+def test_flatten_keeps_paragraph_break_at_page_turn():
+    # When the page break coincides with a real paragraph end, the break stays.
+    raw = (
+        "lles interesan entre pouco e absolutamente nada.\n"
+        "\n3\n1\n-\nD\nC\nS\nD\n\n:\ne\nv\nc\n\n \n"
+        "DIARIO DE SESIONES DEL CONGRESO DE LOS DIPUTADOS\n"
+        "PLENO Y DIPUTACIÓN PERMANENTE\n\nNúm. 13 \n\nPág. 42\n\n"
+        "Por certo, dicía o outro día."
+    )
+    assert segmentation.flatten_paragraphs(raw) == (
+        "lles interesan entre pouco e absolutamente nada.\n\n"
+        "Por certo, dicía o outro día.")
+
+
+def test_segmented_speech_keeps_paragraphs():
+    raw = (
+        "DEBATE (Número de expediente 172/000009).\n\n"
+        "El señor PEREZ: Grazas, señora presidenta.\n"
+        "Primer párrafo del discurso que \nsigue en otra línea.\n"
+        "Segundo párrafo.\n\n"
+        "La señora GARCIA: Mi turno."
+    )
+    text = segmentation.normalize_session_text(
+        raw, "172/000009", [_regex("Perez, J (G)"), _regex("Garcia, A (G)")])
+    seg = segmentation.SpeechSegmenter(text)
+    assert seg.next_speech(_regex("Perez, J (G)")) == (
+        "Grazas, señora presidenta.\n\n"
+        "Primer párrafo del discurso que sigue en otra línea.\n\n"
+        "Segundo párrafo.")
+    assert seg.next_speech(_regex("Garcia, A (G)")) == "Mi turno."
+
+
 def test_fix_speaker_typos_corrects_near_match():
     # Diario headings are uppercase; a realistic transcription typo (here a
     # dropped accent) stays uppercase and is normalised to the known surname.

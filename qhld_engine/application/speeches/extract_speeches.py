@@ -43,6 +43,10 @@ log = get_logger(__name__)
 
 INTERVENTIONS_PER_PAGE = 25
 SESSION_PATH = "/public_oficiales/"
+# One sitting's Diario hosts many initiatives' debates, and consecutive
+# references usually come from the same few sittings — cache their raw text so
+# each PDF is downloaded and parsed once per run, not once per reference.
+SESSION_TEXT_CACHE_SIZE = 4
 
 
 class ExtractSpeeches:
@@ -50,6 +54,7 @@ class ExtractSpeeches:
     def __init__(self):
         self.api = CongressApi()
         self._tagger = None
+        self._session_texts = OrderedDict()
 
     @property
     def tagger(self):
@@ -96,7 +101,7 @@ class ExtractSpeeches:
         ]
 
         for session_link, items in self._group_by_session(interventions).items():
-            raw = PDFExtractor(session_link, format_output=False).retrieve()
+            raw = self._session_text(session_link)
             if not raw:
                 log.warning(f"No session text for {reference} at {session_link}")
                 continue
@@ -114,6 +119,19 @@ class ExtractSpeeches:
                 self._extract_one(
                     intervention, session_link, session_id, segmenter,
                     reference, regex, upcoming)
+
+    def _session_text(self, session_link):
+        """The sitting's raw Diario text, LRU-cached per run. A failed download
+        is not cached, so a transient error retries on the next reference."""
+        if session_link in self._session_texts:
+            self._session_texts.move_to_end(session_link)
+            return self._session_texts[session_link]
+        raw = PDFExtractor(session_link, format_output=False).retrieve()
+        if raw:
+            self._session_texts[session_link] = raw
+            if len(self._session_texts) > SESSION_TEXT_CACHE_SIZE:
+                self._session_texts.popitem(last=False)
+        return raw
 
     def _save_session(self, intervention, session_link, session_id, reference):
         """Upsert the sitting that hosts this debate. Metadata is taken from any of

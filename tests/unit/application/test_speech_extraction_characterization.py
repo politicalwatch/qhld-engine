@@ -126,13 +126,28 @@ def test_extract_speeches_172_000001(monkeypatch, capture):
     assert "He escuchado con mucha atención, señor Rego" not in rego[0].text
     assert "He escuchado con mucha atención, señor Rego" not in rego[1].text
 
-    # golden per-block lengths — update deliberately if the logic changes
-    block_lengths = {i: [len(b.text) for b in by_order[i].speech] for i in (1, 2, 3, 4)}
-    assert block_lengths == {
-        1: [10410, 10841],
-        2: [9596],
-        3: [3734, 3838],
-        4: [3688],
+    # the Diario's paragraph structure survives as "\n\n" breaks in every block:
+    # the salutation is its own paragraph, breaks land only at sentence ends,
+    # and a page turn falling mid-sentence is joined, not broken
+    assert rego[0].text.startswith("Grazas, señora presidenta.\n\nAntes ca min")
+    assert rego[1].text.startswith("Gracias, señora presidenta.\n\nAntes que yo")
+    assert "Só hai que ver, só hai que ollar" in rego[0].text  # page turn at Pág. 41
+    for speech in saved:
+        for block in speech.speech:
+            assert "\n\n" in block.text
+            assert not any(
+                p and p[-1] not in ".!?…»:\"”)" for p in block.text.split("\n\n"))
+
+    # golden per-block lengths and paragraph counts — update deliberately if the
+    # logic changes
+    block_shapes = {
+        i: [(len(b.text), len(b.text.split("\n\n"))) for b in by_order[i].speech]
+        for i in (1, 2, 3, 4)}
+    assert block_shapes == {
+        1: [(10424, 15), (10850, 11)],
+        2: [(9608, 13)],
+        3: [(3737, 4), (3842, 5)],
+        4: [(3694, 7)],
     }
 
     # common fields

@@ -37,7 +37,9 @@ def split_languages(text, detect):
     ``[(dominant, text, True)]``; a bilingual co-official speech yields
     ``[(orig_lang, original, True), ("es", castellano, False)]``.
     """
-    sentences = [s for s in _SENTENCE_SPLIT.split(text.strip()) if s]
+    stripped = text.strip()
+    spans = _sentence_spans(stripped)
+    sentences = [stripped[start:end] for start, end in spans]
     if not sentences:
         return "es", []
 
@@ -51,14 +53,30 @@ def split_languages(text, detect):
 
     orig_lang = _argmax_co_lang(sentences, langs)
     k = _boundary(sentences, langs)
-    original = " ".join(sentences[:k])
-    castellano = " ".join(sentences[k:])
+    # Slice the text at the boundary instead of re-joining sentences, so the
+    # separators between them (paragraph breaks included) survive in the blocks.
+    original = stripped[:spans[k - 1][1]] if k else ""
+    castellano = stripped[spans[k][0]:] if k < len(spans) else ""
 
     # k == 0 means the objective put everything on the Spanish side (an
     # es-dominant speech with no real original boundary) → treat as monolingual.
     if not original or len(castellano) / total < _MIN_RATIO:
         return orig_lang, [(orig_lang, text, True)]
     return orig_lang, [(orig_lang, original, True), ("es", castellano, False)]
+
+
+def _sentence_spans(text):
+    """The ``(start, end)`` character span of each sentence in ``text``, with
+    the inter-sentence whitespace excluded from every span."""
+    spans = []
+    start = 0
+    for match in _SENTENCE_SPLIT.finditer(text):
+        if match.start() > start:
+            spans.append((start, match.start()))
+        start = match.end()
+    if start < len(text):
+        spans.append((start, len(text)))
+    return spans
 
 
 def _char_weights(sentences, langs):
