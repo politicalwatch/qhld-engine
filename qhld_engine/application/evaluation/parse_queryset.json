@@ -103,6 +103,19 @@
     {"id": "E4", "dimension": "entity-person-trap", "query": "discursos que mencionen a Zapatero sobre Gaza",
      "gold": {"entities": "gaza"}, "gold_topic": "Gaza"},
     {"id": "E5", "dimension": "entity-trap", "query": "debates sobre el precio de los alquileres",
-     "gold": {}, "gold_topic": "precio de los alquileres"}
+     "gold": {}, "gold_topic": "precio de los alquileres"},
+
+    {"id": "F1", "dimension": "pure-entity", "query": "intervenciones sobre Eurovisión",
+     "gold": {"entities": "eurovision"}, "gold_topic": "Eurovisión"},
+    {"id": "F2", "dimension": "pure-entity", "query": "qué se ha dicho sobre la guerra de Gaza",
+     "gold": {"entities": "guerra de gaza"}, "gold_topic": "guerra de Gaza"},
+    {"id": "F3", "dimension": "entity+topic", "query": "la financiación de Navantia",
+     "gold": {"entities": "navantia"}, "gold_topic": "financiación de Navantia"},
+    {"id": "F4", "dimension": "entity+topic", "query": "debates sobre la constitucionalidad de la ley de amnistía",
+     "gold": {"entities": "ley de amnistia"}, "gold_topic": "constitucionalidad de la ley de amnistía"},
+    {"id": "F5", "dimension": "pure-mention", "query": "discursos que mencionen a Zapatero",
+     "gold": {}, "gold_topic": ""},
+    {"id": "F6", "dimension": "mention+topic", "query": "intervenciones sobre vivienda que mencionen a Rajoy",
+     "gold": {}, "gold_topic": "vivienda"}
   ]
 }
