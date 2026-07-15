@@ -60,6 +60,9 @@ class RunBenchmark:
             "reranker_provider": "noop" if rerank_off else "cross_encoder",
             "reranker_model": "" if rerank_off else reranker,
             "sparse_provider": "none" if sparse in _NO_SPARSE else sparse,
+            # The floor sweep is applied post-hoc in scoring; a floor leaking in
+            # from the env would pre-filter hits and corrupt every sweep point.
+            "reranker_score_floor": 0.0,
         })
         return SearchSpeeches(settings=settings)
 

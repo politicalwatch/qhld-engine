@@ -48,6 +48,12 @@ def retrieval(
              "hybrid fusion — needs that model's hybrid collection indexed)."),
     k: int = typer.Option(10, "--k", help="Retrieval depth per query."),
     hit_at: int = typer.Option(5, "--hit-at", help="hit@k / recall@k metric threshold."),
+    floors: str = typer.Option(
+        "0", "--floors",
+        help="Comma-separated relevance-floor cutoffs (e.g. '0,0.05,0.15'). Applied "
+             "post-hoc to the reranked scores, so one retrieval run per cell scores "
+             "every floor. Ignored on reranker-less cells (cosine/RRF scores are "
+             "not thresholdable)."),
     queryset: str = typer.Option(None, "--queryset", help="Path to a query-set JSON (defaults to the frozen set)."),
     verbose: bool = typer.Option(False, "--verbose", help="Dump top-k per query."),
 ):
@@ -56,6 +62,7 @@ def retrieval(
 
     runner = RunBenchmark(queryset) if queryset else RunBenchmark()
     model_list, reranker_list, sparse_list = _split(models), _split(rerankers), _split(sparse)
+    floor_list = [float(value) for value in _split(floors)]
     typer.echo(
         f"Query set: {len(runner.queryset)} queries · retrieval k={k} · "
         f"metric @{hit_at} · models={model_list} · rerankers={reranker_list} · "
@@ -66,6 +73,13 @@ def retrieval(
             for sp in sparse_list:
                 rows = runner.run(model, reranker=reranker, sparse=sp, k=k)
                 _print_report(_cell_label(model, reranker, sp), rows, hit_at, verbose)
+                if any(floor_list):
+                    if reranker in ("none", "noop"):
+                        typer.echo(
+                            "  [floor sweep skipped: no reranker in this cell — "
+                            "cosine/RRF scores are not thresholdable]")
+                    else:
+                        _print_floor_sweep(rows, floor_list, hit_at)
 
 
 @app.command("pool")
@@ -360,6 +374,46 @@ def _print_report(label, rows, hit_at, verbose):
             f"hit@{hit_at}={metrics[f'hit_at_{hit_at}']:<8} "
             f"recall@{hit_at}={metrics[f'recall_at_{hit_at}']:<8} MAP={metrics['map']}"
         )
+    junk = scoring.suppression(rows)
+    if junk:
+        typer.echo(
+            f"    {'offdomain':<13} n={junk['n']:<3} suppressed={junk['suppressed']}/{junk['n']} "
+            f"max-leak={junk['max_leak'] if junk['max_leak'] is not None else '-'}"
+        )
+
+
+def _print_floor_sweep(rows, floors, hit_at):
+    """One line per floor value, re-scored post-hoc from the cell's single run:
+    retention (recall@k / MAP) per dimension plus junk suppression."""
+    from qhld_engine.domain.evaluation import scoring
+
+    dimensions = list(scoring.aggregate(rows, k=hit_at))
+    typer.echo("\n  floor sweep (post-hoc cutoff on the reranked scores):")
+    typer.echo(
+        f"    {'floor':<7}"
+        + "".join(f"{dim[:16]:>18}" for dim in dimensions)
+        + f"{'offdomain':>18}"
+    )
+    typer.echo(
+        f"    {'':<7}"
+        + "".join(f"{f'R@{hit_at}/MAP':>18}" for _ in dimensions)
+        + f"{'leaks max-score':>18}"
+    )
+    for floor in floors:
+        floored = scoring.apply_floor(rows, floor)
+        agg = scoring.aggregate(floored, k=hit_at)
+        junk = scoring.suppression(floored)
+        cells = "".join(
+            f"{agg[dim][f'recall_at_{hit_at}']:.3f}/{agg[dim]['map']:.3f}".rjust(18)
+            for dim in dimensions
+        )
+        if junk:
+            leaks = junk["n"] - junk["suppressed"]
+            max_leak = junk["max_leak"] if junk["max_leak"] is not None else "-"
+            junk_cell = f"{leaks}/{junk['n']} {max_leak}".rjust(18)
+        else:
+            junk_cell = f"{'-':>18}"
+        typer.echo(f"    {floor:<7}" + cells + junk_cell)
 
 
 def _dump(row):

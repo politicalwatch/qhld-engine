@@ -6,9 +6,20 @@ offline. Absolute cosine scores are not comparable across embedding models, so
 we score by *rank*: MRR + hit@k (first relevant), plus set-aware recall@k and
 average precision (MAP) now that relabeling gives each query several relevant
 references.
+
+Off-domain probes (dimension ``offdomain``, empty ``expected_refs``) invert the
+question: nothing in the corpus is relevant, so every returned hit is a leak.
+They are scored by ``suppression`` (and excluded from the rank metrics and the
+adjudication pool), which only means anything on reranked scores — a relevance
+floor is a cutoff on those, so ``apply_floor`` re-scores a finished run at any
+floor value without re-retrieving.
 """
 
 from collections import defaultdict
+
+# Dimension marking the junk probes: queries with no relevant answer in the
+# corpus, scored by suppression instead of rank.
+OFFDOMAIN = "offdomain"
 
 
 def distinct_refs(hits):
@@ -68,6 +79,46 @@ def average_precision(ranked_refs, expected_refs):
     return score / len(expected)
 
 
+def apply_floor(rows, floor):
+    """Re-score benchmark ``rows`` as if hits scoring below ``floor`` had been
+    dropped: ``hits`` filtered, ``rank``/``ranked_refs``/``score`` recomputed.
+    Because the floor is nothing but a cutoff on the (reranked) hit scores, one
+    retrieval+rerank run yields every floor value's metrics — the sweep is free.
+    A falsy floor returns the rows unchanged (the raw run)."""
+    if not floor:
+        return list(rows)
+    floored = []
+    for row in rows:
+        hits = [hit for hit in (row.get("hits") or []) if hit.score >= floor]
+        rank = first_rank(hits, row["expected_refs"])
+        floored.append({
+            **row,
+            "hits": hits,
+            "rank": rank,
+            "ranked_refs": distinct_refs(hits),
+            "score": round(hits[rank - 1].score, 4) if rank else None,
+        })
+    return floored
+
+
+def suppression(rows):
+    """Junk-suppression stats over the ``offdomain`` probe rows: how many junk
+    queries returned zero hits (``suppressed``/``rate``) and the highest score
+    any junk hit reached (``max_leak`` — the margin a floor must clear). Returns
+    ``None`` when the row set carries no offdomain probes."""
+    junk = [row for row in rows if row.get("dimension") == OFFDOMAIN]
+    if not junk:
+        return None
+    suppressed = sum(1 for row in junk if not row.get("hits"))
+    leaks = [hit.score for row in junk for hit in (row.get("hits") or [])]
+    return {
+        "n": len(junk),
+        "suppressed": suppressed,
+        "rate": round(suppressed / len(junk), 4),
+        "max_leak": round(max(leaks), 4) if leaks else None,
+    }
+
+
 def pool_candidates(rows_by_cell):
     """Merge per-query results from several benchmark cells into an
     adjudication pool: every retrieved reference not yet judged for its query
@@ -82,6 +133,10 @@ def pool_candidates(rows_by_cell):
     pool = {}
     for cell, rows in rows_by_cell.items():
         for row in rows:
+            if row.get("dimension") == OFFDOMAIN:
+                # Junk probes have no relevant answers by construction — their
+                # hits are leaks to suppress, never candidates to adjudicate.
+                continue
             judged = set(row.get("expected_refs") or []) | set(row.get("rejected_refs") or [])
             candidates = pool.setdefault(row["id"], {})
             for position, hit in enumerate(row.get("hits") or [], start=1):
@@ -108,11 +163,15 @@ def pool_candidates(rows_by_cell):
 def aggregate(rows, k=5):
     """Aggregate per dimension (and overall). Each row is a dict carrying
     ``dimension``, ``rank``, ``ranked_refs`` and ``expected_refs``. Returns
-    ``{dimension: {n, mrr, hit_at_<k>, recall_at_<k>, map}}``."""
+    ``{dimension: {n, mrr, hit_at_<k>, recall_at_<k>, map}}``. Rows without
+    ``expected_refs`` (the offdomain probes) are excluded — rank metrics are
+    undefined with no relevant answers and would only drag the averages;
+    those rows are scored by ``suppression`` instead."""
+    scoreable = [row for row in rows if row.get("expected_refs")]
     by_dim = defaultdict(list)
-    for row in rows:
+    for row in scoreable:
         by_dim[row["dimension"]].append(row)
-    by_dim["overall"] = list(rows)
+    by_dim["overall"] = scoreable
 
     result = {}
     for dimension, dim_rows in by_dim.items():

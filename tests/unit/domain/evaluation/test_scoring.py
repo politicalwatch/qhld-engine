@@ -138,3 +138,81 @@ def test_aggregate_per_dimension_and_overall():
     assert agg["crosslingual"]["mrr"] == 0.5     # 1/2
     assert agg["overall"]["n"] == 3
     assert agg["overall"]["mrr"] == round((1.0 + 0.0 + 0.5) / 3, 4)
+
+
+# --- Relevance-floor sweep and off-domain suppression -------------------------
+
+
+def _floor_row(query_id, hits, expected=(), dimension="topical"):
+    return {
+        "id": query_id,
+        "dimension": dimension,
+        "hits": hits,
+        "rank": scoring.first_rank(hits, list(expected)),
+        "ranked_refs": scoring.distinct_refs(hits),
+        "expected_refs": list(expected),
+    }
+
+
+def test_apply_floor_drops_hits_and_recomputes_rank():
+    # Expected ref sits at rank 2 behind a junk hit; the floor removes the junk
+    # hit (0.1) so the ref climbs to rank 1 — and a sub-floor expected hit at
+    # the tail (0.05) drops out of ranked_refs entirely.
+    hits = [_hit("X/9", score=0.1), _hit("A/1", score=0.9), _hit("B/2", score=0.05)]
+    rows = [_floor_row("T1", hits, expected=["A/1", "B/2"])]
+
+    floored = scoring.apply_floor(rows, 0.15)
+
+    assert [h.score for h in floored[0]["hits"]] == [0.9]
+    assert floored[0]["rank"] == 1
+    assert floored[0]["ranked_refs"] == ["A/1"]
+    assert floored[0]["score"] == 0.9
+
+
+def test_apply_floor_zero_is_identity():
+    rows = [_floor_row("T1", [_hit("A/1", score=0.05)], expected=["A/1"])]
+    assert scoring.apply_floor(rows, 0)[0]["rank"] == 1
+    assert scoring.apply_floor(rows, 0.0)[0]["hits"] == rows[0]["hits"]
+
+
+def test_aggregate_excludes_offdomain_probes():
+    rows = [
+        {"dimension": "topical", "rank": 1, "ranked_refs": ["A/1"], "expected_refs": ["A/1"]},
+        {"dimension": "offdomain", "rank": None, "ranked_refs": ["X/9"], "expected_refs": []},
+    ]
+    agg = scoring.aggregate(rows, k=5)
+    assert "offdomain" not in agg
+    assert agg["overall"]["n"] == 1              # junk row doesn't drag the averages
+    assert agg["overall"]["mrr"] == 1.0
+
+
+def test_suppression_counts_leaks_and_margin():
+    rows = [
+        _floor_row("J1", [], dimension="offdomain"),
+        _floor_row("J2", [_hit("X/9", score=0.04), _hit("Y/8", score=0.12)],
+                   dimension="offdomain"),
+        _floor_row("T1", [_hit("A/1", score=0.9)], expected=["A/1"]),  # not junk
+    ]
+    stats = scoring.suppression(rows)
+    assert (stats["n"], stats["suppressed"], stats["rate"]) == (2, 1, 0.5)
+    assert stats["max_leak"] == 0.12
+
+
+def test_suppression_after_floor_reports_full_suppression():
+    rows = [_floor_row("J1", [_hit("X/9", score=0.04)], dimension="offdomain")]
+    stats = scoring.suppression(scoring.apply_floor(rows, 0.15))
+    assert (stats["suppressed"], stats["max_leak"]) == (1, None)
+
+
+def test_suppression_none_without_offdomain_rows():
+    assert scoring.suppression([_floor_row("T1", [_hit("A/1")], expected=["A/1"])]) is None
+
+
+def test_pool_candidates_skips_offdomain_probes():
+    rows = [
+        _row("T1", [_hit("A/1")]),
+        {**_row("J1", [_hit("X/9")]), "dimension": "offdomain"},
+    ]
+    pooled = scoring.pool_candidates({"cell": rows})
+    assert [c["ref"] for c in pooled["T1"]] == ["A/1"]   # unjudged query still pools
+    assert "J1" not in pooled                             # junk never does
