@@ -71,6 +71,47 @@ def test_service_cell_sets_sparse_provider(queryset_file, monkeypatch):
     assert captured["settings"].sparse_provider == "none"
 
 
+def test_service_cell_defaults_bare_reranker_to_cross_encoder(queryset_file, monkeypatch):
+    """A bare model name keeps today's behavior: in-process cross-encoder."""
+    captured = {}
+
+    class _SpyService:
+        def __init__(self, settings=None):
+            captured["settings"] = settings
+
+    monkeypatch.setattr(
+        "qhld_ai.application.search.search_speeches.SearchSpeeches", _SpyService)
+    runner = RunBenchmark(queryset_file)
+
+    runner._service("bge-m3:567m", "BAAI/bge-reranker-v2-m3")
+    assert captured["settings"].reranker_provider == "cross_encoder"
+    assert captured["settings"].reranker_model == "BAAI/bge-reranker-v2-m3"
+
+
+def test_service_cell_reads_provider_prefix_from_reranker_name(queryset_file, monkeypatch):
+    """A registered-provider prefix routes the cell through that adapter, so
+    served/API rerankers can be benchmarked; the prefix is stripped off the
+    model name."""
+    captured = {}
+
+    class _SpyService:
+        def __init__(self, settings=None):
+            captured["settings"] = settings
+
+    monkeypatch.setattr(
+        "qhld_ai.application.search.search_speeches.SearchSpeeches", _SpyService)
+    runner = RunBenchmark(queryset_file)
+
+    runner._service("bge-m3:567m", "rerank_api:jinaai/jina-reranker-v3-mlx")
+    assert captured["settings"].reranker_provider == "rerank_api"
+    assert captured["settings"].reranker_model == "jinaai/jina-reranker-v3-mlx"
+
+    # an unknown prefix is just a model name containing a colon
+    runner._service("bge-m3:567m", "some/reranker:latest")
+    assert captured["settings"].reranker_provider == "cross_encoder"
+    assert captured["settings"].reranker_model == "some/reranker:latest"
+
+
 def test_crosslingual_entry_runs_filtered_and_unfiltered(queryset_file, monkeypatch):
     runner = RunBenchmark(queryset_file)
     fake = _FakeService()

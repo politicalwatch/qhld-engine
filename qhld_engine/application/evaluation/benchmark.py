@@ -22,6 +22,21 @@ DEFAULT_QUERYSET = os.path.join(os.path.dirname(__file__), "queryset.json")
 # Reranker CLI tokens that mean "leave the bi-encoder order untouched".
 _NO_RERANKER = {None, "", "none", "noop"}
 
+
+def _reranker_cell(reranker):
+    """Split an optional ``provider:model`` reranker cell name. A bare model
+    name keeps the in-process cross-encoder, so existing invocations behave
+    unchanged; a registered-provider prefix (e.g.
+    ``rerank_api:jinaai/jina-reranker-v3-mlx``) scores the cell through that
+    adapter instead — its endpoint/credentials come from the usual reranker
+    env settings (``RERANKER_BASE_URL``, ``RERANKER_API_KEY``)."""
+    from qhld_ai.infrastructure.reranker.factory import _PROVIDERS
+
+    prefix, _, rest = reranker.partition(":")
+    if rest and prefix in _PROVIDERS:
+        return prefix, rest
+    return "cross_encoder", reranker
+
 # Sparse CLI tokens that mean "dense-only retrieval, no hybrid fusion".
 _NO_SPARSE = {None, "", "none"}
 
@@ -54,11 +69,14 @@ class RunBenchmark:
         from qhld_ai.infrastructure.config.settings import get_settings
 
         rerank_off = reranker in _NO_RERANKER
+        provider, reranker_model = (
+            ("noop", "") if rerank_off else _reranker_cell(reranker)
+        )
         settings = get_settings().model_copy(update={
             "embedding_provider": "ollama",
             "embedding_model": model,
-            "reranker_provider": "noop" if rerank_off else "cross_encoder",
-            "reranker_model": "" if rerank_off else reranker,
+            "reranker_provider": provider,
+            "reranker_model": reranker_model,
             "sparse_provider": "none" if sparse in _NO_SPARSE else sparse,
             # The floor sweep is applied post-hoc in scoring; a floor leaking in
             # from the env would pre-filter hits and corrupt every sweep point.
