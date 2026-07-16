@@ -27,9 +27,10 @@ def _reranker_cell(reranker):
     """Split an optional ``provider:model`` reranker cell name. A bare model
     name keeps the in-process cross-encoder, so existing invocations behave
     unchanged; a registered-provider prefix (e.g.
-    ``rerank_api:jinaai/jina-reranker-v3-mlx``) scores the cell through that
-    adapter instead — its endpoint/credentials come from the usual reranker
-    env settings (``RERANKER_BASE_URL``, ``RERANKER_API_KEY``)."""
+    ``rerank_api:jinaai/jina-reranker-v3-mlx``, ``voyage:rerank-2.5``) scores
+    the cell through that adapter instead — its endpoint/credentials come from
+    that provider's usual env settings (``RERANKER_BASE_URL`` for local
+    servers, the per-vendor ``*_API_KEY`` for hosted ones)."""
     from qhld_ai.infrastructure.reranker.factory import _PROVIDERS
 
     prefix, _, rest = reranker.partition(":")
