@@ -2602,7 +2602,7 @@ wheels = [
 [[package]]
 name = "qhld-ai"
 version = "0.1.0"
-source = { git = "https://github.com/politicalwatch/qhld-ai.git?branch=feat%2Fparliamentary-speech-analysis#1084d5b90e642486f4f8676e4e9c545025d0f87c" }
+source = { git = "https://github.com/politicalwatch/qhld-ai.git?branch=feat%2Fparliamentary-speech-analysis#ee73555c2de057d2768893c39dc5578252e99b49" }
 dependencies = [
     { name = "dateparser" },
     { name = "es-core-news-lg" },
