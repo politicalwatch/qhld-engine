@@ -18,7 +18,10 @@ dependencies = [
     "thefuzz==0.22.1",
     "tqdm==4.67.1",
     "typer>=0.16.0",
-    "qhld-ai",
+    # Engine indexes + tags: same served providers as the backend (langchain-
+    # openai + fastembed) PLUS spaCy for speaker/mention/entity tagging. The
+    # [engine] extra pulls exactly that — still no torch (reranking is hosted).
+    "qhld-ai[engine]",
     "qhld-data",
     "qhld-tasks",
 ]
@@ -38,6 +41,9 @@ dev = [
     "ipdb==0.13.13",
     "pytest==9.1.1",
     "testcontainers[mongodb]==4.14.2",
+    # Ollama embeddings for local dev only; the prod image runs with --no-dev
+    # and stays on the lean [engine] set above. Other providers install ad-hoc.
+    "qhld-ai[ollama]",
 ]
 
 [tool.pytest.ini_options]
