@@ -77,11 +77,17 @@ class MentionTagger:
         exclusion set only guards DEPUTY resolutions — common-word false friends
         ("Bueno") and surnames the speech's own wording marks as a non-deputy office
         holder (magistrate/judge/prosecutor/Franco-the-dictator); a resolved
-        non-deputy is never dropped."""
+        non-deputy is never dropped.
+
+        Gendered courtesy forms are pooled across the whole speech, so one "la señora
+        Muñoz" settles every bare "Muñoz" in it — which is why the spans are resolved as a
+        batch here rather than one at a time."""
         spoken = strip_annotations(text)
         spans = self._ner.person_spans(spoken)
         excluded = COMMON_WORD_SURNAMES | context_excluded_surnames(spoken)
-        return resolve_mentions(spans, self._index, self._threshold, excluded)
+        return resolve_mentions(
+            spans, self._index, self._threshold, excluded,
+            gender_gate=getattr(self.settings, "mention_gender_gate", True))
 
     def tag_entities(self, text: str):
         """Return the ``NamedEntity``s referenced in ``text`` (already the Spanish
