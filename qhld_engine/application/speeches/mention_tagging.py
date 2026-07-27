@@ -18,7 +18,11 @@ not credit the speaker with mentioning either name). The same annotations feed
 ``tag_interruptions``, which records who interjected instead.
 """
 
-from qhld_ai.application.persons_catalog import load_person_index
+from qhld_ai.application.persons_catalog import (
+    gazetteer_surfaces,
+    load_deputy_aliases,
+    load_person_index,
+)
 from qhld_ai.domain.annotations import (
     extract_annotations,
     parse_utterances,
@@ -44,17 +48,24 @@ def es_text(blocks) -> str:
 
 class MentionTagger:
     def __init__(self, deputies, ner=None, settings=None,
-                 curated=None, nondeputy_speakers=None):
+                 curated=None, nondeputy_speakers=None, deputy_aliases=None):
         self.settings = settings or get_settings()
         self._threshold = self.settings.mention_match_threshold
+        if deputy_aliases is None:
+            deputy_aliases = load_deputy_aliases()
         self._index = load_person_index(
             deputies, self._threshold,
-            curated=curated, nondeputy_speakers=nondeputy_speakers)
+            curated=curated, nondeputy_speakers=nondeputy_speakers,
+            deputy_aliases=deputy_aliases)
         if ner is not None:
             self._ner = ner
         else:
-            gazetteer = (build_surname_gazetteer(deputies)
-                         if getattr(self.settings, "ner_gazetteer", False) else None)
+            # Curated public names go in alongside the surnames: without a pattern the
+            # model never spans them ("Tesh" is out of its vocabulary), so the alias
+            # keys in the index would have nothing to resolve.
+            gazetteer = (build_surname_gazetteer(
+                deputies, extra=gazetteer_surfaces(deputy_aliases))
+                if getattr(self.settings, "ner_gazetteer", False) else None)
             self._ner = create_ner_from_env(self.settings, gazetteer=gazetteer)
 
     def tag(self, text: str):
