@@ -20,7 +20,7 @@ not credit the speaker with mentioning either name). The same annotations feed
 
 from qhld_ai.application.persons_catalog import (
     gazetteer_surfaces,
-    load_deputy_aliases,
+    load_deputy_profiles,
     load_person_index,
 )
 from qhld_ai.domain.annotations import (
@@ -49,16 +49,16 @@ def es_text(blocks) -> str:
 
 class MentionTagger:
     def __init__(self, deputies, ner=None, settings=None,
-                 curated=None, nondeputy_speakers=None, deputy_aliases=None,
+                 curated=None, nondeputy_speakers=None, deputy_profiles=None,
                  speaker_offices=None):
         self.settings = settings or get_settings()
         self._threshold = self.settings.mention_match_threshold
-        if deputy_aliases is None:
-            deputy_aliases = load_deputy_aliases()
+        if deputy_profiles is None:
+            deputy_profiles = load_deputy_profiles()
         self._index = load_person_index(
             deputies, self._threshold,
             curated=curated, nondeputy_speakers=nondeputy_speakers,
-            deputy_aliases=deputy_aliases, speaker_offices=speaker_offices)
+            deputy_profiles=deputy_profiles, speaker_offices=speaker_offices)
         if ner is not None:
             self._ner = ner
         else:
@@ -66,7 +66,7 @@ class MentionTagger:
             # model never spans them ("Tesh" is out of its vocabulary), so the alias
             # keys in the index would have nothing to resolve.
             gazetteer = (build_surname_gazetteer(
-                deputies, extra=gazetteer_surfaces(deputy_aliases))
+                deputies, extra=gazetteer_surfaces(deputy_profiles))
                 if getattr(self.settings, "ner_gazetteer", False) else None)
             # Which surnames a role apposition may claim ("el ministro Cuerpo"). Built
             # from the assembled index, so it covers every tier that holds an office, and
