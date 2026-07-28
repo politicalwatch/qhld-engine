@@ -32,6 +32,7 @@ from qhld_ai.domain.annotations import (
 from qhld_ai.domain.entities import aggregate_entities
 from qhld_ai.domain.mentions import (
     COMMON_WORD_SURNAMES,
+    build_office_surfaces,
     build_surname_gazetteer,
     context_excluded_surnames,
     resolve_mentions,
@@ -67,7 +68,14 @@ class MentionTagger:
             gazetteer = (build_surname_gazetteer(
                 deputies, extra=gazetteer_surfaces(deputy_aliases))
                 if getattr(self.settings, "ner_gazetteer", False) else None)
-            self._ner = create_ner_from_env(self.settings, gazetteer=gazetteer)
+            # Which surnames a role apposition may claim ("el ministro Cuerpo"). Built
+            # from the assembled index, so it covers every tier that holds an office, and
+            # switched on here rather than in the adapter: the adapter takes data, the
+            # application decides policy, exactly as with the gazetteer above.
+            offices = (build_office_surfaces(self._index)
+                       if getattr(self.settings, "ner_role_apposition", True) else None)
+            self._ner = create_ner_from_env(
+                self.settings, gazetteer=gazetteer, office_surfaces=offices)
 
     def tag(self, text: str):
         """Return the ``Mention``s named in ``text`` (already the Spanish block),
@@ -102,6 +110,10 @@ class MentionTagger:
         block): every non-person NER span, aggregated by canonical key. Same
         annotation-stripping as ``tag`` — the stenographer's stage directions are
         not the speaker's references.
+
+        "Non-person" includes what the adapter's post-passes claim: a surname the model
+        mislabelled but the gazetteer or a role apposition recognised is a person, so it no
+        longer reaches the entity index ("El ministro Albares" came back as MISC).
 
         Call right after ``tag`` (before ``tag_interruptions``): both run over the
         identical stripped string, so the NER adapter's doc memo makes the pair
