@@ -36,7 +36,11 @@ class RunMentionsBenchmark:
         """Return a scored row per gold-set speech: predicted vs gold names, split into
         deputies and non-deputies. Predictions are split by ``person_type`` so the deputy
         metric is scored on exactly the deputy predictions (unchanged basis) and the new
-        non-deputy figures are scored separately."""
+        non-deputy figures are scored separately.
+
+        ``pred_counts`` carries the occurrence count of every predicted person, deputy or
+        not, for the entries that carry a gold ``expected_counts`` map — the name split
+        does not apply there, since a count is scored per person."""
         from tipi_data.repositories.speeches import Speeches
 
         tagger = self._tagger_obj()
@@ -53,6 +57,7 @@ class RunMentionsBenchmark:
                 "pred_non_deputies": [
                     m.name for m in mentions if m.person_type != "deputy"],
                 "gold_non_deputies": entry.get("expected_non_deputies", []),
+                "pred_counts": {m.name: m.count for m in mentions},
                 "latency": latency,
             })
         return rows

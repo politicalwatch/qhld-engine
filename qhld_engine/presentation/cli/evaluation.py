@@ -217,7 +217,10 @@ def mentions(
 ):
     """Score index-time mention extraction (NER → resolved people) against the frozen
     gold set: micro P/R/F1 over mentions, per-speech exact-match, latency — reported
-    separately for deputies (unchanged basis) and the new non-deputy figures."""
+    separately for deputies (unchanged basis) and the new non-deputy figures. Speeches
+    whose gold carries occurrence counts also get a COUNTS line, which is the only
+    dimension that can see a change attaching more occurrences to a person the speech
+    already names."""
     from qhld_engine.application.evaluation.mentions_benchmark import RunMentionsBenchmark
     from qhld_engine.domain.evaluation import mentions_scoring
 
@@ -226,6 +229,7 @@ def mentions(
     rows = runner.run()
     deputy = mentions_scoring.score(rows, "pred_deputies", "gold_deputies")
     non_deputy = mentions_scoring.score(rows, "pred_non_deputies", "gold_non_deputies")
+    counts = mentions_scoring.score_counts(rows)
 
     if verbose:
         for row in rows:
@@ -240,6 +244,9 @@ def mentions(
                         typer.echo(f"      missed (FN): {missed}")
                     if spurious:
                         typer.echo(f"      spurious (FP): {spurious}")
+        for miss in mentions_scoring.count_mismatches(rows):
+            typer.echo(f"  {miss['id']} {miss['reference']} [count] "
+                       f"{miss['name']}: gold {miss['gold']}, got {miss['pred']}")
 
     typer.echo("\n=== mentions ===")
     typer.echo(f"{'':<12}{'P':>7}{'R':>7}{'F1':>7}   tp/fp/fn")
@@ -251,6 +258,14 @@ def mentions(
     typer.echo(
         f"  deputy exact-match={deputy['exact_match']}  "
         f"mean-latency={deputy['mean_latency']}s")
+    if counts["pairs"]:
+        typer.echo(
+            f"  COUNTS      exact={counts['exact_rate']} "
+            f"({counts['exact']}/{counts['pairs']} people over "
+            f"{counts['speeches']} speeches)  "
+            f"occurrences {counts['pred_occurrences']}/{counts['gold_occurrences']}  "
+            f"under={counts['under']} over={counts['over']} "
+            f"missing={counts['missing']}")
 
 
 def _parse_models(value):
