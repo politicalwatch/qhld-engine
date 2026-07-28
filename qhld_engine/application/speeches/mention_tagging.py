@@ -79,15 +79,17 @@ class MentionTagger:
         holder (magistrate/judge/prosecutor/Franco-the-dictator); a resolved
         non-deputy is never dropped.
 
-        Gendered courtesy forms are pooled across the whole speech, so one "la señora
-        Muñoz" settles every bare "Muñoz" in it — which is why the spans are resolved as a
-        batch here rather than one at a time."""
+        Two signals read the whole speech, which is why the spans are resolved as a batch
+        here rather than one at a time: gendered courtesy forms are pooled, so one "la
+        señora Muñoz" settles every bare "Muñoz"; and a surname still tied afterwards is
+        attached to the one tied person the speech names elsewhere in full."""
         spoken = strip_annotations(text)
         spans = self._ner.person_spans(spoken)
         excluded = COMMON_WORD_SURNAMES | context_excluded_surnames(spoken)
         return resolve_mentions(
             spans, self._index, self._threshold, excluded,
-            gender_gate=getattr(self.settings, "mention_gender_gate", True))
+            gender_gate=getattr(self.settings, "mention_gender_gate", True),
+            coreference=getattr(self.settings, "mention_speech_coreference", True))
 
     def tag_entities(self, text: str):
         """Return the ``NamedEntity``s referenced in ``text`` (already the Spanish
