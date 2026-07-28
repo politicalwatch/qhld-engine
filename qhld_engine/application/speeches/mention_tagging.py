@@ -101,6 +101,7 @@ class MentionTagger:
         return resolve_mentions(
             spans, self._index, self._threshold, excluded,
             gender_gate=getattr(self.settings, "mention_gender_gate", True),
+            gender_veto=getattr(self.settings, "mention_gender_veto", True),
             coreference=getattr(self.settings, "mention_speech_coreference", True),
             text=spoken,
             role_apposition=getattr(self.settings, "mention_role_apposition", True))
