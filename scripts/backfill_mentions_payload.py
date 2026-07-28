@@ -3,7 +3,7 @@ points, so the mentions filter reflects what Mongo actually holds.
 
 Mentions are speech-level (like entities), so one ``set_payload`` per speech (selected
 by a ``speech_id`` filter) covers every chunk-point. Run AFTER the Mongo-side tagging is
-correct (``qhld speeches backfill-mentions``); this script only copies, it never tags.
+correct (``qhld speeches tag-mentions``); this script only copies, it never tags.
 
 Why it exists: unlike ``entities``, the mention payload was never re-stamped after the
 annotation-stripping change, which stopped crediting a speaker with "mentioning" whoever

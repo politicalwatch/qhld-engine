@@ -62,7 +62,7 @@ def test_es_text_empty_when_no_spanish_block():
 def test_tag_runs_ner_and_resolves():
     ner = RecordingNer(["el señor Rufián"])
     tagger = MentionTagger(DEPUTIES, ner=ner, settings=SETTINGS,
-                           curated=[], nondeputy_speakers=[])
+                           curated=[], nondeputy_speakers=[], speaker_offices=[])
     mentions = tagger.tag("El señor Rufián intervino.")
     assert ner.seen == "El señor Rufián intervino."
     assert [m.name for m in mentions] == ["Rufián Romero, Gabriel"]
@@ -71,7 +71,7 @@ def test_tag_runs_ner_and_resolves():
 def test_tag_speech_uses_spanish_block():
     ner = RecordingNer(["Rufián"])
     tagger = MentionTagger(DEPUTIES, ner=ner, settings=SETTINGS,
-                           curated=[], nondeputy_speakers=[])
+                           curated=[], nondeputy_speakers=[], speaker_offices=[])
     speech = SimpleNamespace(speech=[
         SpeechText(lang="ca", text="original en català", original=True),
         SpeechText(lang="es", text="traducción con Rufián", original=False),
@@ -84,7 +84,7 @@ def test_tag_speech_uses_spanish_block():
 def test_tag_strips_stenographer_annotations_before_ner():
     ner = RecordingNer([])
     tagger = MentionTagger(DEPUTIES, ner=ner, settings=SETTINGS,
-                           curated=[], nondeputy_speakers=[])
+                           curated=[], nondeputy_speakers=[], speaker_offices=[])
     tagger.tag("Eso lo saben. (El señor Rufián: ¡No es verdad!) Y lo repito.")
     assert ner.seen == "Eso lo saben. Y lo repito."
 
@@ -93,7 +93,7 @@ def test_tag_entities_aggregates_non_person_spans():
     ner = RecordingNer([], entities=["Eurovisión", "la guerra de Gaza",
                                      "guerra de Gaza", "El Gobierno"])
     tagger = MentionTagger(DEPUTIES, ner=ner, settings=SETTINGS,
-                           curated=[], nondeputy_speakers=[])
+                           curated=[], nondeputy_speakers=[], speaker_offices=[])
     entities = tagger.tag_entities("Hablemos de Eurovisión y de la guerra de Gaza.")
     assert [(e.key, e.count) for e in entities] == [
         ("guerra de gaza", 2), ("eurovision", 1)]  # furniture dropped
@@ -102,7 +102,7 @@ def test_tag_entities_aggregates_non_person_spans():
 def test_tag_entities_strips_stenographer_annotations_before_ner():
     ner = RecordingNer([], entities=[])
     tagger = MentionTagger(DEPUTIES, ner=ner, settings=SETTINGS,
-                           curated=[], nondeputy_speakers=[])
+                           curated=[], nondeputy_speakers=[], speaker_offices=[])
     tagger.tag_entities("Sobre Eurovisión. (Rumores.) Y sobre Gaza.")
     assert ner.seen == "Sobre Eurovisión. Y sobre Gaza."
 
@@ -111,7 +111,7 @@ def test_tag_interruptions_resolves_interrupter_and_their_quote_mentions():
     deputies = DEPUTIES + [FakeDeputy("d2", "Tellado Filgueira, Miguel")]
     ner = RecordingNer(["Rufián"])  # spans found inside the interruption quote
     tagger = MentionTagger(deputies, ner=ner, settings=SETTINGS,
-                           curated=[], nondeputy_speakers=[])
+                           curated=[], nondeputy_speakers=[], speaker_offices=[])
     interruptions = tagger.tag_interruptions(
         "Señorías… (Rumores.―El señor Tellado Filgueira: Rufián lo dijo)")
     assert ner.seen == "Rufián lo dijo"  # NER ran over the quote, not the speech
@@ -123,7 +123,7 @@ def test_tag_interruptions_resolves_interrupter_and_their_quote_mentions():
 def test_tag_interruptions_skips_the_speaker_themself():
     ner = RecordingNer([])
     tagger = MentionTagger(DEPUTIES, ner=ner, settings=SETTINGS,
-                           curated=[], nondeputy_speakers=[])
+                           curated=[], nondeputy_speakers=[], speaker_offices=[])
     interruptions = tagger.tag_interruptions(
         "Gracias. (Aplausos.―Risas del señor Rufián Romero)",
         speaker="Rufián Romero, Gabriel")
@@ -137,7 +137,8 @@ def test_tag_resolves_non_deputy_from_curated_and_bootstrap():
         DEPUTIES, ner=ner, settings=SETTINGS,
         curated=[{"person_id": "isabel-diaz-ayuso", "person_type": "regional_president",
                   "name": "Díaz Ayuso, Isabel", "aliases": ["Ayuso"]}],
-        nondeputy_speakers=[{"speaker": "Aagesen Muñoz, Sara", "role": "Ministra"}])
+        nondeputy_speakers=[{"speaker": "Aagesen Muñoz, Sara", "role": "Ministra"}],
+        speaker_offices=[])
     by_type = {m.person_type: m.name for m in tagger.tag("...")}
     assert by_type["deputy"] == "Rufián Romero, Gabriel"
     assert by_type["regional_president"] == "Díaz Ayuso, Isabel"

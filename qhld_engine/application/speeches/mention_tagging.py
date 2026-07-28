@@ -48,7 +48,8 @@ def es_text(blocks) -> str:
 
 class MentionTagger:
     def __init__(self, deputies, ner=None, settings=None,
-                 curated=None, nondeputy_speakers=None, deputy_aliases=None):
+                 curated=None, nondeputy_speakers=None, deputy_aliases=None,
+                 speaker_offices=None):
         self.settings = settings or get_settings()
         self._threshold = self.settings.mention_match_threshold
         if deputy_aliases is None:
@@ -56,7 +57,7 @@ class MentionTagger:
         self._index = load_person_index(
             deputies, self._threshold,
             curated=curated, nondeputy_speakers=nondeputy_speakers,
-            deputy_aliases=deputy_aliases)
+            deputy_aliases=deputy_aliases, speaker_offices=speaker_offices)
         if ner is not None:
             self._ner = ner
         else:
@@ -79,17 +80,22 @@ class MentionTagger:
         holder (magistrate/judge/prosecutor/Franco-the-dictator); a resolved
         non-deputy is never dropped.
 
-        Two signals read the whole speech, which is why the spans are resolved as a batch
+        Three signals read the whole speech, which is why the spans are resolved as a batch
         here rather than one at a time: gendered courtesy forms are pooled, so one "la
-        señora Muñoz" settles every bare "Muñoz"; and a surname still tied afterwards is
-        attached to the one tied person the speech names elsewhere in full."""
+        señora Muñoz" settles every bare "Muñoz"; a role apposition names an office, so one
+        "el presidente Sánchez" settles every bare "Sánchez"; and a surname still tied
+        afterwards is attached to the one tied person the speech names elsewhere in full.
+        The role apposition is why the spoken text goes in alongside the spans — the role
+        word sits outside the span the NER returns."""
         spoken = strip_annotations(text)
         spans = self._ner.person_spans(spoken)
         excluded = COMMON_WORD_SURNAMES | context_excluded_surnames(spoken)
         return resolve_mentions(
             spans, self._index, self._threshold, excluded,
             gender_gate=getattr(self.settings, "mention_gender_gate", True),
-            coreference=getattr(self.settings, "mention_speech_coreference", True))
+            coreference=getattr(self.settings, "mention_speech_coreference", True),
+            text=spoken,
+            role_apposition=getattr(self.settings, "mention_role_apposition", True))
 
     def tag_entities(self, text: str):
         """Return the ``NamedEntity``s referenced in ``text`` (already the Spanish
