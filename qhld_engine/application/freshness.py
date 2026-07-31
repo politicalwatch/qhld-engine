@@ -25,6 +25,10 @@ DEPUTIES = 'deputies'
 PARLIAMENTARY_GROUPS = 'parliamentary-groups'
 INITIATIVES = 'initiatives'
 
+# Not a dataset: the moment a whole extraction run finished. Recorded by the last
+# step of the pipeline, so anything that stops the pipeline leaves it where it was.
+EXTRACTION = 'extraction'
+
 
 def _cache_keys(dataset):
     """The backend cache keys this dataset invalidates. Initiatives are served
@@ -34,6 +38,7 @@ def _cache_keys(dataset):
         DEPUTIES: (settings.cache_deputies, settings.cache_deputies_compact),
         PARLIAMENTARY_GROUPS: (settings.cache_groups, settings.cache_groups_compact),
         INITIATIVES: (),
+        EXTRACTION: (),
     }
     return keys[dataset]
 

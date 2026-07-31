@@ -1,4 +1,5 @@
 import json
+from qhld_engine.extractors.errors import ExtractionError
 from qhld_engine.logger import get_logger
 
 from tipi_data.repositories.parliamentarygroups import ParliamentaryGroups
@@ -17,9 +18,12 @@ class GroupsExtractor:
                 self.calculate_composition()
         except FileNotFoundError:
             log.error('Cannot import parliamentary groups due file not found')
+            raise ExtractionError(f'No parliamentary groups file at {groups_file}')
+        except ExtractionError:
+            raise
         except Exception as e:
             log.error(f'Cannot import parliamentary groups due "{e}"')
-        pass
+            raise ExtractionError('The parliamentary groups file could not be imported')
 
     def __save(self, groups):
         for g in groups:
@@ -39,9 +43,18 @@ class GroupsExtractor:
                 log.error(f'Cannot create parliamentary group {g["_id"]} "{e}"')
 
     def calculate_composition(self):
-        for group in ParliamentaryGroups.get_all():
+        groups = ParliamentaryGroups.get_all()
+        calculated = 0
+        for group in groups:
             try:
                 group['composition'] = ParliamentaryGroups.get_composition(group['shortname'])
                 ParliamentaryGroups.save(group)
+                calculated += 1
             except Exception as e:
                 log.error(f'Cannot calculate composition for parliamentary group {group["_id"]} "{e}"')
+
+        # One group failing is tolerable; none of them succeeding means the step did
+        # nothing, which must not be reported as a completed run.
+        if groups and not calculated:
+            log.error(f'Could not calculate the composition of any of the {len(groups)} groups.')
+            raise ExtractionError('No parliamentary group composition could be calculated')

@@ -71,6 +71,30 @@ def test_extractor_default_runs(monkeypatch):
     task.run.assert_called_once_with()
 
 
+def test_extractor_failure_exits_non_zero(monkeypatch):
+    """The scheduler only learns that an extraction failed from the exit code, so a
+    step that could not do its work must not exit 0."""
+    from qhld_engine.extractors.errors import ExtractionError
+
+    task = _patch_class(monkeypatch, "qhld_engine.extractors.extractor.ExtractorTask")
+    task.members.side_effect = ExtractionError("nothing extracted")
+
+    result = runner.invoke(app, ["extractor", "members"])
+
+    assert result.exit_code != 0
+
+
+def test_extractor_mark_complete_stamps_the_run(monkeypatch):
+    stamped = []
+    monkeypatch.setattr(
+        "qhld_engine.application.freshness.mark_refreshed", stamped.append)
+
+    result = runner.invoke(app, ["extractor", "mark-complete"])
+
+    assert result.exit_code == 0, result.output
+    assert stamped == ["extraction"]
+
+
 # --- tagger ----------------------------------------------------------------
 
 TAGGER_CASES = [

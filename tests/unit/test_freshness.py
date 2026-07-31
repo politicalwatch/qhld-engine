@@ -13,11 +13,13 @@ import pytest
 from qhld_engine.application import freshness
 from qhld_engine.application.freshness import (
     DEPUTIES,
+    EXTRACTION,
     INITIATIVES,
     PARLIAMENTARY_GROUPS,
     mark_refreshed,
 )
 from qhld_engine.extractors import extractor as extractor_module
+from qhld_engine.extractors.errors import ExtractionError
 from qhld_engine.extractors.extractor import ExtractorTask
 
 pytestmark = pytest.mark.unit
@@ -56,6 +58,14 @@ def test_initiatives_are_stamped_but_flush_nothing(spy):
     mark_refreshed(INITIATIVES)
 
     assert spy["touched"] == ["initiatives"]
+    assert spy["deleted"] == []
+
+
+def test_completion_is_stamped_and_flushes_nothing(spy):
+    # Not a dataset: it records that a whole run finished, and owns no cache keys.
+    mark_refreshed(EXTRACTION)
+
+    assert spy["touched"] == ["extraction"]
     assert spy["deleted"] == []
 
 
@@ -175,3 +185,36 @@ def test_run_marks_every_dataset_once(refreshed):
 
     # run() goes through the same methods, so no dataset is stamped twice.
     assert refreshed == [DEPUTIES, PARLIAMENTARY_GROUPS, INITIATIVES]
+
+
+class _Failing:
+    """An extractor that cannot do its work."""
+
+    def __getattr__(self, name):
+        def fail(*args):
+            raise ExtractionError("nothing extracted")
+        return fail
+
+
+def test_a_failed_extraction_stamps_nothing(refreshed):
+    # The stamp sits after the extractor call, so a raise unwinds past it. This is
+    # what keeps "when was the data refreshed" from meaning "when did we last try".
+    task = _Task(members_extractor=_Failing())
+
+    with pytest.raises(ExtractionError):
+        task.members()
+
+    assert refreshed == []
+
+
+def test_run_stops_at_the_first_failure(refreshed):
+    task = _Task(members_extractor=_Failing(), groups_extractor=_Recorder(),
+                 initiatives_extractor=_Recorder())
+
+    with pytest.raises(ExtractionError):
+        task.run()
+
+    # Nothing downstream ran, so nothing downstream claims to be fresh either.
+    assert refreshed == []
+    assert task.groups_extractor.calls == []
+    assert task.initiatives_extractor.calls == []

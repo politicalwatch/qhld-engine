@@ -23,6 +23,19 @@ def main(ctx: typer.Context):
         _task().run()
 
 
+@app.command("mark-complete")
+def mark_complete():
+    """Record that a whole extraction run finished.
+
+    Meant as the last step of the daily pipeline: whatever stops the pipeline early
+    leaves this timestamp where it was, which is what makes it mean "the data is
+    current" rather than "extraction started".
+    """
+    from qhld_engine.application.freshness import EXTRACTION, mark_refreshed
+
+    mark_refreshed(EXTRACTION)
+
+
 @app.command("members")
 def members():
     _task().members()

@@ -4,6 +4,8 @@ from concurrent.futures import as_completed
 
 from tipi_data.repositories.parliamentarygroups import ParliamentaryGroups
 
+from qhld_engine.extractors.errors import ExtractionError
+
 from .congress_api import CongressApi, CongressError, CongressForbiddenError
 from .deputy_extractors.deputy_extractor import DeputyExtractor
 
@@ -25,10 +27,10 @@ class MembersExtractor:
             response = self.api.get_deputies()
         except CongressForbiddenError:
             log.error('Error 403 extracting the deputies.')
-            return
+            raise ExtractionError('The deputies list answered 403')
         except CongressError:
             log.error('Unknown error extracting the deputies.')
-            return
+            raise ExtractionError('The deputies list could not be read')
 
         json_data = response.json()
 
@@ -44,7 +46,17 @@ class MembersExtractor:
         for reference in self.references:
             future_requests.append(self.api.get_deputy(reference))
 
+        extracted = 0
         for future in as_completed(future_requests):
             response = future.result()
             if response.ok:
                 DeputyExtractor(response, self.parliamentarygroups).extract()
+                extracted += 1
+            else:
+                log.error(f'Error {response.status_code} extracting a deputy on {response.url}')
+
+        # A deputy failing on its own is tolerable; the whole roster failing is not,
+        # and it looks identical to a clean run unless we say so.
+        if self.references and not extracted:
+            log.error(f'None of the {len(self.references)} deputies could be extracted.')
+            raise ExtractionError('No deputy could be extracted')
