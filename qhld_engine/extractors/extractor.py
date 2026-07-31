@@ -1,5 +1,11 @@
 from importlib import import_module as im
 
+from qhld_engine.application.freshness import (
+    DEPUTIES,
+    INITIATIVES,
+    PARLIAMENTARY_GROUPS,
+    mark_refreshed,
+)
 from qhld_engine.infrastructure.config.settings import get_settings
 from qhld_engine.logger import get_logger
 
@@ -24,12 +30,18 @@ class ExtractorTask():
 
     def members(self):
         self.members_extractor.extract()
+        # Groups keep a stored 'composition' derived from the deputies, but only
+        # calculate_composition_groups() recomputes it — so nothing about the
+        # groups changed here, and their cached response is still valid.
+        mark_refreshed(DEPUTIES)
 
     def load_groups(self, groups_file):
         self.groups_extractor.load(groups_file)
+        mark_refreshed(PARLIAMENTARY_GROUPS)
 
     def calculate_composition_groups(self):
         self.groups_extractor.calculate_composition()
+        mark_refreshed(PARLIAMENTARY_GROUPS)
 
     def totals(self):
         self.initiatives_extractor.extract_references()
@@ -37,6 +49,7 @@ class ExtractorTask():
 
     def initiatives(self):
         self.initiatives_extractor.extract()
+        mark_refreshed(INITIATIVES)
 
     def votes(self):
         self.initiatives_extractor.extract_references()
@@ -69,6 +82,7 @@ class ExtractorTask():
     def all_initiatives(self):
         self.initiatives_extractor.extract_all_references()
         self.initiatives_extractor.extract_initiatives()
+        mark_refreshed(INITIATIVES)
 
     def all_votes(self):
         self.initiatives_extractor.extract_all_references()

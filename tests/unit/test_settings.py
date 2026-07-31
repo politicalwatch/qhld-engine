@@ -81,3 +81,27 @@ def test_defaults(monkeypatch):
     assert settings.use_alerts is False
     assert settings.limit_date_to_sync == "2000-01-01"
     assert settings.loglevel == "INFO"
+
+
+def test_backend_cache_defaults_match_the_backend(monkeypatch):
+    """These are tipi_backend's own defaults, repeated here so both sides agree on
+    where the cache lives and what the keys are called with no .env entries at all.
+    If the backend ever changes one, this test is what should fail."""
+    for key in (
+        "CACHE_REDIS_HOST",
+        "CACHE_REDIS_PORT",
+        "CACHE_REDIS_PASSWORD",
+        "CACHE_REDIS_DB",
+        "CACHE_DEPUTIES",
+        "CACHE_DEPUTIES_COMPACT",
+        "CACHE_GROUPS",
+    ):
+        monkeypatch.delenv(key, raising=False)
+    settings = Settings(_env_file=None)
+    assert settings.cache_redis_host == "redis"
+    assert settings.cache_redis_port == 6379
+    assert settings.cache_redis_password == ""
+    assert settings.cache_redis_db == 8
+    assert settings.cache_deputies == "deputies"
+    assert settings.cache_deputies_compact == "deputies-compact"
+    assert settings.cache_groups == "parliamentary-groups"

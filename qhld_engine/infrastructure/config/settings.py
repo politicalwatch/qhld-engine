@@ -36,6 +36,18 @@ class Settings(BaseSettings):
     redis_db_check: int = 0
     redis_db_denylist: int = 1
 
+    # Backend response cache (Redis DB 8). The engine only ever DELETEs from it,
+    # to drop the deputies/groups entries it just made stale. Field names and
+    # defaults mirror tipi_backend's Settings one-for-one — same env vars, same
+    # values — so a single .env keeps both sides pointing at the same keys.
+    cache_redis_host: str = "redis"
+    cache_redis_port: int = 6379
+    cache_redis_password: str = ""
+    cache_redis_db: int = 8
+    cache_deputies: str = "deputies"
+    cache_deputies_compact: str = "deputies-compact"
+    cache_groups: str = "parliamentary-groups"
+
     # All AI/retrieval configuration (LLM, embeddings, Qdrant, query parsing,
     # reranking, sparse/hybrid, NER/mentions) lives in qhld-ai's own Settings
     # (qhld_ai.infrastructure.config.settings); both classes read the same .env.

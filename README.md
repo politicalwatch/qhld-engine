@@ -29,6 +29,22 @@ If you want only flush a specific db:
 select [number db]
 flushdb
 ```
+Note `flushall` also empties the backend's response cache (DB 8) — harmless, but the
+API will rebuild it from Mongo on the next request.
+
+Backend cache invalidation
+=======
+Extracting members, groups or initiatives records the refresh in Mongo
+(`dataset_updates`) and deletes the backend's now-stale cached responses
+(`deputies`, `deputies-compact`, `parliamentary-groups` in Redis DB 8), so the API
+serves the new data immediately instead of waiting out its TTL. Both halves are
+best-effort: if Redis or Mongo is unreachable the run logs a warning and continues.
+
+The `CACHE_REDIS_*` and `CACHE_*` key variables are shared with the backend — set
+them to the same values on both sides, or leave them unset (the defaults already
+match the compose setup).
+
+The refresh timestamps are served by the backend at `GET /`.
 
 Available Commands
 =======
