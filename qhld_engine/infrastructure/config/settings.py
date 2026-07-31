@@ -47,6 +47,7 @@ class Settings(BaseSettings):
     cache_deputies: str = "deputies"
     cache_deputies_compact: str = "deputies-compact"
     cache_groups: str = "parliamentary-groups"
+    cache_groups_compact: str = "parliamentary-groups-compact"
 
     # All AI/retrieval configuration (LLM, embeddings, Qdrant, query parsing,
     # reranking, sparse/hybrid, NER/mentions) lives in qhld-ai's own Settings

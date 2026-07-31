@@ -32,7 +32,7 @@ def _cache_keys(dataset):
     settings = get_settings()
     keys = {
         DEPUTIES: (settings.cache_deputies, settings.cache_deputies_compact),
-        PARLIAMENTARY_GROUPS: (settings.cache_groups,),
+        PARLIAMENTARY_GROUPS: (settings.cache_groups, settings.cache_groups_compact),
         INITIATIVES: (),
     }
     return keys[dataset]

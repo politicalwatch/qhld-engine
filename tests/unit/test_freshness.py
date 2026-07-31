@@ -43,11 +43,12 @@ def test_deputies_stamps_and_drops_both_deputy_keys(spy):
     assert sorted(spy["deleted"]) == ["deputies", "deputies-compact"]
 
 
-def test_groups_stamps_and_drops_only_the_groups_key(spy):
+def test_groups_stamps_and_drops_only_the_groups_keys(spy):
     mark_refreshed(PARLIAMENTARY_GROUPS)
 
     assert spy["touched"] == ["parliamentary-groups"]
-    assert spy["deleted"] == ["parliamentary-groups"]
+    assert sorted(spy["deleted"]) == ["parliamentary-groups",
+                                      "parliamentary-groups-compact"]
 
 
 def test_initiatives_are_stamped_but_flush_nothing(spy):
@@ -64,7 +65,7 @@ def test_cache_keys_follow_the_settings(monkeypatch, spy):
 
     mark_refreshed(PARLIAMENTARY_GROUPS)
 
-    assert spy["deleted"] == ["grupos"]
+    assert "grupos" in spy["deleted"]
 
 
 def test_unknown_dataset_is_a_programming_error(spy):

@@ -95,6 +95,7 @@ def test_backend_cache_defaults_match_the_backend(monkeypatch):
         "CACHE_DEPUTIES",
         "CACHE_DEPUTIES_COMPACT",
         "CACHE_GROUPS",
+        "CACHE_GROUPS_COMPACT",
     ):
         monkeypatch.delenv(key, raising=False)
     settings = Settings(_env_file=None)
@@ -105,3 +106,4 @@ def test_backend_cache_defaults_match_the_backend(monkeypatch):
     assert settings.cache_deputies == "deputies"
     assert settings.cache_deputies_compact == "deputies-compact"
     assert settings.cache_groups == "parliamentary-groups"
+    assert settings.cache_groups_compact == "parliamentary-groups-compact"
