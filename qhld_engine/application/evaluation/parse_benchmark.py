@@ -8,9 +8,14 @@ the group aliases + an LLM for the "llm" parser), so run it on the host per the
 standing benchmark-on-host preference:
 
     QDRANT_HOST=localhost OLLAMA_BASE_URL=http://localhost:11434 \\
-    EMBEDDING_MODEL=bge-m3:567m \\
+    EMBEDDING_MODEL=bge-m3:567m QDRANT_QUANTIZATION=tq4 \\
     QUERY_PARSER_LLM_PROVIDER=ollama QUERY_PARSER_LLM_MODEL=gpt-oss:20b \\
     uv run qhld eval parse --parsers llm,rule_based
+
+The corpus distinct values are read from a collection whose name is derived from
+the retrieval settings, so every one of them has to be named here — including
+``QDRANT_QUANTIZATION``. Omit it and the resolver reads a collection that does not
+exist, which shows up as an empty vocabulary rather than as an error.
 """
 
 import json
