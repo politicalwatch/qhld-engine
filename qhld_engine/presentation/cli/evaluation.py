@@ -158,6 +158,14 @@ def parse(
         1, "--repeats", min=1,
         help="Runs per model; the summary reports the median of each metric to smooth "
              "latency noise (results are otherwise ~stable at temperature 0)."),
+    reasoning: str = typer.Option(
+        None, "--reasoning",
+        help="Comma-separated reasoning-effort levels to sweep each model over "
+             "(e.g. 'none,low,medium'); every model runs at every level. Values are "
+             "model-specific and passed straight through — gpt-5.4-nano and "
+             "gpt-5.6-luna take none/low/medium/high/xhigh. Omit for the provider "
+             "default. NB: 'none' is also the only level where temperature reaches "
+             "the API on gpt-5 models, so that cell differs in two ways."),
     baseline: bool = typer.Option(
         True, "--baseline/--no-baseline",
         help="In --models mode, also run the rule_based parser as a $0/fast reference."),
@@ -183,19 +191,27 @@ def parse(
         return
 
     specs = _parse_models(models)
+    # One cell per (model x effort). No --reasoning means a single cell per model at
+    # whatever the provider defaults to, so the output is unchanged for callers that
+    # don't ask for the sweep.
+    efforts = _split(reasoning) if reasoning else [None]
     typer.echo(
         f"Parse A/B · {len(runner.queries)} queries · today={runner.today.isoformat()} "
         f"· repeats={repeats} · models={[label for _, _, label in specs]}"
+        + (f" · reasoning={efforts}" if reasoning else "")
         + (" · +rule_based" if baseline else ""))
     summary = []
     for provider, model, label in specs:
-        try:
-            first_rows, median = _run_scored(runner, "llm", provider, model, repeats)
-        except Exception as exc:  # noqa: BLE001 - one bad model must not sink the sweep
-            typer.echo(f"\n=== {label}: FAILED ({type(exc).__name__}: {exc}) — skipped ===")
-            continue
-        _print_parse_report(label, first_rows, verbose)
-        summary.append((label, median))
+        for effort in efforts:
+            cell = f"{label} · effort={effort}" if effort else label
+            try:
+                first_rows, median = _run_scored(
+                    runner, "llm", provider, model, repeats, effort)
+            except Exception as exc:  # noqa: BLE001 - one bad cell must not sink the sweep
+                typer.echo(f"\n=== {cell}: FAILED ({type(exc).__name__}: {exc}) — skipped ===")
+                continue
+            _print_parse_report(cell, first_rows, verbose)
+            summary.append((cell, median))
     if baseline:
         try:
             first_rows, median = _run_scored(runner, "rule_based", None, None, repeats)
@@ -281,14 +297,15 @@ def _parse_models(value):
     return specs
 
 
-def _run_scored(runner, parser_name, provider, model, repeats):
+def _run_scored(runner, parser_name, provider, model, repeats, effort=None):
     """Run a parser ``repeats`` times; return (first-pass rows, median-metrics dict)."""
     from qhld_engine.domain.evaluation import parse_scoring
 
     passes = []
     first_rows = None
     for i in range(repeats):
-        rows = runner.run(parser_name, llm_provider=provider, llm_model=model)
+        rows = runner.run(parser_name, llm_provider=provider, llm_model=model,
+                          reasoning_effort=effort)
         if i == 0:
             first_rows = rows
         report = parse_scoring.score(rows)

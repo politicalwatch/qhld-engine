@@ -46,16 +46,18 @@ class RunParseBenchmark:
         self.settings = settings or get_settings()
         self._resolver = None
 
-    def run(self, parser_name, llm_provider=None, llm_model=None):
+    def run(self, parser_name, llm_provider=None, llm_model=None,
+            reasoning_effort=None):
         """Return a scored row per query for one parser ('llm' / 'rule_based').
 
-        For the ``llm`` parser, ``llm_provider`` / ``llm_model`` override the
-        query-parser model for this run (used by the ``--models`` A/B sweep) and are
-        ignored by ``rule_based``.
+        For the ``llm`` parser, ``llm_provider`` / ``llm_model`` /
+        ``reasoning_effort`` override the query-parser model for this run (used by
+        the ``--models`` and ``--reasoning`` sweeps) and are ignored by
+        ``rule_based``.
         """
         from qhld_ai.domain.ports.query_parser import ParsedQuery
 
-        parser = self._parser(parser_name, llm_provider, llm_model)
+        parser = self._parser(parser_name, llm_provider, llm_model, reasoning_effort)
         resolver = self._resolver_obj()
         rows = []
         for entry in self.queries:
@@ -81,7 +83,8 @@ class RunParseBenchmark:
             })
         return rows
 
-    def _parser(self, name, llm_provider=None, llm_model=None):
+    def _parser(self, name, llm_provider=None, llm_model=None,
+                reasoning_effort=None):
         from qhld_ai.infrastructure.queryparsing.factory import create_query_parser_from_env
 
         update = {"query_parser_provider": name}
@@ -89,6 +92,8 @@ class RunParseBenchmark:
             update["query_parser_llm_provider"] = llm_provider
         if llm_model:
             update["query_parser_llm_model"] = llm_model
+        if reasoning_effort:
+            update["query_parser_llm_reasoning_effort"] = reasoning_effort
         return create_query_parser_from_env(self.settings.model_copy(update=update))
 
     def _resolver_obj(self):

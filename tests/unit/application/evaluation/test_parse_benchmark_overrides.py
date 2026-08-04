@@ -41,3 +41,9 @@ def test_no_override_leaves_parser_llm_settings_default(captured):
     assert passed.query_parser_provider == "rule_based"
     assert passed.query_parser_llm_provider == ""   # untouched fallback
     assert passed.query_parser_llm_model == ""
+    assert passed.query_parser_llm_reasoning_effort == ""
+
+
+def test_reasoning_effort_override_reaches_the_parser_settings(captured):
+    _runner()._parser("llm", "openai", "gpt-5.6-luna", "none")
+    assert captured["settings"].query_parser_llm_reasoning_effort == "none"
