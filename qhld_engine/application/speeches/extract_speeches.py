@@ -19,9 +19,15 @@ from collections import OrderedDict
 
 from tqdm import tqdm
 
+from thefuzz import fuzz, process
+
 from qhld_engine.logger import get_logger
 from qhld_engine.application.speeches.mention_tagging import MentionTagger, es_text
 from qhld_engine.domain.speeches import segmentation
+from qhld_ai.application.persons_catalog import (
+    canonical_speakers,
+    load_deputy_profiles,
+)
 from qhld_engine.domain.speeches.language_split import split_languages
 from qhld_engine.infrastructure.config.settings import get_settings
 from qhld_ai.infrastructure.language import detect
@@ -47,6 +53,15 @@ SESSION_PATH = "/public_oficiales/"
 # references usually come from the same few sittings — cache their raw text so
 # each PDF is downloaded and parsed once per run, not once per reference.
 SESSION_TEXT_CACHE_SIZE = 4
+# How close a non-catalog speaker must score to a catalog deputy before we suspect it
+# is a second spelling of them rather than a genuine non-deputy. Measured on the live
+# corpus: the three known variants score 100, while every real non-deputy speaker
+# (ministers, witnesses) scores 52-69 against its nearest catalog name.
+VARIANT_WARN_THRESHOLD = 95
+
+
+def _name_tokens(name):
+    return set(name.replace(",", " ").lower().split())
 
 
 class ExtractSpeeches:
@@ -55,6 +70,9 @@ class ExtractSpeeches:
         self.api = CongressApi()
         self._tagger = None
         self._session_texts = OrderedDict()
+        self._renames = None
+        self._deputy_names = None
+        self._unknown_speakers = set()
 
     @property
     def tagger(self):
@@ -63,6 +81,68 @@ class ExtractSpeeches:
         if self._tagger is None:
             self._tagger = MentionTagger(Deputies.get_all())
         return self._tagger
+
+    @property
+    def renames(self):
+        """Curated ``{source spelling: canonical name}`` — see ``canonical_speakers``.
+        Read from the shipped data file, so no Mongo and no network."""
+        if self._renames is None:
+            self._renames = canonical_speakers(load_deputy_profiles())
+        return self._renames
+
+    @property
+    def deputy_names(self):
+        """Every catalog deputy name, for spotting an uncurated second spelling."""
+        if self._deputy_names is None:
+            self._deputy_names = sorted(
+                {d.name for d in Deputies.get_all() if d.name})
+        return self._deputy_names
+
+    def _canonical_speaker(self, speaker):
+        """The single spelling this person's speeches are stored under.
+
+        The source credits the same deputy under more than one ``orador`` spelling
+        ("Ogou Corbi, Viviane" and "Ogou i Corbi, Viviane"), and only one of them
+        matches the deputy catalog. Left as-is, one person becomes two corpus speakers:
+        their speeches split across two filter values, and the spelling the catalog does
+        not know misses the join that stamps ``constituency`` at index time.
+
+        Only the STORED value is rewritten. The heading regexes, the typo repair and the
+        content id are all built from the raw ``orador`` before this runs, and must stay
+        that way: the Diario prints the raw spelling (so segmentation needs it), and a
+        rewritten id would move every speech to a new document."""
+        canonical = self.renames.get(speaker)
+        if canonical:
+            return canonical
+        self._warn_if_uncurated_variant(speaker)
+        return speaker
+
+    def _warn_if_uncurated_variant(self, speaker):
+        """Flag a speaker that looks like a second spelling of a catalog deputy.
+
+        Being absent from the catalog proves nothing on its own — ministers and
+        comparecencia witnesses are legitimately absent. What marks a variant is that
+        its name tokens NEST with a catalog name ("Ogou Corbi, Viviane" within "Ogou i
+        Corbi, Viviane"), which no unrelated person does.
+
+        A warning, never a failure: a spelling nobody has curated yet is no reason to
+        drop a sitting's speeches. Curate it in ``deputy_profiles.json`` and re-extract.
+        Checked once per distinct spelling — the scan is over the whole catalog, and a
+        session repeats the same few speakers."""
+        if speaker in self._unknown_speakers or speaker in set(self.deputy_names):
+            return
+        self._unknown_speakers.add(speaker)
+        match = process.extractOne(
+            speaker, self.deputy_names, scorer=fuzz.token_set_ratio)
+        if not match or match[1] < VARIANT_WARN_THRESHOLD:
+            return
+        tokens, catalog = _name_tokens(speaker), _name_tokens(match[0])
+        if tokens <= catalog or catalog <= tokens:
+            log.warning(
+                f"Speaker {speaker!r} is not in the deputy catalog but reads as a "
+                f"second spelling of {match[0]!r} ({match[1]}). Their speeches will "
+                f"split across both. Add it to deputy_profiles.json "
+                f"'speaker_variants' and re-extract.")
 
     def execute(self, references):
         for reference in references:
@@ -174,6 +254,8 @@ class ExtractSpeeches:
             log.warning(
                 f"Unparseable speaker {intervention.get('orador')!r} for {reference}")
             return
+        speaker = self._canonical_speaker(speaker)
+        surname = speaker.split(",")[0].strip()
 
         text = segmenter.next_speech(speaker_regex, upcoming_regex)
         if text is None:

@@ -261,3 +261,98 @@ def test_reextraction_with_same_text_reuses_stored_mentions(monkeypatch):
     assert tagged_texts == []  # NER skipped: same intervention, unchanged text
     assert saved[0].mentions == stored.mentions
     assert saved[0].entities == stored.entities
+
+
+# --- one person, one stored speaker string ---------------------------------
+
+def _orador_page(orador, video_id="776209"):
+    page = _page(video_id=video_id)
+    page["lista_intervenciones"]["k1"]["orador"] = orador
+    return page
+
+
+def _curate(monkeypatch, records):
+    monkeypatch.setattr(mod, "load_deputy_profiles", lambda: records)
+
+
+def _collect_warnings(monkeypatch):
+    warnings = []
+    monkeypatch.setattr(
+        mod, "log",
+        type("L", (), {"warning": staticmethod(lambda msg: warnings.append(msg)),
+                       "info": staticmethod(lambda msg: None)})())
+    return warnings
+
+
+def test_a_curated_variant_is_stored_under_the_canonical_name(monkeypatch):
+    # The source credits this deputy two ways; only one spelling matches the catalog.
+    # Both must land on the catalog one, or her speeches split across two filter values.
+    saved = []
+    _stub_environment(monkeypatch, _orador_page("Ogou Corbi, Viviane (GSUMAR)"), saved, [])
+    _curate(monkeypatch, [{"deputy_id": "ogou-i-corbi-viviane",
+                           "name": "Ogou i Corbi, Viviane",
+                           "speaker_variants": ["Ogou Corbi, Viviane"]}])
+
+    mod.ExtractSpeeches().execute(["161/000123"])
+
+    assert saved[0].speaker == "Ogou i Corbi, Viviane"
+    # the surname follows the canonical spelling, not the one the source printed
+    assert saved[0].speaker_surname == "Ogou i Corbi"
+
+
+def test_an_uncurated_speaker_is_stored_exactly_as_the_source_spelled_it(monkeypatch):
+    saved = []
+    _stub_environment(monkeypatch, _page(), saved, [])
+    _curate(monkeypatch, [])
+
+    mod.ExtractSpeeches().execute(["161/000123"])
+
+    assert saved[0].speaker == "Perez, Juan"
+    assert saved[0].speaker_surname == "Perez"
+
+
+def test_renaming_a_speaker_does_not_move_the_speech_id(monkeypatch):
+    # The content id keys on the RAW orador, so curating a variant must not re-file
+    # every one of that person's existing speeches under a new document.
+    saved = []
+    _stub_environment(monkeypatch, _orador_page("Ogou Corbi, Viviane (GSUMAR)",
+                                                video_id=None), saved, [])
+    _curate(monkeypatch, [{"deputy_id": "ogou-i-corbi-viviane",
+                           "name": "Ogou i Corbi, Viviane",
+                           "speaker_variants": ["Ogou Corbi, Viviane"]}])
+
+    mod.ExtractSpeeches().execute(["161/000123"])
+
+    assert saved[0].speaker == "Ogou i Corbi, Viviane"
+    assert saved[0].id == generate_id(
+        "/public_oficiales/L15/CONG-1", "Ogou Corbi, Viviane (GSUMAR)", "3",
+        "||".join(block.text for block in saved[0].speech))
+
+
+def test_an_uncurated_second_spelling_is_warned_about(monkeypatch):
+    saved = []
+    _stub_environment(monkeypatch, _orador_page("Ogou Corbi, Viviane (GSUMAR)"),
+                      saved, [])
+    _curate(monkeypatch, [])
+    monkeypatch.setattr(mod.Deputies, "get_all", staticmethod(
+        lambda: [type("D", (), {"name": "Ogou i Corbi, Viviane"})()]))
+    warnings = _collect_warnings(monkeypatch)
+
+    mod.ExtractSpeeches().execute(["161/000123"])
+
+    assert any("second spelling of 'Ogou i Corbi, Viviane'" in w for w in warnings)
+
+
+def test_a_genuine_non_deputy_speaker_is_not_warned_about(monkeypatch):
+    # Ministers and witnesses are legitimately absent from the deputy catalog, so
+    # absence alone must not warn — only a name that NESTS with a catalog one.
+    saved = []
+    _stub_environment(monkeypatch, _orador_page("Cuerpo Caballero, Carlos"), saved, [])
+    _curate(monkeypatch, [])
+    monkeypatch.setattr(mod.Deputies, "get_all", staticmethod(
+        lambda: [type("D", (), {"name": "Sierra Caballero, Francisco"})()]))
+    warnings = _collect_warnings(monkeypatch)
+
+    mod.ExtractSpeeches().execute(["161/000123"])
+
+    assert not any("second spelling" in w for w in warnings)
