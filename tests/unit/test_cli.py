@@ -297,6 +297,109 @@ def test_search_natural_blocked_resolution_explains_zero_results(monkeypatch):
     assert "Segura Sáez, Andrés" in result.output   # the closest-candidate hint
 
 
+# --- subtitles --------------------------------------------------------------
+
+def _stub_alignment(cues=1):
+    alignment = MagicMock()
+    alignment.cues = [MagicMock(char_start=0, char_end=6, start_ms=0, end_ms=1000)] * cues
+    alignment.lang = "es"
+    alignment.score = 99.0
+    alignment.verdict = "ok"
+    alignment.block_index = 0
+    return alignment
+
+
+def _stub_speech(monkeypatch, found_by_id=True):
+    from tipi_data import DoesNotExist
+
+    speech = MagicMock(id="sp-1")
+    speech.speech = [MagicMock(text="Muchas gracias.")]
+
+    def get(id):
+        if found_by_id:
+            return speech
+        raise DoesNotExist(id)
+
+    monkeypatch.setattr("tipi_data.repositories.speeches.Speeches.get", get)
+    monkeypatch.setattr("tipi_data.repositories.speeches.Speeches.get_by_video_id",
+                        lambda id: speech)
+    return speech
+
+
+def test_subtitles_align_dispatches_to_the_service(monkeypatch):
+    _stub_speech(monkeypatch)
+    svc = _patch_class(
+        monkeypatch,
+        "qhld_engine.application.speeches.align_speech.AlignSpeech")
+    svc.execute.return_value = _stub_alignment()
+
+    result = runner.invoke(app, ["subtitles", "align", "sp-1"])
+
+    assert result.exit_code == 0, result.output
+    svc.execute.assert_called_once_with("sp-1", force=False, persist=True)
+    assert "1 cues" in result.output
+
+
+def test_subtitles_align_accepts_a_congress_video_id(monkeypatch):
+    # The public URLs are keyed on the intervention id, so that is the id a person
+    # reading the site has to hand.
+    _stub_speech(monkeypatch, found_by_id=False)
+    svc = _patch_class(
+        monkeypatch,
+        "qhld_engine.application.speeches.align_speech.AlignSpeech")
+    svc.execute.return_value = _stub_alignment()
+
+    result = runner.invoke(app, ["subtitles", "align", "726567"])
+
+    assert result.exit_code == 0, result.output
+    svc.execute.assert_called_once_with("sp-1", force=False, persist=True)
+
+
+def test_subtitles_align_flags_are_forwarded(monkeypatch):
+    _stub_speech(monkeypatch)
+    svc = _patch_class(
+        monkeypatch,
+        "qhld_engine.application.speeches.align_speech.AlignSpeech")
+    svc.execute.return_value = _stub_alignment()
+
+    result = runner.invoke(
+        app, ["subtitles", "align", "sp-1", "--force", "--dry-run"])
+
+    assert result.exit_code == 0, result.output
+    svc.execute.assert_called_once_with("sp-1", force=True, persist=False)
+    assert "not stored" in result.output
+
+
+def test_subtitles_align_can_print_the_vtt(monkeypatch):
+    _stub_speech(monkeypatch)
+    svc = _patch_class(
+        monkeypatch,
+        "qhld_engine.application.speeches.align_speech.AlignSpeech")
+    svc.execute.return_value = _stub_alignment()
+
+    result = runner.invoke(app, ["subtitles", "align", "sp-1", "--vtt", "-"])
+
+    assert result.exit_code == 0, result.output
+    assert "WEBVTT" in result.output
+    assert "00:00:00.000 --> 00:00:01.000" in result.output
+
+
+def test_subtitles_align_failure_exits_non_zero(monkeypatch):
+    # A speech whose video the Congress has not published yet produced nothing, and
+    # the scheduler only learns that from the exit code.
+    from qhld_engine.application.speeches.align_speech import NotAlignable
+
+    _stub_speech(monkeypatch)
+    svc = _patch_class(
+        monkeypatch,
+        "qhld_engine.application.speeches.align_speech.AlignSpeech")
+    svc.execute.side_effect = NotAlignable("no video")
+
+    result = runner.invoke(app, ["subtitles", "align", "sp-1"])
+
+    assert result.exit_code != 0
+
+
 # --- debug -----------------------------------------------------------------
 
 def test_debug_generate_alert(monkeypatch):

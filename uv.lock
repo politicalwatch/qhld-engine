@@ -542,6 +542,12 @@ wheels = [
 ]
 
 [[package]]
+name = "docopt"
+version = "0.6.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/a2/55/8f8cab2afd404cf578136ef2cc5dfb50baa1761b68c9da1fb1e4eed343c9/docopt-0.6.2.tar.gz", hash = "sha256:49b3a825280bd66b3aa83585ef59c4a8c82f2c8a522dbe754a8bc8d08c85c491", size = 25901, upload-time = "2014-06-16T11:18:57.406Z" }
+
+[[package]]
 name = "es-core-news-lg"
 version = "3.8.0"
 source = { url = "https://github.com/explosion/spacy-models/releases/download/es_core_news_lg-3.8.0/es_core_news_lg-3.8.0-py3-none-any.whl" }
@@ -1362,6 +1368,18 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/2d/f9/8e360bdfc3c44e267e7e046f0e0b9922766da92da26959a6963f597e6bb5/murmurhash-1.0.15-cp314-cp314t-musllinux_1_2_x86_64.whl", hash = "sha256:4fd8189ee293a09f30f4931408f40c28ccd42d9de4f66595f8814879339378bc", size = 161811, upload-time = "2025-11-14T09:51:01.289Z" },
     { url = "https://files.pythonhosted.org/packages/f9/31/97649680595b1096803d877ababb9a67c07f4378f177ec885eea28b9db6d/murmurhash-1.0.15-cp314-cp314t-win_amd64.whl", hash = "sha256:66395b1388f7daa5103db92debe06842ae3be4c0749ef6db68b444518666cdcc", size = 29817, upload-time = "2025-11-14T09:51:02.493Z" },
     { url = "https://files.pythonhosted.org/packages/76/66/4fce8755f25d77324401886c00017c556be7ca3039575b94037aff905385/murmurhash-1.0.15-cp314-cp314t-win_arm64.whl", hash = "sha256:c22e56c6a0b70598a66e456de5272f76088bc623688da84ef403148a6d41851d", size = 26219, upload-time = "2025-11-14T09:51:03.563Z" },
+]
+
+[[package]]
+name = "num2words"
+version = "0.5.14"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "docopt" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f6/58/ad645bd38b4b648eb2fc2ba1b909398e54eb0cbb6a7dbd2b4953e38c9621/num2words-0.5.14.tar.gz", hash = "sha256:b066ec18e56b6616a3b38086b5747daafbaa8868b226a36127e0451c0cf379c6", size = 218213, upload-time = "2024-12-17T20:17:10.191Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d6/5b/545e9267a1cc080c8a1be2746113a063e34bcdd0f5173fd665a5c13cb234/num2words-0.5.14-py3-none-any.whl", hash = "sha256:1c8e5b00142fc2966fd8d685001e36c4a9911e070d1b120e1beb721fa1edb33d", size = 163525, upload-time = "2024-12-17T20:17:06.074Z" },
 ]
 
 [[package]]
@@ -2204,7 +2222,7 @@ wheels = [
 [[package]]
 name = "qhld-ai"
 version = "0.1.0"
-source = { git = "https://github.com/politicalwatch/qhld-ai.git?branch=feat%2Fparliamentary-speech-analysis#064ea7a53b77c8a4b81277a395205e94a49d4e72" }
+source = { git = "https://github.com/politicalwatch/qhld-ai.git?branch=feat%2Fparliamentary-speech-analysis#8099d2e06ee6e7bdd34e3a52ae98467b8a8c994e" }
 dependencies = [
     { name = "httpx" },
     { name = "langchain-core" },
@@ -2221,7 +2239,11 @@ engine = [
     { name = "dateparser" },
     { name = "es-core-news-lg" },
     { name = "fastembed" },
+    { name = "huggingface-hub" },
     { name = "langchain-openai" },
+    { name = "num2words" },
+    { name = "numpy" },
+    { name = "onnxruntime" },
     { name = "spacy" },
 ]
 ollama = [
@@ -2231,7 +2253,7 @@ ollama = [
 [[package]]
 name = "qhld-data"
 version = "2.0.1"
-source = { git = "https://github.com/politicalwatch/qhld-data.git?branch=feat%2Fparliamentary-speech-analysis#94231a8cea4a5a8b35082ca8fd8863b16ba2677a" }
+source = { git = "https://github.com/politicalwatch/qhld-data.git?branch=feat%2Fparliamentary-speech-analysis#be02adb3de9d60a8ce262e6c934e71e277892db7" }
 dependencies = [
     { name = "pydantic" },
     { name = "pymongo" },
