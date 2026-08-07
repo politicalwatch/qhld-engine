@@ -33,9 +33,11 @@ class _FakeAligner:
     def __init__(self, score=99.0):
         self.score = score
         self.words = None
+        self.lang = None
 
-    def align(self, samples, sample_rate, words):
+    def align(self, samples, sample_rate, words, lang):
         self.words = list(words)
+        self.lang = lang
         timings = [
             WordTiming(start=index / WORDS_PER_SECOND,
                        end=(index + 0.9) / WORDS_PER_SECOND)
@@ -134,6 +136,27 @@ def test_aligns_the_as_delivered_block_not_the_translation(monkeypatch, _reposit
     assert record.lang == "gl"
     assert record.block_index == 0
     assert aligner.words == ["Grazas,", "señora", "presidenta."]
+
+
+def test_the_aligner_is_told_which_language_it_is_listening_to(monkeypatch,
+                                                              _repositories):
+    # A figure has to be read aloud before it can be matched to audio, and which words
+    # that means depends on the language. Sending the speech's own language rather than
+    # letting the aligner assume Spanish is what keeps a Galician intervention's numbers
+    # out of the Spanish reading.
+    blocks = [
+        SpeechText(lang="gl", text="Grazas. Foron 47 casos no ano 2017.",
+                   original=True),
+        SpeechText(lang="es", text="Gracias. Fueron 47 casos en el año 2017.",
+                   original=False),
+    ]
+    monkeypatch.setattr(mod.Speeches, "get", lambda id: _speech(blocks),
+                        raising=False)
+    aligner = _FakeAligner()
+
+    _service(aligner).execute("sp-1")
+
+    assert aligner.lang == "gl"
 
 
 def test_a_speech_with_no_as_delivered_block_is_not_alignable(monkeypatch):

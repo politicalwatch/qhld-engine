@@ -70,7 +70,7 @@ class AlignSpeech:
 
         log.info(f"aligning {speech.id} ({len(words)} words, {block.lang})")
         samples = self.decode(speech.video_link)
-        alignment = self.aligner.align(samples, SAMPLE_RATE, words)
+        alignment = self.aligner.align(samples, SAMPLE_RATE, words, block.lang)
 
         cues = self._cues(block.text, alignment.words, spans)
         verdict = "ok" if alignment.score >= self.settings.aligner_min_score else "low"
