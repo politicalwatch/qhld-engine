@@ -299,13 +299,21 @@ def test_search_natural_blocked_resolution_explains_zero_results(monkeypatch):
 
 # --- subtitles --------------------------------------------------------------
 
-def _stub_alignment(cues=1):
+_SPOKEN = "Muchas gracias."
+
+
+def _stub_alignment(cues=1, text=_SPOKEN):
+    from qhld_ai.domain.subtitles import text_fingerprint
+
     alignment = MagicMock()
     alignment.cues = [MagicMock(char_start=0, char_end=6, start_ms=0, end_ms=1000)] * cues
     alignment.lang = "es"
     alignment.score = 99.0
     alignment.verdict = "ok"
     alignment.block_index = 0
+    # Rendering a track checks the cues still describe the stored transcript, so a
+    # stub has to be self-consistent the way a real alignment is.
+    alignment.text_sha256, alignment.text_length = text_fingerprint(text)
     return alignment
 
 
@@ -313,7 +321,7 @@ def _stub_speech(monkeypatch, found_by_id=True):
     from tipi_data import DoesNotExist
 
     speech = MagicMock(id="sp-1")
-    speech.speech = [MagicMock(text="Muchas gracias.")]
+    speech.speech = [MagicMock(text=_SPOKEN, lang="es")]
 
     def get(id):
         if found_by_id:
@@ -382,6 +390,21 @@ def test_subtitles_align_can_print_the_vtt(monkeypatch):
     assert result.exit_code == 0, result.output
     assert "WEBVTT" in result.output
     assert "00:00:00.000 --> 00:00:01.000" in result.output
+
+
+def test_subtitles_align_refuses_a_vtt_for_a_transcript_that_has_changed(monkeypatch):
+    # Reachable when an existing alignment is reused: its offsets index text that has
+    # since been re-cleaned, so the track would caption one sentence with another.
+    _stub_speech(monkeypatch)
+    svc = _patch_class(
+        monkeypatch,
+        "qhld_engine.application.speeches.align_speech.AlignSpeech")
+    svc.execute.return_value = _stub_alignment(text="Otro texto por completo.")
+
+    result = runner.invoke(app, ["subtitles", "align", "sp-1", "--vtt", "-"])
+
+    assert result.exit_code != 0
+    assert "WEBVTT" not in result.output
 
 
 def test_subtitles_align_failure_exits_non_zero(monkeypatch):

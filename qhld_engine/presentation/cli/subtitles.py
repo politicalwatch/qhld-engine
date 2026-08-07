@@ -28,7 +28,7 @@ def align(
         False, "--dry-run", help="Align and report, but store nothing."),
 ):
     """Align one speech's transcript to its video and store the cues."""
-    from qhld_ai.domain.subtitles import Cue, render_vtt
+    from qhld_ai.domain.subtitles import subtitle_track
     from tipi_data import DoesNotExist
     from tipi_data.repositories.speeches import Speeches
 
@@ -49,12 +49,16 @@ def align(
 
     if not vtt:
         return
-    text = speech.speech[alignment.block_index].text
-    track = render_vtt(
-        [Cue(char_start=cue.char_start, char_end=cue.char_end,
-             start=cue.start_ms / 1000, end=cue.end_ms / 1000)
-         for cue in alignment.cues],
-        text)
+    # The same renderer the API serves from, guard included — so what is written
+    # here is exactly what a player would receive.
+    track = subtitle_track(alignment, speech.speech)
+    if track is None:
+        # Only reachable when an existing alignment was reused: its cues index a
+        # transcript that has since changed, and captioning one sentence with
+        # another is worse than no subtitles. Re-run with --force.
+        raise typer.BadParameter(
+            f"{speech.id} was aligned against a different version of its "
+            "transcript; re-align it with --force")
     if vtt == "-":
         typer.echo(track)
     else:

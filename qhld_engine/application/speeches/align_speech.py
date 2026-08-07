@@ -14,10 +14,8 @@ from the text readers see, and the stored document holds no second copy of the
 prose.
 """
 
-from hashlib import sha256
-
 from qhld_ai.domain.annotations import annotation_spans
-from qhld_ai.domain.subtitles import build_cues, word_spans
+from qhld_ai.domain.subtitles import build_cues, text_fingerprint, word_spans
 from qhld_ai.infrastructure.audio.pyav import decode_pcm, SAMPLE_RATE
 from qhld_ai.infrastructure.config.settings import get_settings
 from tipi_data.models.speech_alignment import Cue, SpeechAlignment
@@ -79,13 +77,16 @@ class AlignSpeech:
                 f"{speech.id} aligned at {alignment.score} — below "
                 f"{self.settings.aligner_min_score}; stored and flagged for review")
 
+        # Taken with the same function the reader re-computes it with, so the drift
+        # guard cannot fail through the two ends disagreeing about the hash.
+        text_sha256, text_length = text_fingerprint(block.text)
         record = SpeechAlignment(
             _id=speech.id,
             lang=block.lang,
             block_index=block_index,
             cues=cues,
-            text_sha256=sha256(block.text.encode("utf-8")).hexdigest(),
-            text_length=len(block.text),
+            text_sha256=text_sha256,
+            text_length=text_length,
             model_id=alignment.model.id if alignment.model else None,
             model_revision=alignment.model.revision if alignment.model else None,
             model_sha256=alignment.model.sha256 if alignment.model else None,
