@@ -18,7 +18,7 @@ from hashlib import sha256
 
 from qhld_ai.domain.annotations import annotation_spans
 from qhld_ai.domain.subtitles import build_cues, word_spans
-from qhld_ai.infrastructure.audio.ffmpeg import decode_pcm, SAMPLE_RATE
+from qhld_ai.infrastructure.audio.pyav import decode_pcm, SAMPLE_RATE
 from qhld_ai.infrastructure.config.settings import get_settings
 from tipi_data.models.speech_alignment import Cue, SpeechAlignment
 from tipi_data.repositories.speech_alignments import SpeechAlignments
