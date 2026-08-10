@@ -10,7 +10,10 @@ import pytest
 
 from tipi_data.models.speech import SpeechText
 
-from qhld_engine.application.speeches.mention_tagging import MentionTagger, es_text
+from qhld_engine.application.speeches.mention_tagging import (
+    MentionTagger,
+    taggable_text,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -46,17 +49,24 @@ SETTINGS = SimpleNamespace(mention_match_threshold=90)
 DEPUTIES = [FakeDeputy("d1", "Rufián Romero, Gabriel")]
 
 
-def test_es_text_joins_only_spanish_blocks():
+def test_taggable_text_prefers_the_spanish_blocks():
     blocks = [
         SpeechText(lang="ca", text="text en català", original=True),
         SpeechText(lang="es", text="texto en castellano", original=False),
     ]
-    assert es_text(blocks) == "texto en castellano"
+    assert taggable_text(blocks) == "texto en castellano"
 
 
-def test_es_text_empty_when_no_spanish_block():
+def test_taggable_text_falls_back_to_the_original_when_no_translation_exists():
+    # A speech delivered wholly in a co-official language and never interpreted:
+    # tagging its original imperfectly beats leaving it invisible to every filter.
     blocks = [SpeechText(lang="eu", text="euskaraz", original=True)]
-    assert es_text(blocks) == ""
+    assert taggable_text(blocks) == "euskaraz"
+
+
+def test_taggable_text_empty_without_blocks():
+    assert taggable_text([]) == ""
+    assert taggable_text(None) == ""
 
 
 def test_tag_runs_ner_and_resolves():

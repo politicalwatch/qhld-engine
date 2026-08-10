@@ -17,7 +17,10 @@ backfill.
 from tqdm import tqdm
 
 from qhld_engine.logger import get_logger
-from qhld_engine.application.speeches.mention_tagging import MentionTagger, es_text
+from qhld_engine.application.speeches.mention_tagging import (
+    MentionTagger,
+    taggable_text,
+)
 
 from tipi_data.repositories.deputies import Deputies
 from tipi_data.repositories.speeches import Speeches
@@ -44,7 +47,7 @@ class BackfillEntities:
         log.info(f"Tagging entities for {len(speeches)} speeches")
         tagged = 0
         for speech in tqdm(speeches, desc="Tagging entities", unit="speech"):
-            entities = self.tagger.tag_entities(es_text(speech.speech))
+            entities = self.tagger.tag_entities(taggable_text(speech.speech))
             speech.entities = entities
             Speeches.save(speech)
             if entities:

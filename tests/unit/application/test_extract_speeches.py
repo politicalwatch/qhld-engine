@@ -48,12 +48,13 @@ def _page(video_id="776209"):
 
 def _stub_environment(monkeypatch, page, saved, saved_sessions, existing=None,
                       tagged_texts=None, counts=None, deleted=None,
-                      pdf_fetches=None):
-    """Stub the API, PDF, persistence and NER dependencies. ``existing`` maps
-    speech id -> stored Speech for the reuse-on-re-extract path; ``tagged_texts``
+                      pdf_fetches=None, probe=None, probed=None):
+    """Stub the API, PDF, persistence, NER and clip-probe dependencies. ``existing``
+    maps speech id -> stored Speech for the reuse-on-re-extract path; ``tagged_texts``
     collects every text actually sent to the mention tagger; ``counts`` maps
-    reference -> stored-speech count for the incremental skip; ``deleted`` and
-    ``pdf_fetches`` collect deleted speech ids and fetched session links."""
+    reference -> stored-speech count for the incremental skip; ``deleted``,
+    ``pdf_fetches`` and ``probed`` collect deleted speech ids, fetched session links
+    and probed video links; ``probe`` replaces the duration probe itself."""
 
     class _FakeApi:
         def get_video(self, reference, page_number):
@@ -94,6 +95,14 @@ def _stub_environment(monkeypatch, page, saved, saved_sessions, existing=None,
                 "tag_interruptions":
                     staticmethod(lambda text, speaker=None: []),
             })())
+    # stub the clip probe: it reads a header over the network, and these are offline.
+    _probed = probed if probed is not None else []
+
+    def _probe(link):
+        _probed.append(link)
+        return probe(link) if probe else 61.5
+
+    monkeypatch.setattr(mod, "probe_duration", _probe)
     # patch the detector so the test never loads py3langid and is deterministic
     monkeypatch.setattr(mod, "detect", lambda text: "es")
 
@@ -261,6 +270,79 @@ def test_reextraction_with_same_text_reuses_stored_mentions(monkeypatch):
     assert tagged_texts == []  # NER skipped: same intervention, unchanged text
     assert saved[0].mentions == stored.mentions
     assert saved[0].entities == stored.entities
+
+
+# --- how long the intervention's clip runs ---------------------------------
+
+def test_the_clip_length_is_stored(monkeypatch):
+    saved, probed = [], []
+    _stub_environment(monkeypatch, _page(), saved, [], probed=probed)
+
+    mod.ExtractSpeeches().execute(["161/000123"])
+
+    assert saved[0].duration == 61.5
+    assert probed == ["http://v/3.mp4"]
+
+
+def test_an_unreachable_video_does_not_fail_the_extraction(monkeypatch):
+    # The text extracted perfectly well; losing the speech because the Congress CDN
+    # was slow would trade a whole intervention for one metadata field.
+    def _unavailable(link):
+        raise mod.DurationUnavailable(f"could not open {link}")
+
+    saved = []
+    _stub_environment(monkeypatch, _page(), saved, [], probe=_unavailable)
+
+    mod.ExtractSpeeches().execute(["161/000123"])
+
+    assert len(saved) == 1
+    assert saved[0].duration is None
+    assert saved[0].speech  # the text is there regardless
+
+
+def test_a_speech_with_no_video_is_not_probed(monkeypatch):
+    page = _page()
+    page["lista_intervenciones"]["k1"]["video_intervencion"] = {"legislatura": 15}
+    saved, probed = [], []
+    _stub_environment(monkeypatch, page, saved, [], probed=probed)
+
+    mod.ExtractSpeeches().execute(["161/000123"])
+
+    assert probed == []
+    assert saved[0].duration is None
+
+
+def test_reextraction_reuses_a_stored_duration_instead_of_reprobing(monkeypatch):
+    # Re-extracting the corpus must not re-read 4,000 headers off the CDN.
+    from tipi_data.models.speech import Speech
+
+    stored = Speech(id=generate_id("776209"), video_link="http://v/3.mp4",
+                    duration=352.0)
+    saved, probed = [], []
+    _stub_environment(monkeypatch, _page(), saved, [],
+                      existing={stored.id: stored}, probed=probed)
+
+    mod.ExtractSpeeches().execute(["161/000123"])
+
+    assert probed == []
+    assert saved[0].duration == 352.0
+
+
+def test_a_new_video_link_is_reprobed(monkeypatch):
+    # The provisional copy of an intervention carries no video; when one is
+    # published the stored length (if any) describes a different clip.
+    from tipi_data.models.speech import Speech
+
+    stored = Speech(id=generate_id("776209"), video_link="http://v/old.mp4",
+                    duration=999.0)
+    saved, probed = [], []
+    _stub_environment(monkeypatch, _page(), saved, [],
+                      existing={stored.id: stored}, probed=probed)
+
+    mod.ExtractSpeeches().execute(["161/000123"])
+
+    assert probed == ["http://v/3.mp4"]
+    assert saved[0].duration == 61.5
 
 
 # --- one person, one stored speaker string ---------------------------------

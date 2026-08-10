@@ -93,6 +93,24 @@ def test_no_translation_falls_back_to_single_original_block():
     assert blocks == [("gl", text, True)]
 
 
+def test_courtesy_phrase_does_not_name_the_language_of_a_spanish_speech():
+    # A Spanish speech that signs off in Galician. The farewell clears the 0.15
+    # co-official gate on its own, but it sits at the very end, so the objective puts
+    # everything on the Spanish side and there is no interpretation to separate. The
+    # single block must take the language the speech was actually delivered in, not
+    # the one it said goodbye in.
+    text = (
+        "Señorías, comparezco para hablar del cierre de la fábrica y de sus efectos. "
+        "Las cifras del último trimestre son peores de lo que el Gobierno reconoce. "
+        "Moito obrigado a todos, señorías. "
+        "Grazas pola vosa atención."
+    )
+    original_language, blocks = split_languages(text, _fake_detect())
+
+    assert original_language == "es"
+    assert blocks == [("es", text, True)]
+
+
 def test_co_official_below_threshold_treated_as_monolingual():
     # A single short Galician aside inside an otherwise Spanish speech stays below
     # the 0.15 co-official ratio → monolingual Spanish, one block.

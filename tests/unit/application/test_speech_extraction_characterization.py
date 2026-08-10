@@ -63,6 +63,11 @@ def test_extract_speeches_172_000001(monkeypatch, capture):
     # published video ids trigger the provisional-twin cleanup; keep it Mongo-free
     monkeypatch.setattr(mod.Speeches, "delete", staticmethod(lambda id: None))
     monkeypatch.setattr(mod.Sessions, "save", lambda s: saved_sessions.append(s))
+    # stub the clip probe: it reads a header off the Congress CDN, and this test is
+    # offline. Recording the links proves the wiring without asserting a real length.
+    probed = []
+    monkeypatch.setattr(
+        mod, "probe_duration", lambda link: probed.append(link) or 61.5)
     # stub mention tagging: this test locks segmentation/language-split, not NER,
     # and must stay Mongo-free (no deputy catalog) and spaCy-free.
     monkeypatch.setattr(mod.Deputies, "get_all", staticmethod(lambda: []))
@@ -92,6 +97,10 @@ def test_extract_speeches_172_000001(monkeypatch, capture):
     # all four interventions persisted, in document order
     assert [s.order for s in saved] == [1, 2, 3, 4]
     by_order = {s.order: s for s in saved}
+
+    # every intervention carries the length of its own clip, probed once each
+    assert [s.duration for s in saved] == [61.5, 61.5, 61.5, 61.5]
+    assert probed == [s.video_link for s in saved]
 
     # diputado (has a group) vs government member (no group)
     assert by_order[1].speaker == "Rego Candamil, Néstor"

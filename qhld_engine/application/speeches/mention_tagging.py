@@ -41,10 +41,20 @@ from qhld_ai.infrastructure.config.settings import get_settings
 from qhld_ai.infrastructure.ner.factory import create_ner_from_env
 
 
-def es_text(blocks) -> str:
-    """Join the Spanish (``lang == 'es'``) blocks of a speech. Monolingual Spanish
-    speeches have one such block; co-official speeches have the translation."""
-    return " ".join(b.text for b in (blocks or []) if b.lang == "es" and b.text)
+def taggable_text(blocks) -> str:
+    """The text of a speech to run NER over.
+
+    Spanish is preferred — the models and the persons catalog are Spanish, and a
+    co-official speech usually carries the Diario's Spanish interpretation. But not
+    every speech has a Spanish block: one delivered wholly in a co-official language
+    with no interpretation published has only its original. Falling back to that
+    original tags it imperfectly rather than not at all, which is the difference
+    between a speech that is merely harder to find and one that is invisible to every
+    person and entity filter."""
+    spanish = " ".join(b.text for b in (blocks or []) if b.lang == "es" and b.text)
+    if spanish:
+        return spanish
+    return next((b.text for b in (blocks or []) if b.original and b.text), "")
 
 
 class MentionTagger:
@@ -142,5 +152,5 @@ class MentionTagger:
             excluded, speaker_name=speaker)
 
     def tag_speech(self, speech):
-        """Convenience: tag a ``Speech`` from its stored Spanish block(s)."""
-        return self.tag(es_text(speech.speech))
+        """Convenience: tag a ``Speech`` from its stored text blocks."""
+        return self.tag(taggable_text(speech.speech))

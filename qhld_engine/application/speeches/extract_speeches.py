@@ -22,7 +22,10 @@ from tqdm import tqdm
 from thefuzz import fuzz, process
 
 from qhld_engine.logger import get_logger
-from qhld_engine.application.speeches.mention_tagging import MentionTagger, es_text
+from qhld_engine.application.speeches.mention_tagging import (
+    MentionTagger,
+    taggable_text,
+)
 from qhld_engine.domain.speeches import segmentation
 from qhld_ai.application.persons_catalog import (
     canonical_speakers,
@@ -30,6 +33,7 @@ from qhld_ai.application.persons_catalog import (
 )
 from qhld_engine.domain.speeches.language_split import split_languages
 from qhld_engine.infrastructure.config.settings import get_settings
+from qhld_ai.infrastructure.audio.pyav import DurationUnavailable, probe_duration
 from qhld_ai.infrastructure.language import detect
 from qhld_engine.extractors.spain.congress_api import CongressApi
 from qhld_engine.extractors.spain.initiative_extractors.utils.pdf_parsers import (
@@ -286,7 +290,12 @@ class ExtractSpeeches:
             # same intervention under its content identity; drop that copy now
             # that the canonical id is known.
             Speeches.delete(fallback_id)
-        mentions, entities, interruptions = self._mentions(speech_id, blocks, speaker)
+        try:
+            existing = Speeches.get(speech_id)
+        except DoesNotExist:
+            existing = None
+        video_link = video.get("enlace_descarga02")
+        mentions, entities, interruptions = self._mentions(existing, blocks, speaker)
         speech = Speech(
             id=speech_id,
             references=[reference],
@@ -300,8 +309,9 @@ class ExtractSpeeches:
             legislature=self._legislature(intervention),
             date=intervention.get("fecha"),
             session_name=intervention.get("sesion", {}).get("nombre_sesion"),
-            video_link=video.get("enlace_descarga02"),
+            video_link=video_link,
             session_link=session_link,
+            duration=self._duration(video_link, existing),
             speech=blocks,
             original_language=original_language,
             mentions=mentions,
@@ -325,22 +335,41 @@ class ExtractSpeeches:
         text = "||".join(block.text for block in blocks)
         return generate_id(session_link, orador, str(order), text)
 
-    def _mentions(self, speech_id, blocks, speaker):
-        """Mentions, entities and interruptions from NER over the Spanish text —
+    def _mentions(self, existing, blocks, speaker):
+        """Mentions, entities and interruptions from NER over the speech text —
         unless this intervention was already extracted with the same text (the
         earlier initiative of an accumulated debate), in which case its stored
         tags are reused. ``tag_entities`` runs right after ``tag`` so both share
         one spaCy parse (the NER adapter memoizes the doc)."""
-        text = es_text(blocks)
-        try:
-            existing = Speeches.get(speech_id)
-        except DoesNotExist:
-            existing = None
-        if existing is not None and es_text(existing.speech) == text:
+        text = taggable_text(blocks)
+        if existing is not None and taggable_text(existing.speech) == text:
             return existing.mentions, existing.entities, existing.interruptions
         return (self.tagger.tag(text),
                 self.tagger.tag_entities(text),
                 self.tagger.tag_interruptions(text, speaker=speaker))
+
+    @staticmethod
+    def _duration(video_link, existing):
+        """How long the intervention's video runs, in seconds.
+
+        Best effort by design: this reads a header from the Congress CDN, and a
+        speech whose text extracted perfectly well should not be lost because that
+        host was slow. A failure leaves the field unset, and
+        ``qhld speeches probe-durations`` picks it up later.
+
+        A stored value for the same video is reused rather than re-probed, so
+        re-extracting the corpus costs no network per speech that already has one.
+        """
+        if not video_link:
+            return None
+        if (existing is not None and existing.duration
+                and existing.video_link == video_link):
+            return existing.duration
+        try:
+            return probe_duration(video_link)
+        except DurationUnavailable as exc:
+            log.warning(f"No duration for {video_link}: {exc}")
+            return None
 
     # -- API retrieval ---------------------------------------------------------
 

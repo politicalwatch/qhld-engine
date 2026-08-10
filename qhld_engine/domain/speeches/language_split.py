@@ -1,11 +1,15 @@
 """Pure language-split logic — no HTTP, no DB, no detector dependency.
 
-Co-official-language speeches are published in the Diario de Sesiones as the full
-original (Galician/Catalan/Basque) immediately followed by its full Spanish
-interpretation, concatenated under one speaker heading with no delimiter. The
-structure is reliably two clean blocks ``[original][castellano]``, so a speech is
-split at the *single* major language boundary into an original block and (when a
-translation is present) a Spanish block.
+Co-official-language speeches are usually published in the Diario de Sesiones as the
+full original (Galician/Catalan/Basque) immediately followed by its full Spanish
+interpretation, concatenated under one speaker heading with no delimiter. That shape
+is what this module cuts for: a speech is split at the *single* major language
+boundary into an original block and (when a translation is present) a Spanish block.
+
+The Diario does not always oblige. It also interleaves a translation fragment by
+fragment, translates only part of a speech, or prints no translation at all where the
+speaker simply switched languages. One cut cannot describe any of those shapes —
+telling them apart needs the language runs of the whole text, not a single boundary.
 
 The language detector is injected as a callable — ``detect(str) -> str | None`` —
 so this module stays a pure, trivially-testable string transform; the py3langid
@@ -58,10 +62,16 @@ def split_languages(text, detect):
     original = stripped[:spans[k - 1][1]] if k else ""
     castellano = stripped[spans[k][0]:] if k < len(spans) else ""
 
-    # k == 0 means the objective put everything on the Spanish side (an
-    # es-dominant speech with no real original boundary) → treat as monolingual.
+    # No real second block: either the objective put everything on the Spanish
+    # side (k == 0) or what follows the cut is too short to be an interpretation.
+    # Either way this is one monolingual block, so it takes the language the bulk
+    # of the text is in — NOT ``orig_lang``. A Spanish speech that opens or closes
+    # with a co-official courtesy phrase clears the ``_MIN_RATIO`` co-official gate
+    # on that phrase alone, and labelling the whole speech by it would name a
+    # language it was not delivered in.
     if not original or len(castellano) / total < _MIN_RATIO:
-        return orig_lang, [(orig_lang, text, True)]
+        dominant = _dominant_lang(sentences, langs)
+        return dominant, [(dominant, text, True)]
     return orig_lang, [(orig_lang, original, True), ("es", castellano, False)]
 
 

@@ -19,7 +19,10 @@ one-shot backfill.
 from tqdm import tqdm
 
 from qhld_engine.logger import get_logger
-from qhld_engine.application.speeches.mention_tagging import MentionTagger, es_text
+from qhld_engine.application.speeches.mention_tagging import (
+    MentionTagger,
+    taggable_text,
+)
 
 from tipi_data.repositories.deputies import Deputies
 from tipi_data.repositories.speeches import Speeches
@@ -46,7 +49,7 @@ class BackfillMentions:
         log.info(f"Tagging mentions for {len(speeches)} speeches")
         tagged = 0
         for speech in tqdm(speeches, desc="Tagging mentions", unit="speech"):
-            text = es_text(speech.speech)
+            text = taggable_text(speech.speech)
             mentions = self.tagger.tag(text)
             speech.mentions = mentions
             speech.interruptions = self.tagger.tag_interruptions(
