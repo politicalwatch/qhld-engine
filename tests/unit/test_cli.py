@@ -302,15 +302,16 @@ def test_search_natural_blocked_resolution_explains_zero_results(monkeypatch):
 _SPOKEN = "Muchas gracias."
 
 
-def _stub_alignment(cues=1, text=_SPOKEN):
+def _stub_alignment(cues=1, text=_SPOKEN, lang="es", original=True):
     from qhld_ai.domain.subtitles import text_fingerprint
 
     alignment = MagicMock()
     alignment.cues = [MagicMock(char_start=0, char_end=6, start_ms=0, end_ms=1000)] * cues
-    alignment.lang = "es"
+    alignment.lang = lang
     alignment.score = 99.0
     alignment.verdict = "ok"
     alignment.block_index = 0
+    alignment.original = original
     # Rendering a track checks the cues still describe the stored transcript, so a
     # stub has to be self-consistent the way a real alignment is.
     alignment.text_sha256, alignment.text_length = text_fingerprint(text)
@@ -339,13 +340,61 @@ def test_subtitles_align_dispatches_to_the_service(monkeypatch):
     svc = _patch_class(
         monkeypatch,
         "qhld_engine.application.speeches.align_speech.AlignSpeech")
-    svc.execute.return_value = _stub_alignment()
+    svc.execute.return_value = [_stub_alignment()]
 
     result = runner.invoke(app, ["subtitles", "align", "sp-1"])
 
     assert result.exit_code == 0, result.output
     svc.execute.assert_called_once_with("sp-1", force=False, persist=True)
     assert "1 cues" in result.output
+
+
+def test_subtitles_align_reports_every_track(monkeypatch):
+    # A co-official intervention is subtitled twice, and the operator has to see both
+    # scores: they are not comparable, so one number could not stand for the pair.
+    _stub_speech(monkeypatch)
+    svc = _patch_class(
+        monkeypatch,
+        "qhld_engine.application.speeches.align_speech.AlignSpeech")
+    svc.execute.return_value = [
+        _stub_alignment(), _stub_alignment(lang="es", original=False)]
+
+    result = runner.invoke(app, ["subtitles", "align", "sp-1"])
+
+    assert result.exit_code == 0, result.output
+    assert "as delivered" in result.output
+    assert "translation" in result.output
+
+
+def test_subtitles_align_vtt_defaults_to_the_as_delivered_track(monkeypatch):
+    _stub_speech(monkeypatch)
+    svc = _patch_class(
+        monkeypatch,
+        "qhld_engine.application.speeches.align_speech.AlignSpeech")
+    svc.execute.return_value = [
+        _stub_alignment(lang="es", original=False), _stub_alignment()]
+
+    result = runner.invoke(app, ["subtitles", "align", "sp-1", "--vtt", "-"])
+
+    assert result.exit_code == 0, result.output
+    # The as-delivered track even though the translation came first in the list: that
+    # is the one whose timings can be checked against the audio by ear.
+    assert "WEBVTT" in result.output
+
+
+def test_subtitles_align_vtt_refuses_a_language_the_speech_has_no_track_for(
+        monkeypatch):
+    _stub_speech(monkeypatch)
+    svc = _patch_class(
+        monkeypatch,
+        "qhld_engine.application.speeches.align_speech.AlignSpeech")
+    svc.execute.return_value = [_stub_alignment()]
+
+    result = runner.invoke(
+        app, ["subtitles", "align", "sp-1", "--vtt", "-", "--lang", "eu"])
+
+    assert result.exit_code != 0
+    assert "WEBVTT" not in result.output
 
 
 def test_subtitles_align_accepts_a_congress_video_id(monkeypatch):
@@ -355,7 +404,7 @@ def test_subtitles_align_accepts_a_congress_video_id(monkeypatch):
     svc = _patch_class(
         monkeypatch,
         "qhld_engine.application.speeches.align_speech.AlignSpeech")
-    svc.execute.return_value = _stub_alignment()
+    svc.execute.return_value = [_stub_alignment()]
 
     result = runner.invoke(app, ["subtitles", "align", "726567"])
 
@@ -368,7 +417,7 @@ def test_subtitles_align_flags_are_forwarded(monkeypatch):
     svc = _patch_class(
         monkeypatch,
         "qhld_engine.application.speeches.align_speech.AlignSpeech")
-    svc.execute.return_value = _stub_alignment()
+    svc.execute.return_value = [_stub_alignment()]
 
     result = runner.invoke(
         app, ["subtitles", "align", "sp-1", "--force", "--dry-run"])
@@ -383,7 +432,7 @@ def test_subtitles_align_can_print_the_vtt(monkeypatch):
     svc = _patch_class(
         monkeypatch,
         "qhld_engine.application.speeches.align_speech.AlignSpeech")
-    svc.execute.return_value = _stub_alignment()
+    svc.execute.return_value = [_stub_alignment()]
 
     result = runner.invoke(app, ["subtitles", "align", "sp-1", "--vtt", "-"])
 
@@ -399,7 +448,7 @@ def test_subtitles_align_refuses_a_vtt_for_a_transcript_that_has_changed(monkeyp
     svc = _patch_class(
         monkeypatch,
         "qhld_engine.application.speeches.align_speech.AlignSpeech")
-    svc.execute.return_value = _stub_alignment(text="Otro texto por completo.")
+    svc.execute.return_value = [_stub_alignment(text="Otro texto por completo.")]
 
     result = runner.invoke(app, ["subtitles", "align", "sp-1", "--vtt", "-"])
 
