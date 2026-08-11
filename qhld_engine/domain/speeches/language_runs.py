@@ -154,6 +154,35 @@ def paragraph_runs(text, detect):
     return [(lang, start, end) for lang, start, end in runs]
 
 
+def is_quotation(paragraph):
+    """Is this paragraph nothing but a quotation?
+
+    Such a paragraph is read aloud once, in whatever language it is written in, and
+    printed once — so it cannot be a rendering of anything, a rendering needing a source.
+    The Diario may nonetheless print it inside the Spanish stretch, after the rendering of
+    the sentence that announces it, which is where it gets mistaken for one.
+
+    Both halves of the test are load-bearing. Asking only whether the remainder is too
+    short to read calls ``"Gracias."`` a quotation, and that closing line really is a
+    rendering of the ``"Moito obrigado."`` before it.
+    """
+    if not _QUOTED.search(paragraph):
+        return False
+    return len(_QUOTED.sub(" ", paragraph).strip()) < MIN_DETECTABLE_CHARS
+
+
+def quotation_spans(text):
+    """The ``(start, end)`` span of every paragraph that is nothing but a quotation."""
+    spans = []
+    position = 0
+    for paragraph in text.split(PARAGRAPH_BREAK):
+        end = position + len(paragraph)
+        if is_quotation(paragraph):
+            spans.append((position, end))
+        position = end + len(PARAGRAPH_BREAK)
+    return spans
+
+
 def paragraph_language(paragraph, detect):
     """The language holding most of ``paragraph``, ignoring what it quotes.
 

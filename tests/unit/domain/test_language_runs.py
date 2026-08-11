@@ -5,8 +5,10 @@ these are deterministic and never load py3langid.
 import pytest
 
 from qhld_engine.domain.speeches.language_runs import (
+    is_quotation,
     paragraph_language,
     paragraph_runs,
+    quotation_spans,
     renders,
     sentence_spans,
 )
@@ -53,6 +55,32 @@ def test_a_paragraph_that_is_only_a_quotation_has_no_language():
     assert paragraph_language(
         "«A pesar de ello, nuestros tradicionales enemigos nos acusan de crueles»",
         _fake_detect) is None
+
+
+def test_a_paragraph_that_is_only_a_quotation_is_recognised_as_one():
+    assert is_quotation(
+        "«A pesar de ello, nuestros tradicionales enemigos nos acusan de crueles».")
+
+
+def test_a_short_ordinary_paragraph_is_not_a_quotation():
+    # The half of the test that is easy to leave out, and the one that matters: a closing
+    # courtesy line is also too short to read, and it really can be a rendering of the
+    # line before it.
+    assert not is_quotation("Gracias.")
+    assert not is_quotation("Moito obrigado.")
+
+
+def test_a_paragraph_that_merely_contains_a_quotation_is_not_one():
+    assert not is_quotation(
+        "Això és la veritat, senyories, i ho volem dir ben clar aquí aquesta tarda. "
+        "«Los sepultureros más eficaces de un imperio suelen ser los imperialistas»."
+    )
+
+
+def test_quotation_spans_locate_the_quoted_paragraphs():
+    quotation = "«A pesar de ello, nuestros enemigos nos acusan de crueles»."
+    text = f"{CA_PARAGRAPH}\n\n{quotation}\n\n{ES_PARAGRAPH}"
+    assert [text[start:end] for start, end in quotation_spans(text)] == [quotation]
 
 
 def test_consecutive_paragraphs_of_one_language_are_one_run():

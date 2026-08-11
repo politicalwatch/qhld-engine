@@ -66,6 +66,18 @@ SPANISH = (
     "real debería ser mucho más alta, porque el proyecto de Barcelona no incluye el "
     "mantenimiento. Eso es lo que ustedes no explican.")
 
+# A second pair, for the fixtures that need a speech long enough to have a shape. It
+# shares its three long words with its own rendering and none with the pair above, so the
+# alignment has a wrong answer available and has to decline it.
+CATALAN_TARRAGONA = (
+    "Senyories, l'hospital de Tarragona fa anys que espera que la Generalitat hi "
+    "destini els recursos comarcals que li pertoquen. Nosaltres això ho hem denunciat "
+    "aquí moltes vegades i mai no hem obtingut cap resposta concreta de ningú.")
+SPANISH_TARRAGONA = (
+    "Señorías, el hospital de Tarragona lleva años esperando que la Generalitat le "
+    "destine los recursos comarcales que le corresponden. Lo hemos denunciado aquí "
+    "muchas veces y nunca hemos obtenido ninguna respuesta concreta de nadie.")
+
 
 def test_a_monolingual_spanish_speech_is_one_block():
     text = ("Muchas gracias, presidente. Comparezco hoy ante la Cámara para hablar "
@@ -163,6 +175,86 @@ def test_a_short_paragraph_does_not_make_a_long_one_its_rendering():
     # on their shared proper nouns and call the rendering complete; scoring meaning
     # instead declines that pairing, which is the whole point of the change.
     assert split.blocks[1].partial is True
+
+
+def test_a_quotation_read_aloud_stays_in_the_record_of_what_was_said():
+    # The Diario prints the citation on its own paragraph, AFTER the Spanish rendering of
+    # the sentence that announces it. Having no language of its own it joins the run
+    # before it, so removing that rendering used to take the citation with it — and the
+    # citation was spoken, once, as part of the Catalan delivery.
+    quotation = ("«Los sepultureros más eficaces de un imperio suelen ser los mismos "
+                 "imperialistas, y no hay nada más que discutir sobre ello».")
+    text = f"{CATALAN}\n\n{SPANISH}\n\n{quotation}"
+    split = split_languages(text, _fake_detect, _clip(CATALAN, quotation),
+                            similarity=_fake_similarity)
+
+    assert [(b.lang, b.original) for b in split.blocks] == [("ca", True), ("es", False)]
+    assert quotation in split.blocks[0].text
+    # ...and still in the Spanish side as the Diario prints it
+    assert quotation in split.blocks[1].text
+
+
+def test_a_paragraph_is_not_rendered_by_far_more_text_than_itself():
+    # Nothing costs the alignment anything to over-claim, so a closing line will take a
+    # much longer Spanish paragraph that merely takes up its point. Only proportion can
+    # refuse that claim, and refusing it is what keeps 300 characters the speaker said in
+    # the record of what was said.
+    closing = "Però això, senyories, el ministeri de Barcelona no ho explica."
+    spoken_tail = (
+        "Y termino, señorías. No voy a pedir aquí que se gestione un poco mejor; voy a "
+        "pedir que la retire entera, porque las cifras que hemos conocido esta misma "
+        "semana no admiten ninguna otra lectura razonable en esta Cámara ni fuera de "
+        "ella, y ustedes lo saben perfectamente.")
+
+    def _similarity(source, candidate):
+        if "retire entera" in candidate:
+            # It reads as a plausible rendering of the closing line, and of nothing else
+            # in the speech — but a weaker one than a real pair.
+            return 0.70 if "no ho explica" in source else 0.05
+        return _fake_similarity(source, candidate)
+
+    text = (f"{CATALAN}\n\n{CATALAN_TARRAGONA}\n\n{closing}\n\n"
+            f"{SPANISH}\n\n{SPANISH_TARRAGONA}\n\n{spoken_tail}")
+    split = split_languages(
+        text, _fake_detect, _clip(CATALAN, CATALAN_TARRAGONA, closing, spoken_tail),
+        similarity=_similarity)
+
+    assert not split.undecided
+    assert [(b.lang, b.original) for b in split.blocks] == [("ca", True), ("es", False)]
+    assert spoken_tail in split.blocks[0].text
+    # the real rendering is unaffected
+    assert SPANISH not in split.blocks[0].text
+    assert split.blocks[1].text.startswith("La verdad")
+
+
+def test_a_rendering_may_run_several_times_the_length_of_its_original():
+    # The other edge of the same rule, and the reason it is not simply set tight: the
+    # Diario prints a Catalan paragraph the speaker was cut off mid-sentence, and the
+    # interpreter finishes the thought. The Spanish runs three times as long and is a
+    # rendering all the same.
+    cut_off = ("Senyories, aquesta renovació no servirà de res si no anem molt més "
+               "enllà del que vostès proposen avui aquí, si no fem realment…")
+    finished = (
+        "Señorías, esa renovación no va a servir para nada si no vamos mucho más allá "
+        "de lo que ustedes proponen hoy aquí, si no hacemos realmente una reforma del "
+        "sistema del Poder Judicial y del sistema democrático que vaya mucho más allá "
+        "de este acuerdo al que acaban de llegar. O nos lo tomamos en serio las "
+        "personas demócratas y progresistas y hacemos acciones políticas a favor de la "
+        "mayoría, o no servirá absolutamente para nada de nada.")
+
+    def _similarity(source, candidate):
+        if "Poder Judicial" in candidate:
+            return 0.95 if "no servirà de res" in source else 0.05
+        return _fake_similarity(source, candidate)
+
+    text = f"{CATALAN}\n\n{cut_off}\n\n{SPANISH}\n\n{finished}"
+    split = split_languages(text, _fake_detect, _clip(CATALAN, cut_off),
+                            similarity=_similarity)
+
+    assert not split.undecided
+    assert [(b.lang, b.original) for b in split.blocks] == [("ca", True), ("es", False)]
+    assert finished not in split.blocks[0].text
+    assert finished in split.blocks[1].text
 
 
 def test_every_block_names_its_own_languages_starting_with_the_dominant_one():

@@ -34,6 +34,7 @@ from typing import NamedTuple
 from qhld_engine.domain.speeches.language_runs import (
     CO_LANGS,
     paragraph_spans,
+    quotation_spans,
     sentence_spans,
 )
 
@@ -92,17 +93,25 @@ SPEECH_RATE_MAX = 18.9
 # load-bearing, its distance from the cliff is.
 SIMILARITY_FLOOR = 0.65
 
-# How much longer than the co-official material aligned to it a Spanish paragraph may run
-# before the claim that it renders that material stops being credible. A courtesy line
-# does not render a paragraph twenty times its length, however much vocabulary the two
-# share by being about the same debate — and treating it as one takes that paragraph out
-# of the record of what was said.
+# How much longer than a co-official paragraph everything claimed to render it may run,
+# all of it together, before the claim stops being credible. A courtesy line does not
+# render a paragraph twenty times its length, however much the two share by being about
+# the same debate — and treating it as one takes that paragraph out of the record of what
+# was said.
 #
-# Measured over every pair the alignment picks corpus-wide: the median rendering runs 1.04
-# times what it renders and the ninetieth percentile 2.99. Anywhere between 2.5 and 5 the
-# corpus verdicts are identical, which is what makes the exact figure unimportant; below
-# 2.5 genuine translation pairs start to come apart.
-RENDERING_MAX_EXPANSION = 3.0
+# Per SOURCE paragraph, not per Spanish one. The two are not the same test, and the
+# difference is what the alignment gets wrong: nothing costs it anything to over-claim, so
+# a paragraph that already has a good partner will happily take a second, weaker one as
+# well. Checked against the Spanish side alone, that second claim looks proportionate on
+# its own; checked against what it says it renders, it is one paragraph claiming to be
+# said twice over. 742439 is the case — 2,040 characters of spoken Spanish claimed at 0.81
+# by a 536-character paragraph whose real rendering scores 0.93.
+#
+# Swept over the bitext gold set: a flat plateau from 3.2 to 4.5, breaking at 5.0. Both
+# edges are pinned by speeches in that set — 736259 needs more than 3.12 (its Catalan
+# trails off mid-sentence and the Spanish finishes the thought), 742439 less than 4.70 and
+# 726204 less than 5.27. Corpus-wide the median rendering runs 1.04 times its original.
+RENDERING_MAX_EXPANSION = 4.0
 
 
 # A translation exists when it covers this much of the original, and is complete rather
@@ -277,14 +286,25 @@ def _rendered_blocks(stripped, co_runs, es_runs, delivered_es, co_lang, coverage
     the Spanish block keeps the whole Spanish side as the Diario prints it, so those
     stretches appear in both. That duplication is deliberate: each block is complete for
     its own purpose.
+
+    A quotation on its own paragraph is one of those stretches and cannot be found by the
+    alignment, which works in runs: having no language of its own it attaches to the
+    paragraph before it, and when that paragraph is a rendering it leaves the record along
+    with it. So it is added back here, by position.
     """
-    delivered = sorted(
-        co_runs + [run for i, run in enumerate(es_runs) if i in delivered_es],
-        key=lambda run: run[1])
-    original = _join(stripped, delivered)
-    spanish = _join(stripped, es_runs)
+    delivered = [(start, end) for _, start, end in
+                 co_runs + [run for i, run in enumerate(es_runs) if i in delivered_es]]
+    delivered += [span for span in quotation_spans(stripped)
+                  if not _within(span, delivered)]
+    original = _join(stripped, sorted(delivered))
+    spanish = _join(stripped, [(start, end) for _, start, end in es_runs])
     partial = _is_partial(co_runs, es_runs, coverage, comparable, co_lang)
     return [Block(co_lang, original, True), Block("es", spanish, False, partial)]
+
+
+def _within(span, spans):
+    start, end = span
+    return any(s <= start and end <= e for s, e in spans)
 
 
 def _is_partial(co_runs, es_runs, coverage, comparable, co_lang):
@@ -314,21 +334,26 @@ def _align_renderings(stripped, co_runs, es_runs, similarity):
     fall out — on the Spanish side, that is a stretch the speaker delivered in Spanish.
 
     Nothing in that walk costs anything to over-claim: leaving a Spanish paragraph unpaired
-    scores zero, so any pairing above the floor is free profit, and a courtesy line that
-    happens to share a name with a long paragraph will take it. So proportionality is
-    enforced afterwards, and **only on the Spanish side**. The two sides are not
-    symmetrical in what they cost: dropping a Spanish paragraph returns it to the record of
-    what was said, while dropping a co-official one merely lowers ``coverage`` — which
-    would mark complete renderings ``partial`` and, far enough down, refuse healthy
-    speeches outright. Measured: enforcing it inside the pairing instead refuses six
-    speeches whose blocks are textbook translation pairs.
+    scores zero, so any pairing above the floor is free profit, and a paragraph that
+    already has a good partner will take a second, weaker one as well. So proportionality
+    is enforced afterwards, measured **per source paragraph** over everything claimed for
+    it — a paragraph cannot have been said four times over, however plausible each claim
+    looks on its own.
+
+    Enforced afterwards rather than inside the pairing because the two sides are not
+    symmetrical in what they cost. Dropping a Spanish paragraph returns it to the record of
+    what was said; dropping a co-official one merely lowers ``coverage``, which would mark
+    complete renderings ``partial`` and, far enough down, refuse healthy speeches outright.
+    Measured: enforcing it inside the pairing refuses six speeches whose blocks are textbook
+    translation pairs.
     """
     floor = SIMILARITY_FLOOR
     co_text = [stripped[start:end] for _, start, end in co_runs]
     es_text = [stripped[start:end] for _, start, end in es_runs]
+    reads_as = {}
 
     def score(i, j):
-        value = similarity(co_text[i], es_text[j])
+        value = reads_as[i, j] = similarity(co_text[i], es_text[j])
         if value < floor:
             return 0.0
         # Weight by how much text the match accounts for, so the alignment prefers
@@ -358,28 +383,42 @@ def _align_renderings(stripped, co_runs, es_runs, similarity):
                             choice = ("match", *previous)
             best[i][j], move[i][j] = top, choice
 
-    rendered_co, rendering_es = set(), set()
-    backing = defaultdict(int)  # es paragraph -> co characters aligned to it
+    rendered_co = set()
+    claimed = defaultdict(dict)  # co paragraph -> {es paragraph: how well it reads}
     i, j = rows, cols
     while i or j:
         kind, previous_i, previous_j = move[i][j]
         if kind == "match":
             rendered_co.add(i - 1)
-            rendering_es.add(j - 1)
-            backing[j - 1] += co_runs[i - 1][2] - co_runs[i - 1][1]
+            claimed[i - 1][j - 1] = reads_as[i - 1, j - 1]
         i, j = previous_i, previous_j
 
     # `rendered_co` is deliberately left alone: a co-official paragraph that the Spanish
     # covers only briefly is still covered, and taking it back out of `coverage` here is
     # what would turn a complete rendering into a `partial` one.
-    rendering_es = {j for j in rendering_es
-                    if es_runs[j][2] - es_runs[j][1]
-                    <= RENDERING_MAX_EXPANSION * backing[j]}
-    return rendered_co, rendering_es
+    def _length(j):
+        return es_runs[j][2] - es_runs[j][1]
+
+    for source, picks in claimed.items():
+        allowance = RENDERING_MAX_EXPANSION * (co_runs[source][2] - co_runs[source][1])
+        length = sum(_length(j) for j in picks)
+        # Weakest first: of everything this paragraph claims, that is the claim the
+        # alignment was least sure of, and dropping it returns the paragraph to the
+        # record of what was said rather than deleting anything. Ties broken by dropping
+        # the LONGEST — within one source paragraph its own length is fixed, so the
+        # longest claim is the least proportionate, which is the same question the
+        # allowance asks. Without that the choice falls out of dictionary order: a
+        # 209-character paragraph claiming both its own 216-character rendering and a
+        # 1,276-character neighbour kept the neighbour.
+        while picks and length > allowance:
+            weakest = min(picks, key=lambda j: (picks[j], -_length(j)))
+            length -= _length(weakest)
+            del picks[weakest]
+    return rendered_co, {j for picks in claimed.values() for j in picks}
 
 
-def _join(stripped, runs):
-    return "\n\n".join(stripped[start:end].strip() for _, start, end in runs)
+def _join(stripped, spans):
+    return "\n\n".join(stripped[start:end].strip() for start, end in spans)
 
 
 def _dominant(runs):
