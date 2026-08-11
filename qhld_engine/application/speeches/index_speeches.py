@@ -165,6 +165,11 @@ class IndexSpeeches:
             # the NL-search entities filter matches membership of this list.
             "entities": sorted({e.key for e in (speech.entities or []) if e.key}),
             "lang": block.lang,
+            # Every language the block is in, so a speech carrying a Basque
+            # passage is findable as Basque. The language filter still reads
+            # `lang`; widening it changes what a filter returns and wants its
+            # own measurement.
+            "langs": list(block.langs or [block.lang]),
             "original": block.original,
             "block_index": block_index,
             "chunk_index": chunk_index,

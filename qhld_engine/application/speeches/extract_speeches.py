@@ -306,7 +306,8 @@ class ExtractSpeeches:
                                     similarity=self.similarity)
             original_language = split.language
             blocks = [SpeechText(lang=block.lang, text=block.text,
-                                 original=block.original, partial=block.partial)
+                                 original=block.original, partial=block.partial,
+                                 langs=list(block.langs))
                       for block in split.blocks]
             verdict = self._verdict(split, blocks, existing)
 

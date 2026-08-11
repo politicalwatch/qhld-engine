@@ -41,12 +41,19 @@ from qhld_engine.domain.speeches.language_runs import (
 class Block(NamedTuple):
     """One block of a speech. ``partial`` marks a rendering that covers only part of
     the original — never set on an ``original`` block, which is complete by
-    construction."""
+    construction.
+
+    ``langs`` names every language the block is really in, commonest first, with ``lang``
+    always the first of them. The as-delivered block holds what was spoken whatever
+    languages that mixes, so calling a mostly-Spanish speech with a Basque passage simply
+    ``es`` hides that the Basque was spoken at all — and calling it ``eu`` would be worse.
+    """
 
     lang: str
     text: str
     original: bool
     partial: bool = False
+    langs: tuple = ()
 
 
 class Split(NamedTuple):
@@ -116,8 +123,44 @@ CO_SHARE_FLOOR = 0.5
 # n=7 behind the Basque figure, so treat it as provisional.
 RENDERING_RATIO = {"ca": 1.00, "gl": 1.03, "eu": 1.24}
 
+# What share of a block a language needs before it is named among the block's languages.
+# A courtesy line should not make a speech bilingual: greetings sit at or below 3% of the
+# block (726710 opens "Gracias, señor presidente. Eskerrik asko." — 41 of 1,430
+# characters) while a genuine co-official passage is an order of magnitude larger (774737
+# 13%, 760011 21%, 738994 27%). The gap is wide, so the exact figure is not delicate.
+# The dominant language is exempt and always named, however short the block.
+LANG_SHARE_FLOOR = 0.05
+
 # A side shorter than this fraction of the speech is not a block of its own.
 _MIN_RATIO = 0.15
+
+
+
+def _langs_of(text, lang, detect):
+    """Every language ``text`` is really in, commonest first, ``lang`` always first.
+
+    Read from the block's own text rather than threaded down from the runs, so the
+    two-block case, both single-block cases and the provisional reading are all described
+    the same way and none of them can be forgotten.
+    """
+    weights = {}
+    for language, start, end in paragraph_spans(text.strip(), detect):
+        weights[language] = weights.get(language, 0) + (end - start)
+    total = sum(weights.values())
+    if not total:
+        # Nothing in it is long enough to read — a one-line intervention.
+        return (lang,)
+    others = sorted((l for l in weights if l != lang),
+                    key=lambda l: -weights[l])
+    return (lang, *(l for l in others if weights[l] / total >= LANG_SHARE_FLOOR))
+
+
+def _decided(language, blocks, undecided, detect):
+    """Assemble the verdict, naming each block's languages from its own text."""
+    return Split(language,
+                 [block._replace(langs=_langs_of(block.text, block.lang, detect))
+                  for block in blocks],
+                 undecided)
 
 
 def split_languages(text, detect, duration=None, similarity=None):
@@ -140,20 +183,21 @@ def split_languages(text, detect, duration=None, similarity=None):
         # Nothing in it is long enough for the detector to read — a one-line
         # intervention ("Sí."). It is still a speech and still needs its block; Spanish
         # is the safe assumption, being the language all but a fortieth are given in.
-        return Split("es", [Block("es", text, True)], False)
+        return _decided("es", [Block("es", text, True)], False, detect)
 
     co_runs = [run for run in runs if run[0] in CO_LANGS]
     es_runs = [run for run in runs if run[0] == "es"]
     if not co_runs:
-        return Split("es", [Block("es", text, True)], False)
+        return _decided("es", [Block("es", text, True)], False, detect)
 
     co_lang = _dominant(co_runs)
     co_chars = sum(end - start for _, start, end in co_runs)
     if not es_runs or co_chars / len(stripped) > 1 - _MIN_RATIO:
-        return Split(co_lang, [Block(co_lang, text, True)], False)
+        return _decided(co_lang, [Block(co_lang, text, True)], False, detect)
 
     if similarity is None:
-        return Split(co_lang, _single_cut(stripped, text, detect, co_lang), True)
+        return _decided(co_lang, _single_cut(stripped, text, detect, co_lang),
+                    True, detect)
 
     comparable = True
     rendered_co, rendering_es = _align_renderings(stripped, co_runs, es_runs,
@@ -178,15 +222,17 @@ def split_languages(text, detect, duration=None, similarity=None):
                              duration, es_runs, co_lang):
         blocks = _rendered_blocks(stripped, co_runs, es_runs, delivered_es, co_lang,
                                   coverage, comparable)
-        return Split(co_lang, blocks, duration is None)
+        return _decided(co_lang, blocks, duration is None, detect)
     if _all_of_it_was_spoken(comparable, coverage, co_chars, spoken, stripped, duration):
         dominant = _dominant(runs)
-        return Split(dominant, [Block(dominant, text, True)], duration is None)
+        return _decided(dominant, [Block(dominant, text, True)], duration is None,
+                        detect)
 
     # Nothing places it. Keep the shape the single-boundary reading gives, so a speech
     # that is probably an ordinary pair does not lose its Spanish block while it waits,
     # and mark it so the adjudication pass can find it.
-    return Split(co_lang, _single_cut(stripped, text, detect, co_lang), True)
+    return _decided(co_lang, _single_cut(stripped, text, detect, co_lang),
+                    True, detect)
 
 
 def _renders_whole_speech(comparable, coverage, co_chars, spoken, stripped, duration,

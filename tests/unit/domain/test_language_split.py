@@ -165,6 +165,50 @@ def test_a_short_paragraph_does_not_make_a_long_one_its_rendering():
     assert split.blocks[1].partial is True
 
 
+def test_every_block_names_its_own_languages_starting_with_the_dominant_one():
+    """`lang` is what four other things key off — the subtitle track id, the aligner, the
+    taggable text and VTT selection — so `langs` may extend it but must never disagree
+    with it."""
+    aside = ("Señor ministro, estoy verdaderamente emocionado de escuchar esto hoy "
+             "aquí en esta Cámara, se lo digo de corazón. Y se lo repito porque hace "
+             "falta decirlo más veces en esta Cámara y fuera de ella.")
+    text = f"{CATALAN}\n\n{aside}"
+    split = split_languages(text, _fake_detect, _clip(text), similarity=_fake_similarity)
+
+    # one block, delivered, and it really is in both languages
+    assert len(split.blocks) == 1
+    assert split.blocks[0].langs == ("ca", "es")
+    assert all(b.langs[0] == b.lang for b in split.blocks)
+
+
+def test_a_monolingual_speech_names_one_language():
+    text = ("Muchas gracias, presidente. Comparezco hoy ante la Cámara para hablar "
+            "del cierre de la fábrica y de sus efectos sobre el empleo.")
+    split = split_languages(text, _fake_detect, _clip(text), similarity=_fake_similarity)
+
+    assert split.blocks[0].langs == ("es",)
+
+
+def test_a_language_present_only_in_passing_is_not_named():
+    """A speech is not bilingual because it opened with a greeting."""
+    greeting = "Moltes gràcies, senyora presidenta."
+    body = " ".join(
+        ["Señorías, comparezco para hablar del cierre de la fábrica y de sus efectos "
+         "sobre el empleo en la comarca durante los próximos años."] * 12)
+    split = split_languages(f"{greeting}\n\n{body}", _fake_detect,
+                            _clip(greeting, body), similarity=_fake_similarity)
+
+    assert split.blocks[0].lang == "es"
+    assert split.blocks[0].langs == ("es",)   # the greeting is kept, but not named
+    assert "Moltes gràcies" in split.blocks[0].text
+
+
+def test_a_one_line_intervention_still_names_its_language():
+    split = split_languages("Sí.", _fake_detect, 4.0, similarity=_fake_similarity)
+
+    assert split.blocks[0].langs == ("es",)
+
+
 def test_a_speech_nothing_places_is_left_undecided():
     # Far more text than the clip can hold under any reading of it.
     text = f"{CATALAN}\n\n{SPANISH}"
