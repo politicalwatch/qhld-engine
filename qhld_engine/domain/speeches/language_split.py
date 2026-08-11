@@ -28,7 +28,7 @@ undecided rather than guessed at: a wrong verdict here renames the language of a
 in search, in the reader and in the corpus description.
 """
 
-from collections import Counter
+from collections import Counter, defaultdict
 from typing import NamedTuple
 
 from qhld_engine.domain.speeches.language_runs import (
@@ -87,6 +87,18 @@ LEXICALLY_COMPARABLE = frozenset({"ca", "gl"})
 # speech whose sides share nothing, where nothing should pair.
 RENDERS_RELATIVE = 0.5
 RENDERS_FLOOR_MIN = 0.05
+
+# How much longer than the co-official material aligned to it a Spanish paragraph may run
+# before the claim that it renders that material stops being credible. A courtesy line
+# does not render a paragraph twenty times its length, however much vocabulary the two
+# share by being about the same debate — and treating it as one takes that paragraph out
+# of the record of what was said.
+#
+# Measured over every pair the alignment picks corpus-wide: the median rendering runs 1.04
+# times what it renders and the ninetieth percentile 2.99. Anywhere between 2.5 and 5 the
+# corpus verdicts are identical, which is what makes the exact figure unimportant; below
+# 2.5 genuine translation pairs start to come apart.
+RENDERING_MAX_EXPANSION = 3.0
 
 
 # A translation exists when it covers this much of the original, and is complete rather
@@ -246,6 +258,16 @@ def _align_renderings(stripped, co_runs, es_runs):
     sides advance together. So this walks both sequences once, allowing each side to
     consume several of the other's paragraphs, and lets a paragraph that matches nothing
     fall out — on the Spanish side, that is a stretch the speaker delivered in Spanish.
+
+    Nothing in that walk costs anything to over-claim: leaving a Spanish paragraph unpaired
+    scores zero, so any pairing above the floor is free profit, and a courtesy line that
+    happens to share a name with a long paragraph will take it. So proportionality is
+    enforced afterwards, and **only on the Spanish side**. The two sides are not
+    symmetrical in what they cost: dropping a Spanish paragraph returns it to the record of
+    what was said, while dropping a co-official one merely lowers ``coverage`` — which
+    would mark complete renderings ``partial`` and, far enough down, refuse healthy
+    speeches outright. Measured: enforcing it inside the pairing instead refuses six
+    speeches whose blocks are textbook translation pairs.
     """
     co_tokens = [token_counts(stripped[start:end]) for _, start, end in co_runs]
     es_tokens = [token_counts(stripped[start:end]) for _, start, end in es_runs]
@@ -287,13 +309,22 @@ def _align_renderings(stripped, co_runs, es_runs):
             best[i][j], move[i][j] = top, choice
 
     rendered_co, rendering_es = set(), set()
+    backing = defaultdict(int)  # es paragraph -> co characters aligned to it
     i, j = rows, cols
     while i or j:
         kind, previous_i, previous_j = move[i][j]
         if kind == "match":
             rendered_co.add(i - 1)
             rendering_es.add(j - 1)
+            backing[j - 1] += co_runs[i - 1][2] - co_runs[i - 1][1]
         i, j = previous_i, previous_j
+
+    # `rendered_co` is deliberately left alone: a co-official paragraph that the Spanish
+    # covers only briefly is still covered, and taking it back out of `coverage` here is
+    # what would turn a complete rendering into a `partial` one.
+    rendering_es = {j for j in rendering_es
+                    if es_runs[j][2] - es_runs[j][1]
+                    <= RENDERING_MAX_EXPANSION * backing[j]}
     return rendered_co, rendering_es
 
 

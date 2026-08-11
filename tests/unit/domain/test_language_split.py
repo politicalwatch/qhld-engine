@@ -115,6 +115,31 @@ def test_a_rendering_that_covers_only_part_is_marked_partial():
     assert split.blocks[1].partial is True
 
 
+def test_a_short_paragraph_does_not_make_a_long_one_its_rendering():
+    # The closing Catalan line names Barcelona and the ministry, and so does the Spanish
+    # the speaker went on to deliver — enough shared vocabulary to pair them, and nowhere
+    # near enough length for one to be a rendering of the other. Left paired, that Spanish
+    # would leave the record of what was said, and the speech would no longer fit its clip.
+    closing = "Però això, senyories, el ministeri de Barcelona no ho explica."
+    spoken_tail = (
+        "Y termino, señorías. No voy a pedir aquí al ministerio que gestione un poco "
+        "mejor la reforma del transporte de Barcelona; voy a pedir que la retire "
+        "entera, porque las cifras que hemos conocido esta misma semana no admiten "
+        "ninguna otra lectura razonable.")
+    text = f"{CATALAN}\n\n{closing}\n\n{SPANISH}\n\n{spoken_tail}"
+    split = split_languages(text, _fake_detect, _clip(CATALAN, closing, spoken_tail))
+
+    assert not split.undecided
+    assert [(b.lang, b.original) for b in split.blocks] == [("ca", True), ("es", False)]
+    # it was spoken, so it is in the record of what was said...
+    assert spoken_tail in split.blocks[0].text
+    # ...and still in the Spanish side as the Diario prints it
+    assert spoken_tail in split.blocks[1].text
+    # the real rendering is unaffected, and remains complete
+    assert split.blocks[1].text.startswith("La verdad")
+    assert split.blocks[1].partial is False
+
+
 def test_a_speech_nothing_places_is_left_undecided():
     # Far more text than the clip can hold under any reading of it.
     text = f"{CATALAN}\n\n{SPANISH}"
