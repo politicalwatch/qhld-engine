@@ -63,11 +63,31 @@ def test_extract_speeches_172_000001(monkeypatch, capture):
     # published video ids trigger the provisional-twin cleanup; keep it Mongo-free
     monkeypatch.setattr(mod.Speeches, "delete", staticmethod(lambda id: None))
     monkeypatch.setattr(mod.Sessions, "save", lambda s: saved_sessions.append(s))
-    # stub the clip probe: it reads a header off the Congress CDN, and this test is
-    # offline. Recording the links proves the wiring without asserting a real length.
+    # Stub the clip probe: it reads a header off the Congress CDN, and this test is
+    # offline. The lengths come from the capture's own `inicio01`/`fin01`, so each
+    # intervention gets the clip it really had (750s, 559s, 303s, 208s) — the split
+    # weighs text against clip length, and a made-up duration would quietly send every
+    # speech down the "nothing places this" path and prove nothing.
+    starts_ends = {
+        (video["id01"]): video
+        for entry in page1["lista_intervenciones"].values()
+        for video in [entry.get("video_intervencion") or {}]
+        if video.get("id01")
+    }
+
+    def _seconds(clock):
+        hours, minutes, seconds = (int(part) for part in clock.split(":"))
+        return hours * 3600 + minutes * 60 + seconds
+
+    def _probe(link):
+        probed.append(link)
+        for video_id, video in starts_ends.items():
+            if video_id in link:
+                return float(_seconds(video["fin01"]) - _seconds(video["inicio01"]))
+        raise AssertionError(f"no capture for {link}")
+
     probed = []
-    monkeypatch.setattr(
-        mod, "probe_duration", lambda link: probed.append(link) or 61.5)
+    monkeypatch.setattr(mod, "probe_duration", _probe)
     # stub mention tagging: this test locks segmentation/language-split, not NER,
     # and must stay Mongo-free (no deputy catalog) and spaCy-free.
     monkeypatch.setattr(mod.Deputies, "get_all", staticmethod(lambda: []))
@@ -99,7 +119,7 @@ def test_extract_speeches_172_000001(monkeypatch, capture):
     by_order = {s.order: s for s in saved}
 
     # every intervention carries the length of its own clip, probed once each
-    assert [s.duration for s in saved] == [61.5, 61.5, 61.5, 61.5]
+    assert [s.duration for s in saved] == [750.0, 559.0, 303.0, 208.0]
     assert probed == [s.video_link for s in saved]
 
     # diputado (has a group) vs government member (no group)
@@ -117,8 +137,23 @@ def test_extract_speeches_172_000001(monkeypatch, capture):
     assert by_order[1].original_language == "gl"
     assert [(b.lang, b.original) for b in rego] == [("gl", True), ("es", False)]
     assert rego[0].text.startswith("Grazas, señora presidenta")
-    assert rego[1].text.startswith("Gracias, señora presidenta")
-    assert rego[1].text.rstrip().endswith("Muchas gracias.")
+    assert rego[1].text.rstrip().endswith("permanente de silicosis…")
+    # Not "Muchas gracias.", and the reason is in the source rather than the split: a
+    # page turn has merged the tail of the Galician and the tail of its interpretation
+    # into ONE paragraph ("… como a aplicación destes coeficientes redutores. Moito
+    # obrigado. … como la aplicación de estos coeficientes reductores."). A paragraph
+    # that is genuinely two languages has to be assigned to one of them — Galician here,
+    # since most of its characters are — and the closing line after it follows. 138
+    # characters land on the wrong side; the alternative readings misplace as much.
+    assert "Moito obrigado. … como la aplicación" in rego[0].text
+    # Both salutations read as SPANISH to the detector — "señora presidenta" outweighs
+    # the one Galician word in "Grazas, señora presidenta." However short a paragraph
+    # gets no run of its own, and that same weak reading only picks which neighbour it
+    # joins: the Galician one has no Spanish before it to join and stays with the
+    # Galician, while "Gracias, señora presidenta." opens the interpretation and goes
+    # with it.
+    assert "Grazas, señora presidenta" not in rego[1].text
+    assert rego[1].text.startswith("Gracias, señora presidenta.\n\nAntes que yo")
 
     minister = by_order[2].speech
     assert by_order[2].original_language == "es"
@@ -129,9 +164,9 @@ def test_extract_speeches_172_000001(monkeypatch, capture):
     assert [(b.lang, b.original) for b in by_order[3].speech] == [("gl", True), ("es", False)]
     assert [(b.lang, b.original) for b in by_order[4].speech] == [("es", True)]
 
-    # the Galician original carries no Spanish bleed: the boundary is clean and the
-    # minister's *reply* (a separate intervention) is not swallowed into the turn.
-    assert "Muchas gracias" not in rego[0].text
+    # The minister's *reply* — a separate intervention — is not swallowed into the turn.
+    # (The Galician block does end on Spanish, but only through the merged page-turn
+    # paragraph described above, not through the boundary drifting.)
     assert "He escuchado con mucha atención, señor Rego" not in rego[0].text
     assert "He escuchado con mucha atención, señor Rego" not in rego[1].text
 
@@ -139,7 +174,7 @@ def test_extract_speeches_172_000001(monkeypatch, capture):
     # the salutation is its own paragraph, breaks land only at sentence ends,
     # and a page turn falling mid-sentence is joined, not broken
     assert rego[0].text.startswith("Grazas, señora presidenta.\n\nAntes ca min")
-    assert rego[1].text.startswith("Gracias, señora presidenta.\n\nAntes que yo")
+    assert "Gracias, señora presidenta." not in rego[0].text
     assert "Só hai que ver, só hai que ollar" in rego[0].text  # page turn at Pág. 41
     for speech in saved:
         for block in speech.speech:
@@ -153,11 +188,16 @@ def test_extract_speeches_172_000001(monkeypatch, capture):
         i: [(len(b.text), len(b.text.split("\n\n"))) for b in by_order[i].speech]
         for i in (1, 2, 3, 4)}
     assert block_shapes == {
-        1: [(10424, 15), (10850, 11)],
+        1: [(10953, 18), (10708, 9)],
         2: [(9608, 13)],
-        3: [(3737, 4), (3842, 5)],
+        3: [(3737, 4), (3842, 5)],  # unchanged from the single-boundary split
         4: [(3694, 7)],
     }
+
+    # every one of them decided from the text and the clip; none needed the audio, and
+    # none was left provisional
+    assert [s.split_verdict for s in saved] == [None, None, None, None]
+    assert all(not b.partial for s in saved for b in s.speech)
 
     # common fields
     assert all(s.references == ["172/000001"] for s in saved)

@@ -33,6 +33,7 @@ from qhld_ai.application.persons_catalog import (
 )
 from qhld_engine.domain.speeches.language_split import split_languages
 from qhld_engine.infrastructure.config.settings import get_settings
+from qhld_ai.domain.subtitles import text_fingerprint
 from qhld_ai.infrastructure.audio.pyav import DurationUnavailable, probe_duration
 from qhld_ai.infrastructure.language import detect
 from qhld_engine.extractors.spain.congress_api import CongressApi
@@ -43,7 +44,7 @@ from qhld_engine.extractors.spain.initiative_extractors.utils.pdf_parsers import
 from tipi_data import DoesNotExist
 from tipi_data.utils import generate_id
 from tipi_data.models.session import Session
-from tipi_data.models.speech import Speech, SpeechText
+from tipi_data.models.speech import Speech, SpeechText, SplitVerdict
 from tipi_data.repositories.deputies import Deputies
 from tipi_data.repositories.sessions import Sessions
 from tipi_data.repositories.speeches import Speeches
@@ -271,30 +272,37 @@ class ExtractSpeeches:
             role_regex = segmentation.build_role_regex(
                 intervention.get("cargo_orador"))
             text = segmenter.next_speech(role_regex, upcoming_regex)
-        if text is None:
-            log.warning(f"Speaker heading not found for {reference}")
-            original_language, blocks = None, []
-        else:
-            original_language, parts = split_languages(text, detect)
-            blocks = [SpeechText(lang=lang, text=t, original=orig)
-                      for lang, t, orig in parts]
-
+        # The clip comes first: how long it runs is evidence about the text, so the
+        # split needs it, and reading it needs the video and whatever is already
+        # stored. Only where there is no video does identity depend on the blocks.
         video = intervention.get("video_intervencion") or {}
         order = int(intervention["doc"])
+        video_id = video.get("id01")
+        video_link = video.get("enlace_descarga02")
+        existing = self._stored(generate_id(video_id)) if video_id else None
+        duration = self._duration(video_link, existing)
+
+        if text is None:
+            log.warning(f"Speaker heading not found for {reference}")
+            original_language, blocks, verdict = None, [], None
+        else:
+            split = split_languages(text, detect, duration)
+            original_language = split.language
+            blocks = [SpeechText(lang=block.lang, text=block.text,
+                                 original=block.original, partial=block.partial)
+                      for block in split.blocks]
+            verdict = self._verdict(split, blocks, existing)
+
         fallback_id = self._content_id(
             session_link, intervention["orador"], order, blocks)
-        video_id = video.get("id01")
         speech_id = generate_id(video_id) if video_id else fallback_id
         if speech_id != fallback_id:
             # A run that happened before the video was published stored this
             # same intervention under its content identity; drop that copy now
             # that the canonical id is known.
             Speeches.delete(fallback_id)
-        try:
-            existing = Speeches.get(speech_id)
-        except DoesNotExist:
-            existing = None
-        video_link = video.get("enlace_descarga02")
+        if existing is None and not video_id:
+            existing = self._stored(speech_id)
         mentions, entities, interruptions = self._mentions(existing, blocks, speaker)
         speech = Speech(
             id=speech_id,
@@ -311,9 +319,10 @@ class ExtractSpeeches:
             session_name=intervention.get("sesion", {}).get("nombre_sesion"),
             video_link=video_link,
             session_link=session_link,
-            duration=self._duration(video_link, existing),
+            duration=duration,
             speech=blocks,
             original_language=original_language,
+            split_verdict=verdict,
             mentions=mentions,
             interruptions=interruptions,
             entities=entities,
@@ -347,6 +356,36 @@ class ExtractSpeeches:
         return (self.tagger.tag(text),
                 self.tagger.tag_entities(text),
                 self.tagger.tag_interruptions(text, speaker=speaker))
+
+    @staticmethod
+    def _stored(speech_id):
+        """The stored copy of this intervention, or ``None``."""
+        try:
+            return Speeches.get(speech_id)
+        except DoesNotExist:
+            return None
+
+    @staticmethod
+    def _verdict(split, blocks, existing):
+        """How this speech's shape was arrived at, or ``None`` when the text and the
+        clip settled it between them.
+
+        A verdict reached acoustically cost a video download to establish, and nothing
+        here can reproduce it, so a stored one is kept rather than overwritten — but
+        only while it still describes this text. The fingerprint is what decides that:
+        a re-extraction that changes the speech discards the verdict and leaves the
+        speech undecided again, which is the safe direction.
+        """
+        # The same fingerprint the subtitle tracks are guarded by; only its digest is
+        # needed here, since a verdict describes the text rather than indexing into it.
+        digest, _ = text_fingerprint("".join(block.text for block in blocks))
+        if (existing is not None and existing.split_verdict
+                and existing.split_verdict.fingerprint == digest
+                and existing.split_verdict.method == "acoustic"):
+            return existing.split_verdict
+        if split.undecided:
+            return SplitVerdict(method="undecided", fingerprint=digest)
+        return None
 
     @staticmethod
     def _duration(video_link, existing):

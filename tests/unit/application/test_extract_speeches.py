@@ -345,6 +345,55 @@ def test_a_new_video_link_is_reprobed(monkeypatch):
     assert saved[0].duration == 61.5
 
 
+# --- how the shape was decided ---------------------------------------------
+
+def _blocks(*texts):
+    from tipi_data.models.speech import SpeechText
+    return [SpeechText(lang="ca", text=t, original=i == 0)
+            for i, t in enumerate(texts)]
+
+
+def _split(undecided):
+    from qhld_engine.domain.speeches.language_split import Block, Split
+    return Split("ca", [Block("ca", "whatever", True)], undecided)
+
+
+def test_a_speech_the_evidence_places_records_no_verdict():
+    assert mod.ExtractSpeeches._verdict(_split(False), _blocks("text"), None) is None
+
+
+def test_a_speech_nothing_places_is_recorded_as_undecided():
+    verdict = mod.ExtractSpeeches._verdict(_split(True), _blocks("text"), None)
+
+    assert verdict.method == "undecided"
+    assert verdict.fingerprint
+
+
+def test_an_acoustic_verdict_survives_a_re_extraction_of_the_same_text():
+    # Establishing it cost a video download; nothing in extraction can reproduce it.
+    from tipi_data.models.speech import Speech, SplitVerdict
+    blocks = _blocks("una", "dues")
+    settled = mod.ExtractSpeeches._verdict(_split(True), blocks, None)
+    stored = Speech(id="s1", split_verdict=SplitVerdict(
+        method="acoustic", fingerprint=settled.fingerprint))
+
+    verdict = mod.ExtractSpeeches._verdict(_split(True), blocks, stored)
+
+    assert verdict.method == "acoustic"
+
+
+def test_an_acoustic_verdict_is_discarded_when_the_text_has_changed():
+    # It describes a speech that no longer exists in that form, so trusting it would
+    # carry a judgement about one text over onto another.
+    from tipi_data.models.speech import Speech, SplitVerdict
+    stored = Speech(id="s1", split_verdict=SplitVerdict(
+        method="acoustic", fingerprint="of some older text"))
+
+    verdict = mod.ExtractSpeeches._verdict(_split(True), _blocks("una", "dues"), stored)
+
+    assert verdict.method == "undecided"
+
+
 # --- one person, one stored speaker string ---------------------------------
 
 def _orador_page(orador, video_id="776209"):
