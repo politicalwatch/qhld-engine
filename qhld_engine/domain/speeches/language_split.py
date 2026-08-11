@@ -353,13 +353,18 @@ def _align_renderings(stripped, co_runs, es_runs, similarity):
     reads_as = {}
 
     def score(i, j):
+        # A pairing is worth how much one paragraph reads like the other, and nothing
+        # else. It used to be weighted by the length it accounted for, so that the walk
+        # would prefer explaining long paragraphs over collecting incidental short ones —
+        # but that weight is capped by the SHORTER side, so a long paragraph outbids a
+        # short one for the same rendering however much better the short one reads.
+        # 741705 is the case: 0.66 x 795 characters beat 0.893 x 351 for the same Spanish
+        # paragraph, and the true pair lost. Refusing incidental pairings is now
+        # SIMILARITY_FLOOR's job, and refusing disproportionate ones is
+        # RENDERING_MAX_EXPANSION's; neither existed when the weight was written, and
+        # both do it on better evidence than length.
         value = reads_as[i, j] = similarity(co_text[i], es_text[j])
-        if value < floor:
-            return 0.0
-        # Weight by how much text the match accounts for, so the alignment prefers
-        # explaining long paragraphs over collecting incidental short ones.
-        return value * min(co_runs[i][2] - co_runs[i][1],
-                           es_runs[j][2] - es_runs[j][1])
+        return value if value >= floor else 0.0
 
     rows, cols = len(co_runs), len(es_runs)
     best = [[0.0] * (cols + 1) for _ in range(rows + 1)]
