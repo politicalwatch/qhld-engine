@@ -28,15 +28,13 @@ undecided rather than guessed at: a wrong verdict here renames the language of a
 in search, in the reader and in the corpus description.
 """
 
-from collections import Counter, defaultdict
+from collections import defaultdict
 from typing import NamedTuple
 
 from qhld_engine.domain.speeches.language_runs import (
     CO_LANGS,
-    containment,
     paragraph_spans,
     sentence_spans,
-    token_counts,
 )
 
 
@@ -68,25 +66,24 @@ class Split(NamedTuple):
 SPEECH_RATE_MIN = 8.8
 SPEECH_RATE_MAX = 18.9
 
-# `renders` compares vocabulary, so it only means anything between languages that share
-# some. Catalan and Galician do; Basque does not — a full Basque interpretation scores
-# near zero against its Spanish text, so for Basque a low score is no evidence at all and
-# the clip decides alone.
-LEXICALLY_COMPARABLE = frozenset({"ca", "gl"})
 
-# How much vocabulary a rendering shares with its original is a property of the language
-# pair, not of the speech: measured over translation pairs whose original demonstrably
-# accounts for its own clip, the whole Spanish side reproduces a median 0.51 of the
-# Galician one, 0.21 of the Catalan and 0.03 of the Basque. A single floor is therefore
-# generous for Galician and punishing for Catalan, where a genuine rendering barely
-# clears it.
+# How closely a paragraph must read as a rendering of another before the alignment will
+# pair them. A cosine between multilingual sentence embeddings, not surface overlap.
 #
-# So the floor is set per speech, relative to how much the two sides share overall: a
-# paragraph counts as a rendering when it reaches a fair fraction of what this pair of
-# languages manages at all. The absolute minimum stops it collapsing toward zero on a
-# speech whose sides share nothing, where nothing should pair.
-RENDERS_RELATIVE = 0.5
-RENDERS_FLOOR_MIN = 0.05
+# ONE figure, for every language pair, which is the whole reason for the change: how much
+# vocabulary a translation shares with its original is a property of the pair (Galician
+# reproduces about half the Spanish, Catalan a fifth, Basque almost none), so the measure
+# it replaced needed a floor set per speech and a list of pairs it simply could not read.
+# Meaning is comparable across pairs, so the exception list and the relative floor both
+# go.
+#
+# Swept over the bitext gold set (`qhld eval bitext --instrument classifier`). There is a
+# CLIFF just below 0.575 — Catalan false positives go 1 -> 8 and Basque 0 -> 19, i.e.
+# spoken words being stripped out of the record — and a wide flat plateau above it, out to
+# 0.775 (ca), 0.725 (gl) and 0.700 (eu), beyond which real renderings start being missed.
+# 0.65 sits inside all three plateaus with room on both sides; the exact value is not
+# load-bearing, its distance from the cliff is.
+SIMILARITY_FLOOR = 0.65
 
 # How much longer than the co-official material aligned to it a Spanish paragraph may run
 # before the claim that it renders that material stops being credible. A courtesy line
@@ -123,9 +120,16 @@ RENDERING_RATIO = {"ca": 1.00, "gl": 1.03, "eu": 1.24}
 _MIN_RATIO = 0.15
 
 
-def split_languages(text, detect, duration=None):
-    """Split ``text`` into its blocks. ``duration`` is the clip's length in seconds, or
-    ``None`` where the video is not published yet."""
+def split_languages(text, detect, duration=None, similarity=None):
+    """Split ``text`` into its blocks.
+
+    ``duration`` is the clip's length in seconds, or ``None`` where the video is not
+    published yet. ``similarity(a, b) -> float`` scores how much one paragraph reads as a
+    rendering of another; it is injected like ``detect`` so this module stays pure, and
+    without it the speech is left undecided rather than guessed at — refusing is the
+    standing answer when the evidence is missing, and a silent fall back to a weaker
+    instrument is how a wrong verdict gets stored with confidence.
+    """
     stripped = text.strip()
     if not stripped:
         return Split("es", [], False)
@@ -148,8 +152,12 @@ def split_languages(text, detect, duration=None):
     if not es_runs or co_chars / len(stripped) > 1 - _MIN_RATIO:
         return Split(co_lang, [Block(co_lang, text, True)], False)
 
-    comparable = co_lang in LEXICALLY_COMPARABLE
-    rendered_co, rendering_es = _align_renderings(stripped, co_runs, es_runs)
+    if similarity is None:
+        return Split(co_lang, _single_cut(stripped, text, detect, co_lang), True)
+
+    comparable = True
+    rendered_co, rendering_es = _align_renderings(stripped, co_runs, es_runs,
+                                                  similarity)
     rendered = sum(co_runs[j][2] - co_runs[j][1] for j in rendered_co)
     coverage = rendered / co_chars if co_chars else 0.0
     # Everything that is not a rendering was delivered. Built by subtraction rather
@@ -244,7 +252,7 @@ def _is_partial(co_runs, es_runs, coverage, comparable, co_lang):
     return es_chars < 0.8 * expected
 
 
-def _align_renderings(stripped, co_runs, es_runs):
+def _align_renderings(stripped, co_runs, es_runs, similarity):
     """Which paragraphs render which, as ``(rendered co indices, rendering es indices)``.
 
     A monotone alignment rather than a pairing, because **the Diario does not translate
@@ -269,16 +277,12 @@ def _align_renderings(stripped, co_runs, es_runs):
     speeches outright. Measured: enforcing it inside the pairing instead refuses six
     speeches whose blocks are textbook translation pairs.
     """
-    co_tokens = [token_counts(stripped[start:end]) for _, start, end in co_runs]
-    es_tokens = [token_counts(stripped[start:end]) for _, start, end in es_runs]
-
-    whole_co = sum(co_tokens, Counter())
-    whole_es = sum(es_tokens, Counter())
-    floor = max(RENDERS_FLOOR_MIN,
-                RENDERS_RELATIVE * containment(whole_co, whole_es))
+    floor = SIMILARITY_FLOOR
+    co_text = [stripped[start:end] for _, start, end in co_runs]
+    es_text = [stripped[start:end] for _, start, end in es_runs]
 
     def score(i, j):
-        value = containment(co_tokens[i], es_tokens[j])
+        value = similarity(co_text[i], es_text[j])
         if value < floor:
             return 0.0
         # Weight by how much text the match accounts for, so the alignment prefers

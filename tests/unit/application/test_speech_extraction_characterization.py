@@ -14,6 +14,7 @@ changes.
 
 import json
 import pathlib
+import re
 
 import pytest
 
@@ -88,6 +89,20 @@ def test_extract_speeches_172_000001(monkeypatch, capture):
 
     probed = []
     monkeypatch.setattr(mod, "probe_duration", _probe)
+
+    # Stub the paragraph similarity: it is the third network boundary, and the one this
+    # test would otherwise reach every run. The stub has to be PLAUSIBLE, not merely
+    # present — a similarity that returned zero would make the classifier refuse every
+    # speech and the test would go green by exercising the fallback, which is precisely
+    # how the stubbed clip duration once hid the whole feature. Galician and Spanish
+    # share a great deal of vocabulary, so "several long words in common" tracks a real
+    # rendering closely enough on this fixture, while staying offline and deterministic.
+    def _similar(source, candidate):
+        words = lambda t: {w for w in re.findall(r"[\wáéíóúñüàèòç]{6,}", t.lower())}
+        shared = words(source) & words(candidate)
+        return 0.95 if len(shared) >= 4 else 0.05
+
+    monkeypatch.setattr(mod, "create_paragraph_similarity", lambda: _similar)
     # stub mention tagging: this test locks segmentation/language-split, not NER,
     # and must stay Mongo-free (no deputy catalog) and spaCy-free.
     monkeypatch.setattr(mod.Deputies, "get_all", staticmethod(lambda: []))
@@ -182,13 +197,25 @@ def test_extract_speeches_172_000001(monkeypatch, capture):
             assert not any(
                 p and p[-1] not in ".!?…»:\"”)" for p in block.text.split("\n\n"))
 
+    # No paragraph may sit in BOTH blocks. Option B copies as-delivered Spanish into
+    # the original block on purpose, but only Spanish that renders NOTHING; a paragraph
+    # in both is a rendering the aligner failed to spot, sitting in the record of what
+    # was said next to the original it translates. This fixture used to carry exactly
+    # one (387 characters, and the reason the Galician block was 10953/18 rather than
+    # 10566/17) — whole-token overlap could not pair it with its Galician original.
+    for speech in saved:
+        if len(speech.speech) == 2:
+            first = set(speech.speech[0].text.split("\n\n"))
+            second = set(speech.speech[1].text.split("\n\n"))
+            assert not (first & second), speech.video_id
+
     # golden per-block lengths and paragraph counts — update deliberately if the
     # logic changes
     block_shapes = {
         i: [(len(b.text), len(b.text.split("\n\n"))) for b in by_order[i].speech]
         for i in (1, 2, 3, 4)}
     assert block_shapes == {
-        1: [(10953, 18), (10708, 9)],
+        1: [(10566, 17), (10708, 9)],
         2: [(9608, 13)],
         3: [(3737, 4), (3842, 5)],  # unchanged from the single-boundary split
         4: [(3694, 7)],

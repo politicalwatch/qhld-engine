@@ -35,6 +35,9 @@ from qhld_engine.domain.speeches.language_split import split_languages
 from qhld_engine.infrastructure.config.settings import get_settings
 from qhld_ai.domain.subtitles import text_fingerprint
 from qhld_ai.infrastructure.audio.pyav import DurationUnavailable, probe_duration
+from qhld_ai.application.speeches.paragraph_similarity import (
+    create_paragraph_similarity,
+)
 from qhld_ai.infrastructure.language import detect
 from qhld_engine.extractors.spain.congress_api import CongressApi
 from qhld_engine.extractors.spain.initiative_extractors.utils.pdf_parsers import (
@@ -78,6 +81,19 @@ class ExtractSpeeches:
         self._renames = None
         self._deputy_names = None
         self._unknown_speakers = set()
+        self._similarity = None
+
+    @property
+    def similarity(self):
+        """How much one paragraph reads as a rendering of another.
+
+        Built once and reused across the run so its vector cache survives, and lazily so
+        a run that never meets a co-official speech never reaches the embedder at all —
+        which is 78% of them.
+        """
+        if self._similarity is None:
+            self._similarity = create_paragraph_similarity()
+        return self._similarity
 
     @property
     def tagger(self):
@@ -286,7 +302,8 @@ class ExtractSpeeches:
             log.warning(f"Speaker heading not found for {reference}")
             original_language, blocks, verdict = None, [], None
         else:
-            split = split_languages(text, detect, duration)
+            split = split_languages(text, detect, duration,
+                                    similarity=self.similarity)
             original_language = split.language
             blocks = [SpeechText(lang=block.lang, text=block.text,
                                  original=block.original, partial=block.partial)

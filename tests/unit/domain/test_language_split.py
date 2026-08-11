@@ -9,6 +9,8 @@ is whether the text could have been spoken in the time, so a test that pins seco
 would break whenever the sample text is reworded.
 """
 
+import re
+
 import pytest
 
 from qhld_engine.domain.speeches.language_split import split_languages
@@ -25,6 +27,25 @@ DELIVERY_RATE = 13.3  # characters per second, the measured median
 def _fake_detect(text):
     low = text.lower()
     return "ca" if any(m in low for m in _CA_MARKERS) else "es"
+
+
+def _words(text):
+    return {w for w in re.findall(r"[\wàèéíòóúïüç]{5,}", text.lower())}
+
+
+def _fake_similarity(source, candidate):
+    """Stands in for the multilingual embedding, deterministically and without a model.
+
+    The real instrument scores meaning, which is why it can see a rendering that shares
+    almost no spelling with its original. A unit test cannot reproduce that and should
+    not pretend to: what it needs is something that says "these two are a pair" for the
+    fixtures that ARE pairs and not for the ones that are not. The fixtures pair Catalan
+    with Spanish text carrying the same figures and proper nouns, so three shared long
+    words is exactly that signal — and a paragraph the fixtures mean as unrelated shares
+    at most one.
+    """
+    shared = _words(source) & _words(candidate)
+    return 0.95 if len(shared) >= 3 else 0.05
 
 
 def _clip(*spoken):
@@ -49,7 +70,7 @@ SPANISH = (
 def test_a_monolingual_spanish_speech_is_one_block():
     text = ("Muchas gracias, presidente. Comparezco hoy ante la Cámara para hablar "
             "del cierre de la fábrica y de sus efectos sobre el empleo.")
-    split = split_languages(text, _fake_detect, _clip(text))
+    split = split_languages(text, _fake_detect, _clip(text), similarity=_fake_similarity)
 
     assert split.language == "es"
     assert [(b.lang, b.text, b.original) for b in split.blocks] == [("es", text, True)]
@@ -60,7 +81,7 @@ def test_a_rendered_co_official_speech_is_two_blocks():
     # Only the Catalan was spoken; the Spanish is the Diario's rendering of it, so the
     # clip is long enough for one of them and not for both.
     text = f"{CATALAN}\n\n{SPANISH}"
-    split = split_languages(text, _fake_detect, _clip(CATALAN))
+    split = split_languages(text, _fake_detect, _clip(CATALAN), similarity=_fake_similarity)
 
     assert split.language == "ca"
     assert [(b.lang, b.original, b.partial) for b in split.blocks] == [
@@ -80,7 +101,7 @@ def test_a_spanish_speech_with_a_co_official_greeting_is_one_spanish_block():
         "último trimestre son mucho peores de lo que el Gobierno reconoce, y la "
         "situación de las familias afectadas empeora cada mes que pasa sin acuerdo.")
     text = f"{greeting}\n\n{body}"
-    split = split_languages(text, _fake_detect, _clip(text))
+    split = split_languages(text, _fake_detect, _clip(text), similarity=_fake_similarity)
 
     assert split.language == "es"
     assert len(split.blocks) == 1
@@ -94,7 +115,7 @@ def test_a_co_official_speech_with_no_rendering_is_one_block():
     aside = ("Señor ministro, estoy verdaderamente emocionado de escuchar esto hoy "
              "aquí en esta Cámara, se lo digo de corazón.")
     text = f"{CATALAN}\n\n{aside}"
-    split = split_languages(text, _fake_detect, _clip(text))
+    split = split_languages(text, _fake_detect, _clip(text), similarity=_fake_similarity)
 
     assert split.language == "ca"
     assert len(split.blocks) == 1
@@ -109,7 +130,7 @@ def test_a_rendering_that_covers_only_part_is_marked_partial():
         "registre i encara no hauria estat contestada per ningú del Govern. Això és "
         "el que volem denunciar aquí avui, perquè no és la primera vegada.")
     text = f"{CATALAN}\n\n{untranslated}\n\n{SPANISH}"
-    split = split_languages(text, _fake_detect, _clip(CATALAN, untranslated))
+    split = split_languages(text, _fake_detect, _clip(CATALAN, untranslated), similarity=_fake_similarity)
 
     assert len(split.blocks) == 2
     assert split.blocks[1].partial is True
@@ -127,7 +148,7 @@ def test_a_short_paragraph_does_not_make_a_long_one_its_rendering():
         "entera, porque las cifras que hemos conocido esta misma semana no admiten "
         "ninguna otra lectura razonable.")
     text = f"{CATALAN}\n\n{closing}\n\n{SPANISH}\n\n{spoken_tail}"
-    split = split_languages(text, _fake_detect, _clip(CATALAN, closing, spoken_tail))
+    split = split_languages(text, _fake_detect, _clip(CATALAN, closing, spoken_tail), similarity=_fake_similarity)
 
     assert not split.undecided
     assert [(b.lang, b.original) for b in split.blocks] == [("ca", True), ("es", False)]
@@ -135,9 +156,13 @@ def test_a_short_paragraph_does_not_make_a_long_one_its_rendering():
     assert spoken_tail in split.blocks[0].text
     # ...and still in the Spanish side as the Diario prints it
     assert spoken_tail in split.blocks[1].text
-    # the real rendering is unaffected, and remains complete
+    # the real rendering is unaffected
     assert split.blocks[1].text.startswith("La verdad")
-    assert split.blocks[1].partial is False
+    # ...and the Spanish side is correctly PARTIAL, because `closing` is Catalan that
+    # nothing renders. Whole-token overlap used to pair `closing` with the Spanish tail
+    # on their shared proper nouns and call the rendering complete; scoring meaning
+    # instead declines that pairing, which is the whole point of the change.
+    assert split.blocks[1].partial is True
 
 
 def test_a_speech_nothing_places_is_left_undecided():
@@ -151,14 +176,14 @@ def test_a_speech_nothing_places_is_left_undecided():
 
 def test_without_a_clip_the_verdict_is_provisional():
     text = f"{CATALAN}\n\n{SPANISH}"
-    split = split_languages(text, _fake_detect, duration=None)
+    split = split_languages(text, _fake_detect, duration=None, similarity=_fake_similarity)
 
     assert split.undecided is True
 
 
 def test_a_one_line_intervention_still_gets_a_block():
     # Nothing in it is long enough for the detector to read.
-    split = split_languages("Sí.", _fake_detect, 4.0)
+    split = split_languages("Sí.", _fake_detect, 4.0, similarity=_fake_similarity)
 
     assert [(b.lang, b.text) for b in split.blocks] == [("es", "Sí.")]
 
@@ -173,7 +198,7 @@ def test_empty_text_has_no_blocks():
 def test_paragraph_breaks_survive_inside_each_block():
     original = f"{CATALAN}\n\n{CATALAN}"
     text = f"{original}\n\n{SPANISH}\n\n{SPANISH}"
-    split = split_languages(text, _fake_detect, _clip(original))
+    split = split_languages(text, _fake_detect, _clip(original), similarity=_fake_similarity)
 
     assert len(split.blocks) == 2
     assert "\n\n" in split.blocks[0].text
