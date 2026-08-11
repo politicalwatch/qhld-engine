@@ -2,6 +2,70 @@
   "policy": "Hand-labelled gold for deciding which paragraphs of a co-official speech are a Spanish RENDERING of the original and which were SPOKEN. Labelled 2026-08-11.\n\nLABELLING RULE, and it is the whole point of this asset: every label was made by reading the SOURCE document — the text the segmenter hands to split_languages — and nothing else. Not stored blocks, not a previous extraction, not a previous label, not a summary. Re-joining stored blocks does NOT reproduce the document: option B deliberately copies delivered Spanish into the as-delivered block, so a re-joined document contains some paragraphs twice. Two labels that had been carried in project notes for weeks ('760011 and 738994 are code-mixed with NO rendering') were refuted by reading the documents, and had already been used to reject a classifier rule.\n\n`pairs` are (original paragraph, Spanish paragraph) that render each other; one Spanish paragraph may render two originals, and one original may be rendered by two Spanish paragraphs. `renderings` lists every paragraph that was NEVER SPOKEN — this is the product-level truth, since the as-delivered block is the document minus exactly these, and it is complete even where `pairs` is deliberately partial.\n\nSCORING RULE: a paragraph listed in `renderings` but absent from `pairs` is NEITHER a positive NOR a negative. It is a rendering the labeller could not confidently pair (a re-paragraphed Spanish side, or one glued to the tail of another paragraph). Counting it as a negative measures the labeller's caution rather than the instrument — doing so understated Galician by 0.114.",
   "speeches": [
     {
+      "video_id": "726204",
+      "lang": "ca",
+      "duration": 611.005,
+      "notes": "Appended, but the speaker CLOSES in Spanish: [13] and [14] have no Catalan source, [7] trails off at 'el ministre Albares a Netanyahu' and the thought is finished only in the Spanish side. [0] 'Gracias.' opens the delivery. The clip settles it: delivered 5,901 chars / 611 s = 9.66 c/s, and the whole document 18.34 -- inside the band, so duration ALONE does not refuse it here. This is the speech RENDERING_MAX_EXPANSION exists for: without it [13]+[14] (553 chars) is claimed as a rendering of [7] (105 chars), taking the spoken close out of the record.",
+      "paragraphs": [
+        "Gracias.",
+        "Avui parlaré en català perquè m’ho demana el meu partit, i parlaré amb el cor perquè m’ho demana el cos.",
+        "El primer és que quan algú d’esquerres o quan algú defensa l’existència i reconeix el genocidi que existeix cap a o envers Palestina, crec que ens hem de justificar i hem de dir tres coses molt clares. La primera és que cap idea, no hi ha idea, no hi ha causa, no hi ha bandera en la vida o en política que mereixi ser defensada amb violència. Cap. Dos, el terrorisme és menyspreable i condemnable sempre, sempre. El de Hamàs, el dels lobos solitarios d’ultradreta, el d’ETA, el del GAL. Tots els terrorismes són condemnables. I tres, Israel i la seva gent mereix viure en pau i amb seguretat, com qualsevol altre país i com qualsevol altre poble. Fins aquí les obvietats còmodes.",
+        "A partir d’ara, obvietats una mica més incòmodes. És mentida, és fals que tot aquest conflicte o que aquesta guerra - que no és una guerra, és un genocidi, és una ocupació- hagi començat el 7 d’octubre. És fals. És mentida. I vostès ho saben. Es parla d’aquest conflicte, d’aquesta ocupació, d’aquest genocidi, del 7 d’octubre, perquè les víctimes eren d’Israel. Això és així. Primera veritat o obvietat incòmoda. Dos, no és una guerra contra Hamàs, és una neteja ètnica a Palestina per part d’un govern corrupte, ultraliberal, ultradretà i genocida com el govern israelià que governa o que lidera Netanyahu. Tercera obvietat incòmoda, Netanyahu és un criminal de guerra. Ho torno a repetir: Netanyahu és un criminal de guerra, exactament igual que Putin, l’únic que té millor premsa. Aquesta és la diferència. Que per cert, vostès, PP i Vox, crec que van anunciar que li donaran la medalla de Madrid. No? La medalla d’alguna cosa de Madrid. Aquesta medalla es dona el maig. No? L’hi diré en castellà: tengan cuidado con darle esta medalla en mayo a Netanyahu porque igual para esa época está perseguido por la Corte Penal Internacional y lo detengan en Madrid, escoltant Kamala Harris, que és poc sospitosa de ser bolivariana, secessionista, propalestina.",
+        "Només hi ha una cosa pitjor que convertir un país o un territori en un cementiri, que és convertir un país o un territori en un cementiri de nens. Aquí el representant del Partido Popular amb una llarga carrera política, el senyor González Pons, principalment a Europa, ha dit que ens ho inventàvem, que no hi havia proves que Israel estava matant població civil. És molt greu. De fet, és deleznable el que fa Hamàs, i tant de bo Hamàs desaparegui. El que va passar el 7 d’octubre és absolutament condemnable. És terrorisme. Però el que fa Israel des de fa més de setanta anys és terrorisme d’estat. Que jo crec, i qualsevol persona decent creu, que és infinitament pitjor perquè és un estat i té l’opció d’escollir. Però li poso un exemple. Això - és la foto més suau que he trobat- és un pare portant la seva filla a un hospital de Gaza. Segurament vostè a mi em podrà ensenyar moltes fotos d’aquestes, segurament, però això ho fa un estat. I quan li dic que he estat molt generós i que és la foto més suau que he trobat és perquè vostè sap que hi ha fotos infinitament pitjors, perquè aquesta nena està viva. Està viva. Però això ho ha provocat un estat, Israel. Aquesta nena és de Hamàs? I potser vostè em dirà: «No, bé, però és que estava - jo que sé- a un camp de refugiats on s’amagava gent de Hamàs.» I què? I què? Es pot bombardejar un camp de refugiats encara que estigui amagat el líder de Hamàs? No. Es pot bombardejar un hospital encara que estigui amagat el líder de Hamàs? No. Es pot bombardejar una escola encara que estigui amagat el líder de Hamàs? No, no. I és que és pura humanitat, és pura decència, és pura dignitat. A mi no em preocupen les opinions que compra Israel - repeteixo, que compra Israel. A mi em preocupen els silencis que compra Israel.",
+        "Gaza és el lloc més poblat del planeta. Gaza són aproximadament 350 quilòmetres quadrats, amb una mica més de 2 milions de persones confinades. Han mort en dos mesos - encara no hi hem arribat- 700 000 persones. La meitat, nens. La meitat, nens. Com en diem d’això? Com en podem dir a això? En podem dir guerra? A mi em costa molt qualificar això d’una guerra. En podem dir genocidi? Segurament sí. L’altre dia es va publicar la notícia que Israel havia alliberat no sé quants presos palestins, uns quants menors. I va passar desapercebut. Però és que Israel té nens a presons? La resposta és que sí. Però quin delicte ha comès un nen? Quin delicte?",
+        "Alguns de vostès defensaran que la solució és la guerra. Però és que portem sis guerres, sis, sis des de l’any 2008, sis. Què s’ha solucionat? Què s’ha solucionat bombardejant ambulàncies, escoles, hospitals? Els que ho fan i els que ho defensen com vostès només provoquen que hi hagi quaranta Hamàs més. I és bastant probable que l’any 2040 aquí, diputats i diputades, es trobin condemnant un atemptat a Europa d’un salvatge - sí, d’un salvatge- que ara mateix és un nen a un camp de refugiats de Cisjordània. És molt probable. I que l’any 2040 aquí, diputats i diputades, es trobin condemnant l’acte absolutament salvatge d’un salvatge, d’un militar israelià contra un nen palestí que ara mateix és un nen o una nena que té un familiar segrestat per Hamàs.",
+        "Així que la solució quina és? Quina és? És demanar-li, com fa, per cert, el ministre Albares a Netanyahu.",
+        "Hoy hablaré en catalán, porque me lo pide mi partido, y hablaré también con el corazón porque me lo pide el cuerpo. En primer lugar, cuando alguien de izquierdas o cuando alguien defiende la existencia o reconoce el genocidio que existe hacia Palestina, creo que tenemos que justificarnos y decir tres cosas muy claras. La primera, que no hay ninguna idea, ninguna causa, ninguna bandera en la vida o en la política que merezca ser defendida con violencia, ninguna. Dos. El terrorismo es menospreciable y condenable siempre, siempre, el de Hamás, el de los lobos solitarios de la ultraderecha. Todos los terrorismos son condenables. Tres. Israel y su gente merecen vivir en paz y en seguridad, como cualquier otro país y como cualquier otro pueblo. Hasta aquí las obviedades cómodas.",
+        "A partir de ahora, obviedades un poco más incómodas. Es mentira, es falso que todo este conflicto, que esta guerra - no es una guerra, es un genocidio, es una ocupación- haya empezado el 7 de octubre. Es falso, es mentira, y ustedes lo saben. Se habla de este conflicto, de esta ocupación, de este genocidio del 7 de octubre porque las víctimas eran de Israel. Esto es así. Primera verdad u obviedad incómoda. Dos. No es una guerra contra Hamás, es una limpieza étnica en Palestina por parte de un Gobierno corrupto, ultraliberal, ultra de derechas y genocida como el poder israelí que gobierna o lidera Netanyahu. Tercera obviedad incómoda. Netanyahu es un criminal de guerra - repito: Netanyahu es un criminal de guerra-, exactamente igual que Putin, pero tiene mejor prensa; esta es diferencia. Por cierto, ustedes, PP y VOX, creo que anunciaron que le van a dar la medalla de Madrid, ¿no?, la medalla de algo de Madrid. Esta medalla se da en mayo, ¿verdad? Lo diré en español: Tengan cuidado con darle esta medalla en mayo a Netanyahu, porque igual para esa época está perseguido por la Corte Penal Internacional y lo detienen en Madrid.",
+        "Escuchando a Kamala Harris, que es poco sospechosa de ser bolivariana, secesionista o propalestina, solo hay algo peor que convertir un país o un territorio en un cementerio, que es convertir un país o un territorio en un cementerio de niños. Aquí, el representante del Partido Popular, con una larga carrera política, especialmente en Europa, el señor González Pons, ha dicho que nos lo inventábamos, que no había pruebas de que Israel estuviera matando a población civil. Es muy grave, de hecho es deleznable lo que hace Hamás. Ojalá Hamás desaparezca. Lo que pasó el 7 de octubre es absolutamente condenable y es terrorismo, pero lo que hace de Israel desde hace más de setenta años es terrorismo de Estado. Yo creo, y cualquier persona decente cree, que es infinitamente peor, porque es un Estado y tiene la opción de escoger. Voy a dar un ejemplo. (Muestra una fotografía). Mire, esta es la foto más suave que he encontrado, la más leve. Es un padre llevando a su hija a un hospital de Gaza. Seguramente usted a mí me podrá enseñar muchas fotos de estas, pero esto lo hace un Estado. Y cuando digo que he sido muy generoso y que es la foto más suave que he encontrado es porque usted sabe que hay fotos mucho peores, porque esta niña está viva. Pero esto lo ha provocado un Estado, Israel. ¿Esta niña es de Hamás? Tal vez usted me dirá: estaba en un campo de refugiados donde se escondía gente de Hamás. ¿Y qué? ¿Se puede bombardear un campo de refugiados aunque esté escondido el líder de Hamás? No. ¿Se puede bombardear un hospital aunque esté escondido el líder de Hamás? No. ¿Se puede bombardear una escuela aunque esté escondido el líder de Hamás? No. Es que es pura humanidad, pura decencia y dignidad. A mí no me preocupan las opiniones que compra Israel -repito: que compra Israel-, a mí me preocupan los silencios que compra Israel.",
+        "Gaza es el lugar más poblado del planeta. Gaza son, aproximadamente, 350 kilómetros cuadrados o un poco más, con dos millones de personas confinadas. En dos meses han muerto -no llegan-seis mil personas, la mitad niños -la mitad niños-. ¿Cómo llamamos a esto? ¿Cómo podemos llamar a esto? ¿Le podemos decir guerra? A mí, la verdad, me cuesta mucho calificar esto de guerra. ¿Le podemos decir genocidio? Seguramente sí. El otro día se publicó la noticia de que Israel había liberado a no sé cuántos presos palestinos, unos cuantos menores, y pasó desapercibido. ¿Israel tiene niños en cárceles? La respuesta es que sí. ¿Pero qué delito ha cometido un niño?",
+        "Algunos de ustedes defenderán que la solución es la guerra, pero llevamos seis guerras, seis, desde el año 2008; seis. ¿Y qué se ha resuelto? ¿Qué se ha resuelto bombardeando ambulancias, escuelas, hospitales? Los que lo hacen y los que los defienden, como ustedes, solo provocan que haya cuarenta Hamás más. Es bastante probable que en el año 2040 aquí diputados y diputadas se encuentren condenando un atentado en Europa de un salvaje, sí, que hoy es un niño en un campo de refugiados de Cisjordania: es muy probable, Y que el año 2040 aquí diputados y diputadas se encuentren condenando el acto salvaje de un militar israelí contra un niño palestino que hoy, ahora mismo, es un niño o una niña que tiene a un familiar secuestrado por Hamás. Así que, ¿la solución cuál es? ¿Cuál es? ¿Es pedirle, como hace, por cierto, el ministro Albares a Netanyahu, que mate mejor?",
+        "Yo no voy a pedir aquí a Netanyahu que mate mejor. Yo voy a pedir a la Corte Internacional que le persiga como el criminal de guerra que es, para que no muera en su cama como ha muerto hace dos días Kissinger, que es otro criminal de guerra. (Un señor diputado: ¡Hala!). Y nada de lo que estoy diciendo aquí es opinable, es una opinión; es pura información. No en mi nombre. Y está muy bien eso de salir aquí y decir: muy mal Israel. Estará muy bien, señor Albares, dejar de comprar armamento a Israel, tal y como ha publicado El Salto.",
+        "Muchas gracias."
+      ],
+      "pairs": [
+        [
+          1,
+          8
+        ],
+        [
+          2,
+          8
+        ],
+        [
+          3,
+          9
+        ],
+        [
+          3,
+          10
+        ],
+        [
+          4,
+          10
+        ],
+        [
+          5,
+          11
+        ],
+        [
+          6,
+          12
+        ],
+        [
+          7,
+          12
+        ]
+      ],
+      "renderings": [
+        8,
+        9,
+        10,
+        11,
+        12
+      ]
+    },
+    {
       "video_id": "729753",
       "lang": "ca",
       "duration": 369.005,
@@ -376,6 +440,78 @@
         9,
         10,
         11,
+        14,
+        15,
+        16
+      ]
+    },
+    {
+      "video_id": "742439",
+      "lang": "ca",
+      "duration": 366.013,
+      "notes": "[4] is 2,040 characters of SPOKEN Spanish with no Catalan counterpart -- the speaker addresses the PP benches directly about a Valencia city-council motion. The clip settles it: delivered 5,280 chars / 366 s = 14.43 c/s, against 8.85 if [4] were counted as a rendering, which is the first percentile of the delivery band. It is the case that BOUNDS RENDERING_MAX_EXPANSION from above: [4] is claimed by [5] (536 chars) at 0.81 while [5]'s real rendering [12] scores 0.93, so a cap above 3.81 hands 2,040 spoken characters to the rendering block.",
+      "paragraphs": [
+        "Gràcies, presidenta.",
+        "Ai, tinc l’honor ara de que el senyor Feijóo estiga en la meua intervenció, que bé! Oh, no me vol escoltar. No me vol escoltar. Bé, no passa res, li ho diré igualment.",
+        "Gracias, presidenta.",
+        "Ahora tengo el honor de que el señor Feijóo esté en mi intervención. ¡Qué bien! (Varios señores diputados: ¡Oooh!―El señor Núñez Feijóo abandona el hemiciclo). Vaya, no me quiere escuchar. No pasa nada, lo voy a decir igual.",
+        "Señorías del Grupo Popular, aunque se va el señor Feijóo, os lo explico a vosotros y vosotras. Información de interés público, por si no lo sabéis. Ayer, en el Ayuntamiento de Valencia, Compromís presentó una moción urgente para pedir la dimisión de Mazón. ¿Qué hizo el Partido Popular del Ayuntamiento de Valencia y la alcaldesa de Valencia, la señora Catalá? Si pensaran lo mismo que ha dicho la señora Muñoz, que Mazón no es responsable y no tenía que estar en el CECOPI, hubieran defendido la posición del presidente de la Generalitat. Pues el Partido Popular del Ayuntamiento de Valencia y la señora Catalá, la alcaldesa de Valencia, ayer no defendieron al señor Mazón, no abrieron la boca. Hay silencios que se escuchan más que los gritos que damos la gente enfadada y el del PP de Valencia es uno de ellos. Pero es que encima ―señorías del Grupo Popular, más información de interés general que necesitan ustedes― Salomé Pradas, la consellera responsable de las emergencias en Valencia, no comparecerá en les Corts Valencianes para dar explicaciones. ¿Ustedes están de acuerdo en que la consellera no comparezca en les Corts Valencianes para dar explicaciones? ¿Creéis que es normal en un país democrático que la consellera del ramo no dé explicaciones en la Generalitat Valenciana y en las Cortes Valencianas? Por favor, ¿estáis de acuerdo? ¿Estáis de acuerdo con eso, señorías del Grupo Popular? Además, la consellera Salomé Pradas y todo su organismo han reconocido esta misma semana que son los responsables de avisar a los alcaldes y alcaldesas de las emergencias y les han pedido ahora, quince días después de la tragedia, que les den sus teléfonos móviles. ¿Saben que los días de la DANA había momentos en que no tenían las listas actualizadas y que desde emergencias llamaban a alcaldes y a alcaldesas que ya no estaban en el cargo? Esa es la gestión de Salomé Pradas y de la Generalitat Valenciana en el país valencià. Así gestiona las emergencias el Partido Popular en el país valencià. Es indigno. Es indigno, señora Muñoz.",
+        "És indigne. I és indigne, senyora Muñoz i és indigne, senyories del Partido Popular, que continue Salomé Pradas al capdavant de les emergències en la Generalitat Valenciana i no sé per què, i no sé per què, el president Mazón ja ha destituït a una altra consellera però a Salomé Pradas no la destituix quan no sabia ni on estaven les alertes. I això és perquè tenen coses que amagar. Mazón és responsable. Salomé Pradas ser és responsable i si vostès no fan res, són còmplices de la mala gestió del Partit Popular en el País Valencià.",
+        "Bé, senyora ministra, hem d’acabar amb projectes com l’ampliació del port de València. Compromís venim dient-ho des de fa molt de temps i ara, en estos moments, després d’esta DANA, crec que és més important si cap, que parlem d’esta reestructuració i de com fem les coses no només al País Valencià sinó a tot l’Estat. Tots els recursos que s’havien de destinar a l’ampliació nord del port de València s’haurien de destinar a la reconstrucció de les comarques afectades per la DANA. I esta és una petició que els fem Compromís i el grup plurinacional, perquè cal de veritat fer les coses d’una altra manera.",
+        "I, a més a més, necessitem també acabar amb la turistificació massiva i necessitem que les ciutats siguen llocs habitables i saludables. I necessitem que el que ens ha passat a nosaltres no torne a passar. Per això necessitem acabar amb les conseqüències catastròfiques de tot el que estem vivint. I l’ampliació nord del port de València ha d’acabar, senyora ministra. Ha d’acabar, senyories del Partit Socialista.",
+        "Però, a més a més, i esta és una qüestió clau, en una situació normal, l’Albufera de València en estos moments seria un paisatge de postal, perquè en la tardor sabeu que l’Albufera de València es convertix en el llac més important i més gran de tota Europa. Doncs bé, miren, miren com està l’Albufera de València en estos moments, després de la DANA que ha passat. L’Albufera de València, necessita protecció.",
+        "Per això, senyora ministra, els experts, de fet, ja diuen que caldrà una inversió de més de 10 000 milions d’euros. Jo li demane que hi haja una coordinació, que hi haja un òrgan de coordinació entre l’Ajuntament de València, la Generalitat Valenciana i el Govern de l’Estat per a recuperar l’Albufera de València. Vostè sap millor que jo que està protegida per la Xarxa Natura 2000 d’Europa i que en estos moments, després de la DANA que ha passat, després d’esta catàstrofe, l’Albufera de València està en greu perill. No podem deixar perdre un dels espais naturals més importants per a les valencianes i els valencians i per a tot l’Estat.",
+        "I, senyora ministra, com li he dit abans, a nosaltres ens tindrà al seu costat si realment reformulem, canviem la forma de pensar el nostre territori i ens plantegem uns hàbits polítics més saludables i que tinguen en compte que estem en una posició de canvi climàtic. Si el Partit Socialista continua pactant amb el Partit Popular en contra dels interessos ecològics dels valencians i valencianes, ens tindran en contra.",
+        "Gràcies.",
+        "Y es indigno, señorías del Grupo Popular, que siga Salomé Pradas encabezando las emergencias de la Generalitat Valenciana. No sé por qué el presidente Mazón ha destituido ya a otra consejera, pero a Salomé Pradas no la destituye, cuando no sabía ni dónde estaban las alertas. Esto es porque tienen cosas que esconder. Mazón es responsable, Salomé Pradas es responsable y si ustedes no hacen nada, son cómplices de la mala gestión del Partido Popular en el país valenciano.",
+        "Señora ministra, debemos terminar con proyectos como la ampliación del puerto de Valencia. Hace tiempo que lo decimos y ahora mismo, después de esta DANA, creo que es más importante, si cabe, hablar de esta reestructuración y de cómo hacemos las cosas no solo en el país valenciano, sino en todo el Estado. Todos los recursos que tenían que destinarse a la ampliación norte del puerto de Valencia deberían destinarse a la reconstrucción de las comarcas afectadas por la DANA. Esta es una petición que les hacemos Compromís y el Grupo Plurinacional, porque de verdad hay que hacer las cosas de otro modo. Además, necesitamos también acabar con la turistificación masiva y que las ciudades sean lugares habitables y saludables. Y necesitamos también que lo que nos ha ocurrido a nosotros no vuelva a ocurrir. Para ello debemos poner fin a las consecuencias catastróficas de todo lo que estamos viviendo y la ampliación norte del puerto de Valencia debe terminar, señora ministra. Debe terminar, señorías del Grupo Socialista.",
+        "Además, y esta es una cuestión clave, en una situación normal la albufera de Valencia en estos momentos sería un paisaje de postal, porque ya saben ustedes que en otoño la albufera de Valencia se convierte en el lago más importante y más grande de toda Europa. Pues fíjense cómo está la albufera de Valencia ahora mismo después de la DANA. (Muestra una fotografía). La albufera de Valencia necesita protección. De hecho, señora ministra, los expertos dicen que hará falta una inversión de más de 10 000 millones de euros. Le pido, por favor, que haya una coordinación, un órgano de coordinación entre el Ayuntamiento de Valencia y la Generalitat Valenciana y el Gobierno del Estado para recuperar la albufera de Valencia. Usted sabe mejor que yo que está protegida por la Red Natura 2000 y por Europa y que ahora mismo, después de la DANA que ha pasado, después de esta catástrofe, la albufera de Valencia está en grave peligro. No podemos dejar perder uno de los espacios naturales más importantes para las valencianas y valencianos y para todo el Estado.",
+        "Señora ministra, como dije antes, nos va a tener a nosotros a su lado si realmente reformulamos, cambiamos el modo de pensar nuestro territorio y nos planteamos unos hábitos políticos más saludables y que tengan en cuenta que estamos en una situación de cambio climático. Si el Partido Socialista sigue pactando con el Partido Popular en contra de los intereses ecológicos de los valencianos y valencianas, nos tendrán a la contra.",
+        "Muchas gracias."
+      ],
+      "pairs": [
+        [
+          0,
+          2
+        ],
+        [
+          1,
+          3
+        ],
+        [
+          5,
+          12
+        ],
+        [
+          6,
+          13
+        ],
+        [
+          7,
+          13
+        ],
+        [
+          8,
+          14
+        ],
+        [
+          9,
+          14
+        ],
+        [
+          10,
+          15
+        ],
+        [
+          11,
+          16
+        ]
+      ],
+      "renderings": [
+        2,
+        3,
+        12,
+        13,
         14,
         15,
         16
