@@ -1,0 +1,668 @@
+{
+  "policy": "Hand-labelled gold for deciding which paragraphs of a co-official speech are a Spanish RENDERING of the original and which were SPOKEN. Labelled 2026-08-11.\n\nLABELLING RULE, and it is the whole point of this asset: every label was made by reading the SOURCE document — the text the segmenter hands to split_languages — and nothing else. Not stored blocks, not a previous extraction, not a previous label, not a summary. Re-joining stored blocks does NOT reproduce the document: option B deliberately copies delivered Spanish into the as-delivered block, so a re-joined document contains some paragraphs twice. Two labels that had been carried in project notes for weeks ('760011 and 738994 are code-mixed with NO rendering') were refuted by reading the documents, and had already been used to reject a classifier rule.\n\n`pairs` are (original paragraph, Spanish paragraph) that render each other; one Spanish paragraph may render two originals, and one original may be rendered by two Spanish paragraphs. `renderings` lists every paragraph that was NEVER SPOKEN — this is the product-level truth, since the as-delivered block is the document minus exactly these, and it is complete even where `pairs` is deliberately partial.\n\nSCORING RULE: a paragraph listed in `renderings` but absent from `pairs` is NEITHER a positive NOR a negative. It is a rendering the labeller could not confidently pair (a re-paragraphed Spanish side, or one glued to the tail of another paragraph). Counting it as a negative measures the labeller's caution rather than the instrument — doing so understated Galician by 0.114.",
+  "speeches": [
+    {
+      "video_id": "729753",
+      "lang": "ca",
+      "duration": 369.005,
+      "notes": "Interleaved rather than appended, and the hardest case in the set. [1] is a spoken Spanish aside with a stenographer annotation and has no Catalan counterpart; [4] and [11] are Spanish QUOTATIONS read aloud once as part of the Catalan delivery, so they are spoken, not renderings. The clip agrees: delivered 3,843 chars / 369 s = 10.41 c/s, whereas counting the quotations as rendered would give 8.13, below the floor.",
+      "paragraphs": [
+        "Bona tarda, señorías.",
+        "Señor Robles, estoy emocionado. (Risas). ¡Transido de emoción he escuchado su alocución!",
+        "La veritat, senyories, no sé exactament si el que fa VOX és nostàlgia o ignorància, però aquesta tarda he fet un descobriment que vull comunicar a la cambra i que és un descobriment important, perquè fa dies que m’interrogo sobre l’origen de la ideologia de VOX i avui aporto la prova. Enciclopedia Álvarez, un dels llibres manuals del franquisme, editat l’any 1964. Enciclopedia intuitiva, sintética y práctica. Atenció, a la lliçó 20 d’història d’Espanya d’aquesta enciclopèdia es pot llegir això:",
+        "La verdad, señorías, no sé exactamente si lo que hace VOX es nostalgia o ignorancia, pero esta tarde he hecho un descubrimiento que quiero comunicar a la Cámara y que es un descubrimiento importante, porque desde hace días me cuestiono sobre el origen de la ideología de VOX, y hoy tengo la prueba: la enciclopedia Álvarez (muestra un libro), uno de los libros manuales del franquismo, editado en el año 1964; Enciclopedia intuitiva, sintética y práctica. Atención, en la lección 20, historia de España de esta enciclopedia, se puede leer lo siguiente:",
+        "«A pesar de ello, nuestros tradicionales e implacables enemigos nos acusan de crueles y de no haber hecho en el Nuevo Mundo nada que merezca la pena ser recordado. Tales acusaciones, injustas de todo punto, constituyen la famosa leyenda negra que ciertos países extranjeros, apoyados por algunos malos españoles, han venido vertiendo sobre España a través de los siglos».",
+        "Misteri resolt. Tota la ideologia de VOX està a l’Enciclopedia Álvarez. Gran modernitat, senyors. És fabulós, és fabulós.",
+        "Bé, senyor Robles, podríem avançar i passar de la primària cap a estadis superiors, tot i que he d’admetre que quan em toca una moció de VOX m’ho passo molt bé. És molt divertit. No diré que és il·lustratiu, perquè es parla molt de fake news, però VOX són experts en history fakes i, per tant, viuen en el passat. Això ja ho saben, suposo. De debò, aquesta cambra suposo que costa molts diners al contribuent, hem de perdre temps sobre això? Hem de perdre temps tornant a aquesta idea tan rònica del que va ser la Hispanitat? De debò? No veuen vostès, senyors de VOX, que fan el ridícul? Per cert, senyories del PP, no veuen que fan el ridícul donant suport a això? No veuen que no poden ser una dreta europea fent aquestes bestieses? No, no, no, no, és que vostès tenen... la cabra tira al monte, i a vegades la cabra els surt pertot arreu.",
+        "Com que el senyor Robles no ho ha fet, intentaré introduir una mica de ciència en aquest debat perquè, si no, acabarem a la barra de bar, i citaré un important historiador cubà, Manuel Moreno Fraginals, suposo que no se’m discutirà que té una obra importantíssima que es diu Cuba/España, España/Cuba - historia común, on diu, apuntin, perquè es veu que això no se sap, això:",
+        "Misterio resuelto. Toda la ideología de VOX está en la enciclopedia Álvarez; gran modernidad, señores. Es fabuloso, es fabuloso. Señor Robles, podríamos avanzar y pasar a estadios superiores a la primaria, aunque he de admitir que, cuando hay una moción de VOX, me lo paso muy bien, es muy divertido; no ilustrativo, diría, no lo diré porque se habla mucho de fake news, pero en VOX son expertos en ‘history fakes’, así que, por tanto, viven en el pasado; supongo que lo saben.",
+        "Esta Cámara cuesta mucho dinero al contribuyente, mucho dinero. ¿De verdad hemos de perder tiempo volviendo a esa idea crónica de lo que fue la hispanidad? ¿De verdad? ¿No ven, señores de VOX, que hacen el ridículo? Por cierto, señorías del PP, ¿no ven que hacen el ridículo dándole apoyo a esto? ¿No ven que no pueden ser una derecha europea diciendo estas tonterías? No, no, es que la cabra tira al monte y les sale la cabra por todas partes.",
+        "Señor Robles, no lo ha hecho, así voy a intentar introducir un poco de ciencia en este debate porque, si no, acabaremos… Citaré a un histórico cubano muy importante, Manuel Moreno Fraginals, supongo que no me lo discutirá, que tiene una obra importantísima que se llama Cuba/España España/Cuba. Historia común, donde dice ―apunten, porque, quizá, parece que no se sabe―:",
+        "Así, mediante la derrota militar de los indios y su subsecuente vencimiento cultural, los conquistadores colonizadores hacían imposible la resistencia armada, tomaban los poblados, ocupaban las viviendas, se apropiaban de los recursos alimentarios, usaban sexualmente a las mujeres indias, desintegraban la organización social existente y procedían a desarraigar la religión, tabla de valores, usos, hábitos y costumbres indígenas que inhibiesen el proceso de dominación.",
+        "Això és ciència, això és història.",
+        "Jo crec que fins i tot el Parlament d’Espanya hauria de recordar que no podem parlar de bestieses. De quina espanyolitat parlen els senyors i senyores de VOX? De quina espanyolitat? D’una espanyolitat ferida? Deu ser la mateixa espanyolitat que els fa, per exemple, al País Valencià suprimir el premi dedicat a Guillem Agulló, un jove antifeixista que, per sort, premi que la Generalitat catalana ha recuperat. Quina Espanya volen, senyors de VOX?",
+        "De debò, acabaré amb una cita d’un altre savi inapel·lable, ja que el senyor Robles ha fet poesia, jo introduiré una mica de prosa històrica. Elliott, que no era independentista, Eliot, que no era d’Esquerra Republicana ni de Bildu, el gran historiador britànic Elliott va escriure: «Los sepultureros más eficaces de un imperio suelen ser los mismos imperialistas».",
+        "Eso es ciencia, eso es historia. Yo creo que, incluso, el Parlamento de España tendría que recordar que no podemos hablar de tonterías. ¿De qué españolidad hablan, señoras y señores de VOX? ¿De cual, de una españolidad herida? Debe ser la misma que en el País Valenciano les hace suprimir el premio dedicado a Guillem Agulló, un joven antifascista; por suerte, premio que la Generalitat catalana ha recuperado. ¿Qué España quieren, señores de VOX?",
+        "De verdad, voy a terminar con la cita de otro sabio. Como ha hecho poesía el señor Robles, yo voy a introducir prosa histórica. Elliott, que no era independentista, que tampoco era de Esquerra Republicana ni de Bildu, el gran historiador británico, escribió: «Los sepultureros más eficaces de un imperio suelen ser los mismos imperialistas».",
+        "Apuntin-s’ho, senyors de VOX i senyors del PP, que per un dia han tornat a fer el ridícul. Per cert, com a gran mentida històrica, la de l’11 de març i el seu president Aznar.",
+        "Apúntenselo, señores de VOX y señores del Partido Popular, que por un día han vuelto a hacer el ridículo. Por cierto, gran mentira histórica la del 11 de marzo y su presidente Aznar."
+      ],
+      "pairs": [
+        [
+          2,
+          3
+        ],
+        [
+          5,
+          8
+        ],
+        [
+          6,
+          8
+        ],
+        [
+          6,
+          9
+        ],
+        [
+          7,
+          10
+        ],
+        [
+          12,
+          15
+        ],
+        [
+          13,
+          15
+        ],
+        [
+          14,
+          16
+        ],
+        [
+          17,
+          18
+        ]
+      ],
+      "renderings": [
+        3,
+        8,
+        9,
+        10,
+        15,
+        16,
+        18
+      ]
+    },
+    {
+      "video_id": "738994",
+      "lang": "ca",
+      "duration": 712.018,
+      "notes": "REFUTES the memory label 'code-mixed, no rendering'. [0]-[4] are spoken Spanish, [5]-[9] a Catalan island, [10]-[13] render it. 3,070 chars never spoken. Delivered 7,973 / 712 s = 11.20 c/s, whole document 15.51 — duration cannot decide, the text is unambiguous.",
+      "paragraphs": [
+        "Una vez más vuelvo a decir que tengo la sensación de que aquí solamente se habla de Cataluña, de Venezuela o de menas. Hoy toca Catalunya, así que es cierto que hoy nos toca defender un acuerdo alcanzado con el Gobierno, y lo haremos, pero sí algunas previas, porque hoy tocará defender este acuerdo frente a la derecha española y la derecha catalana.",
+        "En cuanto a la derecha y ultraderecha españolas, el portavoz de VOX ha dicho cosas que seguramente suenan muy bien para su público, como sentido común, eficiencia para con las cuentas públicas, habla de derroche… Ustedes donde gobiernan, aparte de crear escuelas de tauromaquia, que cuanto menos es algo poco eficiente, aparte de eso, ustedes que tanto hablan de eficiencia en las cuentas y de frenar el derroche, se han subido el sueldo, en algunas ocasiones hasta un 51 %, en veinticinco ayuntamientos en los que gobiernan; en veinticinco: Náquera, Yebes, Torrelodones, Llucmajor… Es decir, no les aceptamos una sola lección en cuanto al derroche en las cuentas públicas se refiere.",
+        "En cuanto al Partido Popular, ya se ha dicho, pero lo vuelvo a repetir. El acuerdo es el siguiente: trabajaremos para conseguir un nuevo modelo de financiación singular para Cataluña; este modelo permitirá, mediante fórmulas de colaboración entre la Hacienda española y la Hacienda catalana, la gestión, la recaudación y la liquidación de la totalidad de los impuestos propios y transferidos a Cataluña. Esto les molesta mucho, ¿no? Les molesta mucho. (Varios señores diputados hacen gestos afirmativos.-El señor Gallardo Barrena pronuncia palabras que no se perciben). Hay gente que me dice que sí con la cabeza. Señoría, este es el programa electoral de su partido de hace diez años para Cataluña. Entonces, no tiene absolutamente ningún sentido. Lo siento, ha picado solo usted. El presidente de Andalucía se plantó en la Moncloa con un dosier, seguro que de forma casual, que la prensa evidentemente podía fotografiar y comentar, en grandes letras, Comic Sans, que decía: Andalucía por la igualdad. Porque, claro, en Andalucía no hay igualdad por culpa de los catalanes; a veces también de Broncano, que por culpa suya no hay Guardia Civil suficiente en La Línea de la Concepción. Casi siempre es por los catalanes. Es culpa de los catalanes que desde hace ya cuarenta años en Andalucía haya un 30 % de pobreza. Es culpa de los catalanes que desde hace ya cuarenta años en Andalucía haya un 40 % de paro juvenil. Y es culpa de los catalanes que en Andalucía desde hace ya cuarenta años haya los peores datos de salario medio del sur de Europa. ¿Es culpa de los catalanes, señorías, o es culpa de que durante cuarenta años en Andalucía hayan gobernado caciques?",
+        "La pregunta, señorías, es la siguiente. Ustedes, que tienen tantísima presencia y responsabilidad de Gobierno en comunidades autónomas infrafinanciadas, algunas de ellas más infrafinanciadas que Cataluña, como Andalucía, Islas Baleares o el país valencià, se quejan de que formaciones políticas como la mía utilicen su fuerza parlamentaria, la fuerza de los votos que tienen, para intentar mejorar la vida de su gente. ¿por qué no lo hacen ustedes? ¿Por qué ustedes no intentan mejorar una financiación autonómica que saben perfectamente que es obsoleta? Ustedes llegan al punto de no aceptar una quita de la deuda que consiguió Esquerra Republicana simplemente porque lo consiguió Esquerra Republicana de Catalunya, y eso su gente lo tiene que saber, tiene que saber que el motivo, la causa de su precariedad no somos nosotros y nosotras, sino que son ustedes, y, por ejemplo, su fiscalidad en las comunidades autónomas que gobiernan, donde priman al que más tiene y castigan al que menos tiene, porque ustedes gobiernan para los suyos, para los ricos , hasta el punto de que tienen que frenar a los barones de su partido, que, desde un sentido común aplastante, intentan o piden ir a Moncloa a hablar con el presidente para copiar lo que ha conseguido Esquerra Republicana de Catalunya. Lo kafkiano es que ustedes frenan a sus barones para que no intenten copiar lo que hemos conseguido nosotros y nosotras.",
+        "Los motivos por los que nosotros intentamos mejorar la financiación de Cataluña son claros. Cataluña hace ya, de media, treinta años que aporta el 20 % de los impuestos que recauda el Estado y solamente recibe entre un 10 % y un 13 %. Son casi 22 000 millones de euros que pierde Cataluña cada año. Y a esto se le puede llamar egoísmo. Nosotros le llamamos saber contar e intentar solucionarlo. Nosotros y nosotras no pretendemos que nadie tenga menos de lo que merece; ahora, repito, que en Cataluña se consiga un mejor sistema de financiación no va contra nadie, lo que intenta humildemente es reflejar que se puede; que se puede conseguir, que al PSOE se le puede obligar a mejorar las cosas, y que ustedes no quieran simplemente responde en este caso a un anticatalanismo que, desgraciadamente, les da votos en según qué sitios.",
+        "I com no pot ser d’una altra manera, vull respondre al que dirà i diu la dreta catalana. No els agrada l’acord. No? Crec que no. No els agrada l’acord d’Esquerra Republicana amb el PSC, no els agrada l’acord de finançament. Jo tinc la sospita que no els agrada l’acord d’un finançament més just per a Catalunya entre Esquerra Republicana i el PSC perquè ho aconsegueix Esquerra Republicana. Jo tinc aquesta sospita. Tota manera, també els llegeixo l’acord: és una llei de finançament per a Catalunya que cedeix a la Generalitat els impostos generals a Catalunya. Aquesta llei permet traspassar per part de l’Estat a Catalunya les competències íntegres - repeteixo, íntegres- per tal de recaptar tots els impostos, gestionar-los i preveure, eventualment, una quota de solidaritat entre Catalunya i l’Estat espanyol. Aquest és l’acord. Què no els agrada d’aquest acord? Què? Això que estic llegint també és el seu programa electoral. I és exactament el que ha aconseguit Esquerra Republicana de Catalunya.",
+        "Vostès han aconseguit, gràcies a l’enorme potència mediàtica que tenen i sus voceros; que ens diuen pagafantas a nosaltres, per exemple, aquí - sí, voceros-, que ens diuen pagafantas a nosaltres aquí per intentar, per exemple, regular el preu del lloguer, quan tothom sap que vostès no regulen el preu del lloguer, no per una qüestió competencial, sinó per una qüestió ideològica. Respectable, però vostès han inoculat la idea, que fins i tot compren els nostres, que aquí Esquerra Republicana vota coses a canvi de res. Aprofiten una frase que es va dir a la moció de censura de l’any 2018, quan el PSOE ens ofereix fotre fora a la màfia del Partido Popular i Rajoy. Vostès aprofiten una frase fora de context de la moció de censura de l’any 2018 per matxacar-nos amb l’«a canvi de res». Ho han aconseguit. Ho han aconseguit, jo els ho reconec. Hi ha molta gent, fins i tot nostra, que ho compra.",
+        "Dades; jo només donaré dues dades, a veure si, si us plau, algun mitjà català ho publica. Nosaltres, després de negociar-ho tot, principalment mesures socials amb el govern, hem votat el 89 % de les mesures del Govern espanyol. El 89 %, després de negociar. Vostès, sense negociar absolutament res, dit per vostès, el 86 %. 89 % a 86 %. Són dades. Qui ha votat a canvi de res? És un insult, que cola, i ho continuaran dient, però és un insult cap a un partit centenari, o pràcticament centenari, com Esquerra Republicana de Catalunya.",
+        "Els repeteixo dues coses. Quan el PSOE incompleixi amb vostès - que ho ha fet, però no passa res, ho fa i ho farà-, la culpa serà del PSOE, per nosaltres, no serà d’Esquerra Republicana, no serà de Convergència - perdó, de Junts-, serà del PSOE. I dos, si a vostès els interessa tant el finançament de Catalunya, tant que fins i tot frenen un sostre de despesa, la pregunta és: aleshores per què volen votar en contra del finançament que aconsegueix Esquerra Republicana i el PSC? Per què? Són preguntes que no hauria de fer jo, s’haurien de fer a Catalunya.",
+        "Moltes gràcies.",
+        "Y como no puede ser de otra manera, quiero responder a lo que dirá y dice la derecha catalana. No les gusta el acuerdo. ¿No, verdad? Creo que no, que no les gusta el acuerdo de Esquerra Republicana con el PSC, el acuerdo de financiación. Tengo la sospecha de que no les gusta ese acuerdo de una financiación más justa para Cataluña entre Esquerra República y el PSC porque lo consigue Esquerra Republicana. Esa es mi sospecha. De todos modos, les leo el acuerdo: Es una ley de financiación para Cataluña que cede a la Generalitat los impuestos generales de Cataluña. Esta ley permite transferir por parte del Estado a Cataluña las competencias íntegras ―repito, íntegras― con el fin de recaudar todos los impuestos, gestionarlos y prever, al final, una cuota de solidaridad entre Cataluña y el Estado español. Ese es el acuerdo. ¿Qué es lo que no les gusta de este acuerdo? ¿Qué es lo que no les gusta? ¡Lo que estoy leyendo también está en su programa electoral! Sí, y es exactamente lo que ha conseguido Esquerra Republicana de Catalunya. Ustedes han conseguido, gracias a la enorme potencia mediática que tienen y sus voceros ―a nosotros nos llaman pagafantas y, sí, les llamo voceros― que nos llamen pagafantas porque intentamos regular varias cosas. Todos ustedes saben que no regulan algunos precios no por cuestiones competenciales sino por cuestiones ideológicas, y eso es respetable. Ustedes han inoculado una idea, incluso compran la idea de que Esquerra República vota a favor de cosas a cambio de nada. Aprovechan una frase que se dijo en una moción de censura del año 2008, cuando el PSOE nos ofreció sacar fuera a la mafia popular, del Partido Popular y Rajoy. Ustedes aprovechan una frase fuera de contexto de la moción de censura del año 2018 para decir que aceptamos algo a cambio de nada. Y lo han conseguido, lo reconozco. Hay mucha gente, incluso nuestra, que lo acepta.",
+        "Voy a dar un par de datos, solo dos, a ver si algún medio de comunicación catalán lo publica. Nosotros, después de negociarlo todo, sobre todo medidas sociales con el Gobierno, hemos votado el 89 % de las medidas del Gobierno español; ¡el 89 % después de negociar! Ustedes, sin negociar absolutamente nada, y eso lo han dicho ustedes, el 86 %; esto es, 89 % frente a 86 %. Estos son los datos ¿eh? ¿Quién ha votado a cambio de nada aquí? Esto es un insulto que cuela y lo continuarán diciendo, pero es un insulto hacia un partido centenario, o casi centenario, como es Esquerra Republicana de Catalunya.",
+        "Repito dos cosas más. Cuando el PSOE incumpla para con ustedes ―que ya lo ha hecho pero no pasa nada, que lo hace y que lo hará―, para nosotros la culpa será del PSOE, no será de Esquerra Republicana o de Junts, será del PSOE. Y, dos, si a ustedes les interesa tanto la financiación de Cataluña, tanto que hasta frenan un umbral de gasto, la pregunta es, entonces, ¿por qué quieren votar en contra de la financiación que han conseguido Esquerra Republicana y el PSC? ¿Por qué? Estas son preguntas que yo no debería plantear, que se deberían plantear en Cataluña.",
+        "Muchas gracias."
+      ],
+      "pairs": [
+        [
+          5,
+          10
+        ],
+        [
+          6,
+          10
+        ],
+        [
+          7,
+          11
+        ],
+        [
+          8,
+          12
+        ],
+        [
+          9,
+          13
+        ]
+      ],
+      "renderings": [
+        10,
+        11,
+        12,
+        13
+      ]
+    },
+    {
+      "video_id": "742280",
+      "lang": "ca",
+      "duration": 381.012,
+      "notes": "Appended, with one-to-many at both ends: [0] -> [5]+[6]+[7] (greeting split into three) and [12] -> [14]+[15]. Delivered 4,408 chars / 381 s = 11.57 c/s; the whole document would be 23.15, impossible.",
+      "paragraphs": [
+        "Sí, bona tarda. Gràcies, president. Bona tarda, diputats; bona tarda, diputades. Nosaltres hem presentat una esmena, i per això sortim en aquest torn, perquè, a més a més, volíem afegir que el Govern tingui el compromís de denunciar tant les associacions com les iniciatives antiavortament que estem veient en aquest Estat aquests darrers dies. És a dir, ens trobem amb una proposició no de llei que no té un contingut excessivament dens ni complicat ni difícil d’entendre i que fins i tot en altres moments hauríem dit que, bé, era una cosa molt poc treballada per portar-la en aquest Ple. Però és cert que, després de parlar amb la companya senadora Sara Bailac, que està al capdavant de l’aliança que s’està fent contra la cimera antiavortista que està preparant al Senat, he hagut de concloure que la proposició té el seu sentit.",
+        "Clar, jo crec que si sortim al carrer i comencem a explicar a la gent que en aquest Ple estem debatent en ple segle XXI, el 2024, que hi ha una part dels legisladors, i legisladores, que han decidit que un dret que hem obtingut, com l’avortament, i, per tant, la cúspide, la cima del que són els drets sexuals i reproductius els estem posant a debat, jo crec que no hi hauria un acord unànime al carrer. I també crec que no estem sent capaços d’explicar que determinades ideologies comportaran a la quotidianitat de la gent coses com aquestes, coses que donem per fetes, drets que donem per adquirits, per assentats, per inamovibles, i no ho són. Llavors, cada cop que pujo en aquest faristol a defensar un d’aquests drets, em desespero una mica, perquè qualsevol dia d’aquests acabarem també debatent si el divorci ha de ser o no amb culpabilitat o qualsevol dia d’aquests acabarem debatent si les senyores podem tenir o no un compte bancari sense que el marit ens autoritzi. I, per tant, la meva estupefacció és gran quan al Senat es permet i es dona suport a una iniciativa d’aquest calibre.",
+        "Permetin-me dir-los de tota manera, perquè crec que és important saber-ho, que els col·laboradors de la cimera no són gent innòcua, no són només ànimes inflamades religiosament i caritatives que consideren que això és matar una vida i, per tant, creuen que s’ha de fer. No, no, és la ultradreta. És gent com el Center for Fundamental Rights, que és un grup d’experts de dreta proper al Govern hongarès que - a part d’ajudar Trump, clar- ha anomenat els jueus «excrements pudents» i ha anomenat la comunitat gitana «animals». Eh, 2024. És aquesta gent la que anirà al Senat. No és la bona gent en defensa de la família i de les oportunitats perquè les dones tinguin altres alternatives abans d’avortar, no: és la International Organization for the Family, que és un grup classificat com a grup d’odi, perquè odia la comunitat LGTBI+; és el Talenting Group. En aquests tinc menys a dir-hi, perquè només - només- treballen en cooperació internacional en base als principis bíblics, donant suport a mitjans de comunicació com les webs cristianes en contra de l’educació sexual - en contra de l’educació sexual-, que és un dret de qualsevol nen i de qualsevol nena en una societat democràtica, avançada i occidental.",
+        "Per tant, amb això volem dir: com sempre, el feminisme és una eina més al servei de la ultradreta per fer el seu discurs viral. Per tant, en aquest sentit hem d’estar absolutament units fent front a aquest retrocés que ens podem trobar qualsevol dia. I ja ho he dit quaranta vegades també: hi ha un capítol de El La història de la criada- que comença de la manera més tonta en una societat cuento de la criada - normal i acaba sense targetes de crèdit, sense capacitat de vot, sense capacitat de tenir un compte bancari. I és una distopia, però si no els parem acabarà sent veritat. I si jo he de donar per fet que hi ha una part del PP que és raonable, els hi demano que aixequin la veu, perquè és la seva majoria absoluta al Senat la que permet que això estigui passant.",
+        "Acabo amb un prec al Govern. Fa uns dies els hi vam demanar explicacions perquè en les baixes per dismenorrea o en les baixes per avortament no arribessin els diagnòstics als empresaris, i per què estava passant. No ens han respost. Demanem, si us plau, que ens responguin en aquest cas, perquè és greu. Les empreses no han de tenir mai els diagnòstics, i menys si són d’aquest tipus.",
+        "Gracias, presidente.",
+        "Buenas tardes, diputados y diputadas.",
+        "Nosotros hemos presentado una enmienda, por esto salimos en este turno, porque además queríamos añadir que el Gobierno ha de tener el compromiso de denunciar, tanto en las asociaciones como en las iniciativas antiaborto, qué estamos viendo en este Estado en estos últimos días. Es decir, nos encontramos con una propuesta no de ley que no tiene un contenido excesivamente tenso ni complicado ni difícil de comprender y que, incluso, en otros momentos habríamos dicho que era una cosa muy poco trabajada para llevarla a este Pleno. Pero es cierto también que después de hablar con la compañera senadora Sara Bailac, que está delante de la vigilancia que se está haciendo en contra de la cumbre antiabortista que están preparando en el Senado, he tenido que concluir que la propuesta tiene su sentido.",
+        "Creo que si salimos a la calle y empezamos a explicar a la gente que en este Pleno estamos debatiendo en pleno siglo XXI ―en el año 2024, de hecho― que hay una parte de los legisladores y las legisladoras que han decidido que un derecho que hemos tenido, como el del aborto, que está, por lo tanto, en la cúspide, en la cima de los derechos sexuales y reproductivos, lo estemos poniendo a debate, pues no creo que hubiera un acuerdo unánime en la calle. Tampoco estamos siendo capaces de explicar que ciertas ideologías comportaran en la cotidianeidad de las personas cosas como estas, cosas que damos hechas. Son derechos que damos por adquiridos, por sentado e inamovibles, y no lo son. Entonces, claro, cada vez que subo a este estrado a defender estos derechos, me desespera un poco, porque un día de estos acabaremos también debatiendo si el divorcio ha de ser o no con culpabilidad; o cualquier día de estos acabaremos debatiendo si las señoras podemos tener una cuenta bancaria sin que nuestro marido nos lo autorice. Por lo tanto, mi estupefacción es grande cuando el Senado se permite y da apoyo a una iniciativa de este calibre.",
+        "No obstante, permítanme decirles, porque creo que es importante saberlo, que los colaboradores de la cumbre no son gente inocua. No son almas inflamadas religiosamente y caritativas que consideran que esto es matar una vida y que, por lo tanto, creen que se tiene que hacer. No, no, es la ultraderecha. Es gente como el Center for Fundamental Rights, que es un grupo de extrema derecha cercano al Gobierno húngaro que, aparte de al señor Trump, ha pedido para los judíos… y ha llamado animales a la comunidad gitana. Es esta gente la que irá al Senado. No es la buena gente en defensa de la familia y de las oportunidades para que las mujeres tengan otras alternativas antes de votar, no. Es la Internacional Organization for the Family, que es un grupo clasificado como grupo de odio, porque odia la comunidad LGTBIQ+. No tengo que comentar mucho de ellos. Bueno, trabajan en cooperación internacional con principios bíblicos, dando comunicación basada en los valores cristianos, en contra de la educación sexual ―repito, en contra de la educación sexual―, que es un derecho de cualquier niño o niña en una sociedad democrática avanzada y occidental.",
+        "Por lo tanto, como siempre, queremos decir que el feminismo es una herramienta más al servicio de la ultraderecha para realizar su discurso y hacerlo virar. En este sentido, hemos de estar absolutamente unidos, haciendo frente a este retroceso que nos podremos encontrar cualquier día. Ya le he dicho cuarenta veces: hay un capítulo de El cuento de la criada, que empieza de la forma más tonta en una sociedad normal y acaba sin tarjetas de crédito, sin capacidad de voto y sin capacidad de tener una cuenta bancaria. Es una distopía, pero si no les paramos, acabará siendo verdad. Y si he de dar por hecho que hay una parte del PP que es razonable, les pido que levanten la voz, porque su mayoría absoluta en el Senado es la que permite que esto esté ocurriendo.",
+        "Y termino con un ruego al Gobierno. Hace unos días les pedimos explicaciones de por qué estaba pasando que en las bajas por dismenorrea o aborto llegasen los diagnósticos a los empresarios. No nos han respondido. Pedimos, por favor, que nos respondan en este caso, porque es grave. Las empresas no han de tener nunca los diagnósticos, y menos si son de este tipo.",
+        "Acabo immediatament. Per tant, que alguna de les seves ministres requerides, per favor, comparegui.",
+        "Moltes gràcies.",
+        "Termino inmediatamente.",
+        "Por lo tanto, pedimos que alguna de las ministras requeridas comparezca.",
+        "Muchas gracias."
+      ],
+      "pairs": [
+        [
+          0,
+          5
+        ],
+        [
+          0,
+          6
+        ],
+        [
+          0,
+          7
+        ],
+        [
+          1,
+          8
+        ],
+        [
+          2,
+          9
+        ],
+        [
+          3,
+          10
+        ],
+        [
+          4,
+          11
+        ],
+        [
+          12,
+          14
+        ],
+        [
+          12,
+          15
+        ],
+        [
+          13,
+          16
+        ]
+      ],
+      "renderings": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        14,
+        15,
+        16
+      ]
+    },
+    {
+      "video_id": "760011",
+      "lang": "ca",
+      "duration": 352.018,
+      "notes": "REFUTES the memory label 'code-mixed, no rendering'. Exactly one rendering. Delivered 4,596 chars / 352 s = 13.06 c/s, the median exactly; the whole document is 16.39.",
+      "paragraphs": [
+        "Gràcies, presidenta.",
+        "Señorías del Partido Popular, me da la impresión de que su partido se está convirtiendo cada vez más en lo que podríamos llamar la Ayuso borroka, mucho ruido, mucha bronca y muy poca propuesta. Y hoy han decidido abrir un nuevo frente, el tren, concretamente el servicio comercial de alta velocidad. No hablan de cercanías, ni del servicio público de media distancia, ni del Avant de Sanabria a Zamora. Parece que el tren que usa la gente corriente no les despierta el mismo interés. Su preocupación se centra siempre en el que utilizamos nosotros, los diputados, los turistas, los ejecutivos. Ahí está su prioridad, ese es su concepto de movilidad. Eso, señorías, aunque les pese, tiene un nombre: lucha de clases.",
+        "Ustedes, allá donde gobiernan, tienen una cantinela repetitiva: dejar morir los servicios públicos esenciales para después malvenderlos a través de un intermediario. Su modelo no es ningún misterio: rebajar impuestos a las fortunas pagándolo a base del recortar servicios esenciales para la ciudadanía. Para ello se necesita ruido, mucho ruido. Su objetivo es claro: erosionar al único Gobierno de izquierdas de Europa, en este caso utilizando a Renfe como ariete. Siempre es lo mismo: cuando no gobiernan ellos, actúan como si los hijos de la chacha les hubieran ocupado su ático. Todo es una cortina de humo, una estrategia para desviar la atención del verdadero problema de movilidad. Pongamos por ejemplo Madrid, el metro. Subir al metro en Madrid es una auténtica pesadilla para miles de personas y que pasa desapercibido para los medios de comunicación de la derecha. Ya no existe la hora punta, todo el día es hora punta. Trenes colapsados, andenes repletos, accesos cortados, y ¿cuál ha sido su gran propuesta en materia de transporte público? Contratar empujadores, sí, empujadores, esa es su idea, convertir el metro en una lata de sardinas. Ah, claro, eso es competencia de la admiradora de Netanyahu, mejor no menearlo, ¿verdad?",
+        "Podrien haver triat un tema amb substància per fonamentar la seva crítica. Per exemple, l’R15, que connecta Barcelona i Tarragona amb les Terres de l’Ebre, sofreix incidències sis dies, sis de cada deu dies, perdó. Les línies del sud, oblidades durant anys també per la Generalitat, són les que acumulen el 82 % de les averies i el 58 % dels minuts de retard. Això es deu, en gran part, a la seva inacció pressupostària, sempre pensant en l’alta velocitat i molt poc o res en el tren convencional. Ha hagut d’arribar un govern, un govern de coalició perquè es bolquin milions d’inversió i es comenci a executar, ara sí, uns pressupostos. Precisament avui, avui, han començat les obres de l’R3 de Rodalies, amb una inversió de 140 milions d’euros i un servei alternatiu d’autobusos per no deixar a 21 000 persones sense mobilitat. Es recorden d’aquest diputat insistint en la necessitat de salvar vides a Montcada i Reixac i Sant Feliu de Llobregat, al costat de les llavors alcaldesses Laura Campos i Lídia Muñoz? Han hagut d’arribar els governs de coalició d’esquerres perquè aquestes obres estiguin a punt d’iniciar-se i l’altra estigui a punt de finalitzar. Amb vostès, en el govern o en l’oposició, tot és fum.",
+        "Podrían haber escogido un tema con sustancia para fundamentar su crítica como, por ejemplo, la R15 que conecta a Barcelona y Tarragona con las tierras del Ebro. Sufre incidentes seis de cada diez días. Las líneas del sur, olvidadas durante años también por la Generalitat, son las que acumulan el 82 % de las averías y el 58 % de los minutos de retraso. Esto se debe en gran parte a su falta de acción presupuestaria. Siempre pensando en la alta velocidad y muy poco o nada en el tren convencional. Ha tenido que llegar un Gobierno de coalición para que se pongan millones de inversiones y se pongan presupuestos a ello. Hoy, precisamente, han empezado las obras de la R3 de rodalies con una inversión de 140 millones de euros y un servicio alternativo de autobuses para no dejar a 21 000 personas sin movilidad. ¿Se acuerdan de aquel diputado insistiendo en la necesidad de salvar vidas en Sant Feliu de Llobregat y Montcada i Reixac, con Lydia Muñoz y otra alcaldesa? Tuvieron que llegar los Gobiernos de coalición de izquierdas para que estas obras estén a punto de iniciarse y la otra está a punto de finalizar. Con ustedes en el Gobierno o en la oposición todo es humo.",
+        "Y disipemos ese humo de una vez. Es absurdo comparar la situación actual con la de los años noventa. Hoy, por la línea de alta velocidad Madrid-Sevilla circulan 289 trenes en un día; en 1992, edran 6 trenes. España tenía 500 kilómetros de alta velocidad y hoy tiene 4000, solo superados por China. Renfe acaba de lograr su mejor registro histórico en viajeros de alta velocidad con 3,5 millones en un solo mes. La alta velocidad Renfe tiene los mejores índices de puntualidad en Europa, solo por detrás de Suiza.",
+        "Y hablemos de compensaciones, que es lo tangible. Renfe alta velocidad: sesenta minutos de retraso, 50 % de devolución; en noventa minutos, el 100 % de devolución y en veinticuatro horas. Ouigo e Iryo, compensaciones en muchos casos solo en vales, no en efectivo. En las aerolíneas, el reembolso es si el retraso supera cinco horas. Señorías del Partido Popular, se equivocan de destino. Su estrategia del ruido no va a frenar un modelo que funciona, sin que por ello haya que ocultar los problemas, que sí existen.",
+        "Finalmente, le recuerdo al ministerio que no nos podemos dormir de ninguna manera, que se ha de seguir invirtiendo en todos los trenes, también en los de la gente, y sin olvidarse de la España con poca población. La próxima parada serán los presupuestos, que seguirán favoreciendo la movilidad de toda la ciudadanía, no solo la de la alta velocidad.",
+        "Muchas gracias."
+      ],
+      "pairs": [
+        [
+          3,
+          4
+        ]
+      ],
+      "renderings": [
+        4
+      ]
+    },
+    {
+      "video_id": "771952",
+      "lang": "ca",
+      "duration": 376.011,
+      "notes": "Clean 1:1 throughout, tail verified paragraph by paragraph rather than assumed. Delivered 4,931 chars / 376 s = 13.11 c/s.",
+      "paragraphs": [
+        "Molt bona tarda, president.",
+        "Senyories, en els primers nou mesos de l’any passat, els Mossos d’Esquadra, la policia de Catalunya, van comissar 10 200 armes blanques, ganivets, navalles, matxets i va atendre 3750 incidents amb exhibició o utilització de navalles o objectes perillosos. Fa dos dies, un home de 53 anys va morir a Barcelona intentant mediar en una baralla. A Tàrrega, un jove de 18 anys va morir l’estiu passat assassinat per arma blanca. A Tarragona, Lleida, Girona, Figueres, Badalona, Manresa, Terrassa i a molts altres llocs hi ha hagut baralles amb navalles i matxets. L’ús d’armes blanques, els apunyalaments, les baralles entre bandes que es resolen a cop de matxet, la banalització de portar una arma blanca, tot això és una realitat que no podem ignorar.",
+        "Fer veure que aquesta preocupant problemàtica no existeix és una irresponsabilitat. El que cal és abordar-la i fer-ho amb urgència. La proposició del PP assenyala aquest problema, la preocupació de la ciutadania i dels cossos i forces de seguretat i la necessitat de prendre mesures per fer-hi front. Ara bé, les propostes que planteja són incompletes, perquè obvien la distribució competencial, i desequilibrades, perquè només proposen endurir les sancions quan el que cal és un nou marc normatiu.",
+        "No podem compartir aquest enfocament recentralitzador que ignora la realitat institucional i policial catalana. A Catalunya, la competència en seguretat la té la Generalitat. L’administració de referència en matèria de seguretat pública és i ha de ser la Generalitat i el cos policial competent són els Mossos d’Esquadra, la policia integral a Catalunya, una institució en la que tenim tota la confiança. Des d’aquest punt de partida no podem acceptar un Pla Integral d’Actuació policial estatal que doni carta blanca al Govern de l’Estat i a les Forces i cossos de seguretat estatals. Per aquí no hi passarem. Per nosaltres les competències de Catalunya són una línia vermella que no traspassarem, tampoc en matèria policial i de seguretat. Són els Mossos, la policia pròpia de Catalunya, els que han d’assumir l’execució de les polítiques de seguretat en coordinació, naturalment, amb les policies locals. Per tant, també han de ser els Mossos i no la Guàrdia Civil, el cos policial responsable del control administratiu d’armes, explosius, cartutxeria i pirotècnia.",
+        "Per això cal modificar la Llei de Seguretat Ciutadana. Tenim presentades esmenes en aquest sentit per si algun dia s’activés la reforma d’aquesta llei. I també cal substituir el Reglament d’armes obsolet i centralista de 1993, substituir-lo per un nou reglament adequat a la realitat competencial actual i a les noves dinàmiques delinqüencials. No es tracta de posar pedaços a la normativa actual, com proposa el PP. El que cal és establir un nou marc normatiu que respecti les competències de la Generalitat i que permeti avançar cap a un sistema nacional de seguretat propi per a Catalunya.",
+        "Quant a les modificacions normatives proposades, volem deixar clar que trobem més útil enfocar el problema de les armes blanques des de la millora de l’execució policial que no des d’un punitivisme poc justificat. Tots els especialistes ens diuen que davant de la complexitat del problema és més útil posar més recursos, més detectors, més personal, més organització i més coordinació que no pas entrar en una cursa punitiva.",
+        "En tot cas, podem valorar l’enduriment de les sancions en la Llei de Seguretat Ciutadana per la tinença o exhibició d’armes. Ens genera més dubtes la proposta de reformar la LECrim per la detenció de persones quan hi ha presència d’armes blanques. Ens sembla millor tècnica legislativa i més garantista la previsió ja existent en la LECrim, que preveu que la policia pugui detenir per la comissió de delictes i no pels mitjans emprats.",
+        "I, finalment, no ens tanquem a les reformes del Codi Penal proposades, consistents a introduir la pena de privació del dret de tinença i de portar armes per al delicte de lesions, i tampoc a incrementar la pena de presó per tinença d’armes prohibides. Més prevenció ens genera que la reiteració d’infraccions administratives comporti responsabilitat penal pel risc de no caure en un bis in idem. O també ens genera preocupació la referència genèrica a la responsabilitat penal dels menors, que s’hauria de concretar i estudiar més profundament.",
+        "Voldria acabar recordant que Catalunya ja està actuant i innovant davant la problemàtica de les armes blanques. Els Mossos d’Esquadra i la Guàrdia Urbana de Barcelona fa temps que despleguen el pla Daga, una experiència pionera en la detecció i prevenció d’armes blanques. A Barcelona s’han aprovat iniciatives perquè cada patrulla disposi de pales detectors d’armes, una mesura molt eficaç que la PNL ni tan sols menciona. Finalment, l’increment d’armes blanques va en paral·lel al d’armes de foc, de manera que la revisió del control també considerem que les hauria d’incloure.",
+        "Moltes gràcies.",
+        "Muy buenas tardes, presidente, señorías.",
+        "En los primeros nueve meses del año pasado los Mossos d’Esquadra, la policía de Cataluña, decomisó 10 227 navajas, mecheros y armas blancas y atendió 3550 incidentes con exhibición o utilización de navajas u objetos peligrosos. Hace dos días un hombre de 53 años murió en Barcelona intentando mediar en una pelea. En Tárrega un chico de 18 años murió el verano pasado asesinado por arma blanca. En Tarragona, Lleida, Girona, Figueras, Badalona, Manresa, Tarrasa y muchos otros lugares ha habido peleas con navajas y machetes. El uso de armas blancas, los apuñalamientos, las peleas entre bandas que se resuelven a golpe de machete y la banalización de llevar un arma blanca, todo eso es una realidad que no podemos ignorar.",
+        "Hacer ver que esta preocupante problemática no existe es una irresponsabilidad. Lo que hay que hacer es abordarla y hacerlo con urgencia. La proposición del PP señala este problema, la preocupación de la ciudadanía y de los cuerpos y fuerzas de seguridad del Estado y la necesidad de tomar medidas al respecto. Ahora bien, las propuestas que plantea son incompletas porque obvian la distribución competencial, y desequilibradas porque solo proponen endurecer las sanciones, cuando lo que hay que hacer es poner un nuevo marco normativo.",
+        "No podemos compartir este enfoque recentralizador, que ignora la realidad institucional de Cataluña, donde la competencia de seguridad la tiene la Generalitat. La Administración de referencia es y tiene que ser la Generalitat, y el cuerpo policial competente son los Mossos d’Esquadra, la policía integral de Cataluña, una institución en la que tenemos toda nuestra confianza depositada. Y, desde este punto de partida, no podemos aceptar un plan integral de actuación policial estatal que dé carta blanca al Gobierno del Estado y a las fuerzas y cuerpos de seguridad estatales. Por ahí no pasamos. Para nosotros las competencias de Cataluña son una línea roja que no traspasaremos, y tampoco en materia policial y de seguridad. Son los Mossos, la policía propia de Cataluña, los que tienen que asumir la ejecución de las políticas de seguridad, y naturalmente en coordinación con con las policías locales. Por tanto, también tienen que ser los Mossos, y no la Guardia Civil u otros cuerpos policiales, los responsables del control administrativo de armas, dispositivos, cartuchería y pirotecnia. Por eso hay que unificar la ley de seguridad ciudadana.",
+        "Hemos presentado enmiendas por si algún día se activa la reforma de esta ley y para sustituir el reglamento de armas, obsoleto y centralista, de 1993, por otro nuevo, adecuado a la realidad competencial actual y a las nuevas dinámicas delincuenciales. Tampoco se trata de poner pedazos a la normativa actual, como hace el PP. Lo que hay que hacer es establecer un nuevo marco normativo, que respete las competencias de la Generalitat y permita avanzar hacia un sistema nacional de seguridad propio para Cataluña.",
+        "En cuanto a las modificaciones normativas propuestas, queremos dejar claro que nos parece más útil enfocar este problema desde la mejora de la ejecución policial, y no desde una escasa justificación. Los especialistas nos dicen que el problema es muy complejo y, por tanto, es más útil utilizar más recursos, más detectores, más personal, más organización y más coordinación, y no entrar en una carrera punitiva.",
+        "En todo caso, viendo el endurecimiento de las sanciones de esta ley, me genera más dudas la propuesta de reformar la ley respecto a la detención de personas cuando hay presencia de armas blancas. Me parece mejor técnica legislativa y más garantista la previsión de que la policía pueda detener por la comisión de delitos.",
+        "Finalmente, en cuanto a las reformas del Código Penal propuestas que insisten en incrementar las penas por la tenencia de armas prohibidas, más prevención genera que la reiteración comparta responsabilidad penal por el riesgo de no caer en un non bis in idem, y también genera preocupación la responsabilidad penal, en la que debería profundizarse.",
+        "Quería acabar recordando que Cataluña ya está actuando, innovando sobre esta problemática de armas blancas. Los Mossos d’Esquadra y la Guardia Urbana hace tiempo que despliegan el Plan Daga, una experiencia pionera en la detención y prevención de armas blancas. En Barcelona se han aprobado iniciativas para que cada patrulla tenga detectores de armas; una medida muy eficaz que la PNL ni menciona. Y, finalmente, el incremento de armas blancas va en paralelo a las armas de fuego, de manera que la revisión del control también consideramos que las debería incluir.",
+        "Muchas gracias."
+      ],
+      "pairs": [
+        [
+          0,
+          10
+        ],
+        [
+          1,
+          11
+        ],
+        [
+          2,
+          12
+        ],
+        [
+          3,
+          13
+        ],
+        [
+          4,
+          14
+        ],
+        [
+          5,
+          15
+        ],
+        [
+          6,
+          16
+        ],
+        [
+          7,
+          17
+        ],
+        [
+          8,
+          18
+        ],
+        [
+          9,
+          19
+        ]
+      ],
+      "renderings": [
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19
+      ]
+    },
+    {
+      "video_id": "726710",
+      "lang": "eu",
+      "duration": 106.013,
+      "notes": "[0] 'Gracias, señor presidente. Eskerrik asko.' is spoken and has NO rendering. Delivered 1,430 chars / 106 s = 13.49 c/s. The stored split puts the Basque farewell [4] in the SPANISH block — a real defect.",
+      "paragraphs": [
+        "Gracias, señor presidente. Eskerrik asko.",
+        "Bi hitzetan bakar-bakarrik Vox-ek aurkeztu duen mozio honen inguruan. Lehenik eta behin, hamar puntuko mozio bat ezin da onartu inondik inora ere, ze hamar puntutan gauza ikaragarri pila hartu dituzte, denetarik. Nekazaritzaren arazo guztiak mozio batean sartu dituzte, eta horrela konpontzeko asmoarekin gainera. Beraz, ezin dugu hori babestu ez du inondik inora ere. Ezin da nekazaritzaren arazoa mozioetan ekarri: dena gaizki dago eta dena era honetara konpondu behar dugu. Egiten duten diagnostikoa erabat baldintzatzen dute, gainera, iritsi nahi duten ondorioetara. Eta erabakitzen dute ondorioa zein den eta gero arrazoiak ipintzen dituzte beraiek nahi dituzten ondorioen arabera. Hori teknika aspalditik ezagutzen dugu, eta hori hola da.",
+        "Beraz, nik esango nuke arazorik grabeena mozio honetan dela Europatik at, autarkikoki, uzten digun ikuspegi bat dela, nekazaritzaren ikuspegi autartikoa. Europatik kanpora. Europak egiten duena gaizki dago. Eta, gero, sartzen dituzte kontzeptuak ekologismoaren inguruan eta abar onartezinak dira.",
+        "Nekazaritzak arazo asko ditu, oso grabeak, gainera, eta horiei konponbidea eman behar zaie. Konponbidea emateko lan egin behar da, baina ez kanpotik eta ikuspegi autarkiko eta erabat atzerakoi honekin. Eta PPk sartu dituenak, gero, bere kontu horiek sartzen ditu eta azkenean otsoarekin bukatu dugu. Beraz, gauzak serioago egin ditzagula.",
+        "Mila esker.",
+        "En dos palabras, brevemente. VOX ha presentado una moción sobre la que decimos lo siguiente. Es una moción de diez puntos que es inaceptable, porque en diez puntos se pueden incluir muchísimas cosas. Han incluido de todo, han incluido todos los problemas de la agricultura en una moción. Por lo tanto, no podemos apoyarla de ninguna de las maneras. No se puede abordar el problema de la agricultura en una moción. Está todo mal y todo lo vamos a solucionar así. El diagnóstico que hacen, además, está totalmente condicionado por las conclusiones a las que quieren llegar; deciden cuál es la conclusión a la que quieren llegar y luego dan los argumentos según lo que quieren alcanzar. Conocemos esta manera de actuar desde hace ya mucho tiempo.",
+        "Yo diría que el problema más grave de esta moción es que nos deja fuera de Europa. Es una perspectiva que nos deja fuera de Europa, es una visión autárquica que nos deja fuera de lo que hace Europa. Está mal lo que hace Europa e incluyen conceptos sobre el ecologismo, etcétera, que son inaceptables. La agricultura, sí, tiene problemas, muy graves además, y hay que solucionar estos problemas de la agricultura, pero para ello hay que trabaja; hay que trabajar, pero no desde fuera y desde una perspectiva autárquica y con esta perspectiva tan retrógrada. Y después el Partido Popular ha incluido diferentes aspectos y hemos acabado hablando del lobo. Tenemos que tomarnos las cosas de una manera más seria.",
+        "Muchísimas gracias."
+      ],
+      "pairs": [
+        [
+          1,
+          5
+        ],
+        [
+          2,
+          6
+        ],
+        [
+          3,
+          6
+        ],
+        [
+          4,
+          7
+        ]
+      ],
+      "renderings": [
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "video_id": "742285",
+      "lang": "eu",
+      "duration": 371.002,
+      "notes": "Only the OPENING is rendered: [0]->[2], [1]->[3]. From [4] on the speaker continues in Spanish with new content, so [4]-[13] are ten genuine negatives. Delivered 4,841 chars / 371 s = 13.05 c/s.",
+      "paragraphs": [
+        "Arratsalde on, kaixo guztioi.",
+        "Gaur alderdi sozialistak dakarren ez-legezko proposamen honek hiru helburu nagusi ditu: batetik, alde batetik berdintasun politiketan eman diren aurrera pausuen defentsa sutsua egitea, bestalde 1/2023 osasun sexual eta haurdunaldia borondatez eteteko legeak dioena bete dadila exijitzen duela, eta bestalde, kontzientzi objekzioa ez dadila izan eragozpena. Horiexek hiru gauz horiek izango lirateke batez ere gai nagusiak gaur alderdi sozialistak ekartzen dizkit, erkartzen diguten ez-legezko proposamen honetan.",
+        "Buenas tardes a todas y a todos.",
+        "La PNL presentada hoy por el Grupo Socialista tiene tres objetivos principales. Por un lado, la defensa ferviente de los avances realizados en cuanto a las políticas de igualdad; por otro lado, exigir el cumplimiento de lo establecido en la Ley 1/2023, de salud sexual y reproductiva.; y, por último, que la objeción de conciencia no sea un impedimento. Estos tres temas serían los principales que recoge la PNL que el Grupo Socialista nos trae hoy aquí.",
+        "Digamos que hoy no vamos a repetir el debate del aborto porque ya se ha hablado mucho; tanto que, ya en su momento, se cruzó el río, como decíamos, no solo por su legalidad, sino en toda su totalidad. La sociedad ha cambiado, y ahí estamos en otra tesitura.",
+        "Tampoco vamos a hacer un debate sobre la igualdad y sus logros porque son muchos y son necesarios, evidentemente, y es el armazón fundamental para el progreso, la democracia y la ubicación en una Europa de derechos y libertades ―de eso no tenemos ninguna duda―. El negacionismo de esos derechos es el que está quedando en evidencia últimamente, como todos sabemos.",
+        "Por tanto, estamos de acuerdo con el objetivo de garantizar el derecho a la salud sexual y con lo que propone, es decir, que hay que garantizar el derecho a una salud sexual y también a la interrupción voluntaria del embarazo. Los que llevamos ya unos trienios aquí hemos participado en varias leyes: en las de 2010 y en las de 2023; y también en una propuesta que pudo hacer el Partido Popular y que se quedó en el camino. Se quedó tan en el camino que se quedó en el camino hasta el ministro que lo propuso.",
+        "Por lo tanto, digamos que estamos de acuerdo con el objetivo, pero pregunto: ¿por qué por medio del consejo interterritorial? Nosotros, por ejemplo, en Euskadi somos plenamente competentes en los dos sentidos: en el sentido del ámbito competencial y en el sentido del servicio sanitario para ejercerlo. Nosotros vamos a decidir el cómo. La ley orgánica ya dice el qué, pero nosotros vamos a decir el cómo. Es un servicio público, y cada uno, el que es competente en la materia, decide el cómo.",
+        "El artículo 13 de la ley de interrupción voluntaria del embarazo dice: «Son requisitos necesarios de la interrupción voluntaria del embarazo: a) Que se practique por un médico especialista, preferiblemente en obstetricia y ginecología o bajo su dirección. b) Que se lleve a cabo en centro sanitario público o en un centro privado acreditado». Afortunadamente, eso se cambió en la ley, porque el anteproyecto lo ponía de otra manera, y tuvimos que hacer fuerza para que al final la redacción fuera la que es.",
+        "En Euskadi el servicio es público porque lo ofrece, lo dirige y lo establece Osakidetza; y después lo realizan físicamente unas clínicas privadas concertadas y acreditadas para ello. Las mujeres que acuden en Euskadi a hacer una interrupción voluntaria del embarazo están monitorizadas por el Servicio Vasco de Salud. Hay una instrucción del Departamento de Sanidad que dice claramente cómo se debe ejercer, y es público; y en ella se dice cómo debe ser la derivación. Por lo tanto, para aquellos que están con lo público y lo privado, que creo que confunden muchas veces, les digo que las que van voluntariamente en Euskadi las dirige Osakidetza a unos centros concertados; y no es por un tema de objeción de conciencia, es por un tema de no saturación del servicio público de Osakidetza; y es por un tema de eficiencia, porque en los casos en los que no es voluntario y es por un tema médico más allá de la catorce semanas, como dice la ley, lo hace Osakidetza en sus propios centros.",
+        "El asunto de la objeción de conciencia ―ya que me queda poco tiempo― es un derecho individual e intransferible; y hay una obligación de dar el servicio por medio de las autoridades sanitarias. Objeción de conciencia, sí; obligación de dar servicio, también.",
+        "Sobre el registro, nuestra opinión, desde el principio, fue no estar de acuerdo; estábamos en oposición con lo que se dice sobre la obligatoriedad de esos registros. No estamos en contra de que haya ―y eso lo decíamos aquí cuando defendíamos nuestras enmiendas en la ley del aborto―, pero no consideramos que sea obligatorio. Reitero lo anterior: cada uno es autónomo y debe saber cómo es la mejor manera para hacerlo.",
+        "Defendemos, pues, el acceso libre y gratuito de las mujeres que necesitan interrumpir su embarazo; no somos nadie para juzgar por qué lo hacen. Defendemos la obligatoriedad de las autoridades sanitarias competentes en ofrecer ese servicio. Defendemos el derecho a la objeción de los médicos individualmente. Y defendemos la autonomía de las comunidades autónomas que, como Euskadi o Navarra, son plenamente competentes para organizar estos servicios.",
+        "Muchas gracias, señor presidente."
+      ],
+      "pairs": [
+        [
+          0,
+          2
+        ],
+        [
+          1,
+          3
+        ]
+      ],
+      "renderings": [
+        2,
+        3
+      ]
+    },
+    {
+      "video_id": "750415",
+      "lang": "eu",
+      "duration": 844.005,
+      "notes": "One Basque paragraph [4] rendered by [5] (ratio 0.91); [1]-[3] and [6]-[15] are spoken Spanish — thirteen genuine negatives. Whole text 13.95 c/s and delivered 13.41: duration cannot see this one at all.",
+      "paragraphs": [
+        "Egun on. Buenos días.",
+        "Un resort en Gaza. Sonó chocante. Debería sonar terrible y no deberíamos dejarlo pasar, más si lo unimos ahora al anuncio por parte del Gobierno israelí de la creación de una agencia para el desplazamiento voluntario de los palestinos. Suena a lo que parece que va a ser, un desplazamiento masivo de población y, en ese sentido, sí que es un genocidio. ¿No hemos vivido horrores suficientes? ¿No los ha vivido el pueblo judío en sus propias carnes? Porque lo que está haciendo Israel no lo justifica ni el terrible atentado de Hamás ni tampoco todos los sufrimientos padecidos durante la Segunda Guerra Mundial. Hay principios, hay valores sobre los que se suponía que también se había construido el Estado de Israel. Y les debería hacer reflexionar que los herederos del Eje sean quienes defienden ahora su postura, en esta Cámara, evidentemente, VOX, por ejemplo. ¿Dónde quedan los principios morales y democráticos a los que nos afirmamos todos tras la Segunda Guerra Mundial y sobre los que construimos este mundo que ahora está llegando a su fin, pero que ha mantenido una paz bastante estable, desde luego sí en Europa, durante tantos años? Europa tiene que recuperar su prestigio y su influencia en el sur global. Y, en ese sentido, España se juega mucho, porque está junto a ese sur. Nos jugamos mucho en seguridad y esa credibilidad pasa por actuar con idéntico rasero.",
+        "Cojo las conclusiones del Consejo Europeo del otro día. (Muestra un documento). Al hablar de la ruptura unilateral del alto el fuego en Gaza con los últimos bombardeos de Israel, de cortar la ayuda humanitaria, la electricidad y el agua, dice que lamenta la ruptura del alto el fuego en Gaza. Vamos a Siria, a los terribles acontecimientos de Lataquia. En la página siguiente, dice: el Consejo Europeo condena enérgicamente actos de violencia, que deben rendir cuentas de conformidad con las normas y reglas internacionales. Condena enérgicamente para Lataquia, pero lamenta lo de Gaza. No vamos bien. Perdemos credibilidad. Es la destrucción de nuestros principios morales a nivel mundial. Porque, en el fondo, lo que se está planteando en Oriente Medio es una especie de solución final. Israel está cómodo en el nuevo orden. Lo voy a decir claramente: lo ha fomentado y lo ha buscado también ―cuando hablo de Israel, hablo de su Gobierno ultraderechista―, se ha aprovechado de la debilidad rusa por la guerra con Ucrania. Ataque a Hizbulá; invasiones de otros territorios; debilidad de Estados Unidos y del Gobierno Biden, que no ha sido capaz de imponer sanciones, y luego viene Trump con su carta blanca.",
+        "Paso a hablar de Trump, paso a hablar del chat de Signal, porque hay que verlo. Quienes están llevando las responsabilidades de los Estados Unidos en estos momentos son unos auténticos mercaderes de zoco. Me duele decirlo, pero es así. «Debería haber algo a cambio» es la frase típica. Encontrarán siempre no solo en este chat, sino en todas las declaraciones una palabra: extract, extraer; ese es el verbo. Todo a cambio de que yo extraiga ya sean minerales, ya sean centrales hidroeléctricas, sea lo que sea, o sean puertos.",
+        "Beraz, atlantikoen bien aldeko hartu-emana amaitu egin da. Amaitu da? Zer dago Estatu Batuetatik Europarako? Mespretxua besterik ez. Eta gehiago esango nuke: Europa makaltzeko politika egiten ari da. Vance dator Munichera, eta zertara? Irain egitera eta mespretxu egitera. Ez dute gura merkataritza-araurik, ez dute gura ingurugiroaren aldaketa arautzea, ez dute gura sareak, giza sareak, arautzea, babestea. Ez dituzte guk dauzkagun baloreak, euren baloreak arlo handian ez dira demokratikoak.",
+        "Por tanto, se ha acabado este intercambio más allá del Atlántico. ¿Qué tiene Estados Unidos por Europa? Desprecio. Y diría más: está llevando a cabo políticas para frenar a Europa. Viene a Múnich a insultar. No quieren leyes mercantiles, no quieren que haya políticas a favor del clima, no quieren proteger las redes sociales, no tienen los valores que tenemos nosotros, no los compartimos. Sus valores ―y se enorgullecen de ello― no son democráticos.",
+        "Trump ha llegado a decir que Europa surge para perjudicar a los Estados Unidos. ¿Es ignorancia o más bien mala fe? Yo diría que mala fe, ¿no? Desde luego, Europa surgió para evitar una guerra, una guerra interna, una guerra terrible, para que no se repitieran otras guerras como la Primera o la Segunda Guerra Mundial y para evitar las agresiones unilaterales.",
+        "Ahora hablamos de Groenlandia. Vance, además, va ahora expresamente a visitar Groenlandia. Se habla también del canal de Panamá. Curiosamente, son dos puertos más para Estados Unidos en las recientes semanas. ¿Qué es esto, una especie de política de los Sudetes? No es aceptable.",
+        "¿Es seguro dar inteligencia europea, de cualquier país, incluido España, a esta gente que utiliza Signal para temas militares, que tiene otras intenciones que, desde luego, no son las de reforzar una alianza y reforzar a Europa? ¿Sigue siendo Estados Unidos un aliado? Creo que es una pregunta que debemos hacernos.",
+        "En cuanto a Rusia y un acuerdo de tregua, bueno, ya lo ha dicho Rusia: Si nos retiran las sanciones. ¿Es eso realmente haber logrado una tregua firme? ¿Está la OTAN en vigor? Porque Trump ha dudado, y mucho, más bien ha callado cuando se le ha preguntado si estaría dispuesto a hacer lo que tuviera que hacer si hubiera que poner en funcionamiento el artículo quinto de la Alianza. ¿O Estados Unidos está buscando sus propias alianzas a espaldas? No nos olvidemos de que ya hace tiempo, ya hace años Israel y Marruecos nos sorprendieron mucho al principio, así como el movimiento de Estados Unidos. Israel- Marruecos-Estados Unidos, ahí se está formando una serie de alianzas que van aparte de la Unión Europea. Por ejemplo, yo diría que sobre todo en el tema del Sahara, a España me parece que ya le queda poco o nada que decir.",
+        "Y quedar al albur de lo que decidan otros ―ahora estoy hablando de Europa― va a traer una decadencia. Primero será política, militar, defensiva, un riesgo defensivo evidente, pero eso también trae una decadencia económica; y una decadencia económica significa que el estado del bienestar puede desaparecer. Eso es lo que nos estamos jugando cuando hablamos también de inversiones en seguridad, etcétera. Nos estamos jugando que Europa siga siendo un modelo referente y su propio estado de bienestar.",
+        "En estos acuerdos del día 20, presidente, en mi opinión, se nota prisa. Ahora hay que correr y hacer todo lo que no habíamos hecho antes muy rápido. Es verdad que igual esta ha sido la única manera de que nos pongamos las pilas. Se habla de defensa, de energía, de mercado único, de unión bancaria, de fronteras. Yo sí quiero hacerle mención de un tema en cuanto a energía; a usted y a la señora Aagesen, claro. En la página 5, se dice que hay que impulsar inversiones en redes, almacenamiento, interconexiones a escala nacional y de la UE. Inversiones en redes y, señor presidente, aprovechar toda la potencia que ya tenemos y que, sin embargo, se desperdicia por leyes rígidas y obsoletas. Hay que modificar la Ley del Sector Eléctrico. Podemos ofrecer a nuevas empresas o a empresas que lo demandan para descarbonizarse electricidad que ya tenemos en estos momentos, pero no se les ofrece la conexión porque la ley lo impide y REDEIA no facilita las cosas. Así de claro. Nosotros vamos a presentar ya enmiendas a esa ley, espero que respondan positivamente.",
+        "Defensa. Señor presidente, usted ha anunciado un plan para junio, bien, pero es verdad que hace falta ir concretando ya. Tenemos que ir concretando, no podemos seguir tampoco en esa inconcreción y, desde luego, para verano sí que debería estar. Tiene que estar claro ―ya lo ha apuntado por ahí la Unión Europea― que hay que invertir en I+D+i y en producción europea. En cuanto al gasto de compras, ya estamos hablando de unos límites de una serie de porcentajes, pero hay que aspirar a que en el plazo más breve posible sea del 100 %. Y yo sí estoy de acuerdo en lo que dice el Consejo Europeo de que defensa y competitividad están absolutamente interrelacionadas y en que, bien establecido el plan de inversión, puede servir también para dotar de más independencia a la industria europea y convertirnos en un referente en materia de I+D+i también en ámbitos civiles.",
+        "Ahora, ¿cuánto? Algunos hablan del 2 %, otros del 3 %, otros del 5 %. ¿Cómo hay que hacer la inversión? Yo creo que aquí habrá que hacer un examen claro: ¿qué tenemos? Es que tampoco sabemos qué tenemos en Europa en conjunto. ¿Qué es compatible entre unos países y otros? ¿Qué deberían hacer unos y qué otros? Habrá que coordinarlo, no puede ser que cada uno haga lo que se le ocurra: Yo llego al 2 %, yo también… No, habrá que verlo. ¿Qué datos tenemos? ¿Cómo se va a cohonestar? Porque si queremos invertir bien, invertir mejor, habrá que hacer eso. Y yo me imagino que hay muchos países que tampoco quieren dar todos sus datos, pero si se trata de hacer una Europa unida también en el ámbito de la defensa, lo van a tener que hacer.",
+        "Señor presidente, la seguridad y defensa solo puede funcionar, si lo hacemos bien, si lo unimos a la política externa, a la política exterior. Una política exterior europea unida; si no, no sirve de nada reforzar la seguridad.",
+        "Yo sé que aquí hay temas, evidentemente, de todo tipo. Se ha convertido casi en el centro de la cuestión, en los medios de comunicación, y en gran parte de este debate, no tanto si hay que hacerlo o no, si hay que invertir en seguridad o no, sino si se trae el debate aquí y se vota aquí; que se vea reflejado todo, la división que hay en el Gobierno, en el fondo. Bueno, pues sí, que hay esa división ya lo sabemos. No hace falta ser un adivino para saber qué es lo que hay, pero lo que es importante, creo, es saber si hay una mayoría amplia para un acuerdo por encima de alianzas gubernamentales. Porque lo que está en juego en estos momentos trasciende el momento puntual que podemos estar viviendo, incluso la gobernabilidad del país. Estamos hablando de cómo construir el futuro europeo, pero también de asegurar el futuro de toda la ciudadanía del Estado. Creo que hace falta más concreción, estoy absolutamente de acuerdo, pero hace falta, también, voluntad de llegar a un acuerdo y de sacar adelante las cosas. A veces creo que se subraya más lo que se refleja en votaciones, incluso que haya hasta pérdida de votaciones por parte del Gobierno, obviando que lo que hay en juego son cosas muy delicadas y muy importantes.",
+        "Voy acabando.",
+        "Nik uste dut itzelezko aldaketa, izugarria, datorrela geopolitika arloan, eta horrek ahalegin berezi bat egitera behartzen gaitu. Zer da beharrezkoa? Europar Batasun gehiago, indartsuago behar dugu, eta horretarako estatuek uko egin beharko dizkiote euren politika batzuei eta euren arlo batzuei. Orain defentsa segurtatzeko ez da nahikoa estatu bat. Europak egin beharko du, baina baita ere atzerri politika. Eta horrek suposatzen du estatu gutxiago, Europa gehiago. Amaitu gura dut gauza gauzarik garrantzitsuena, neure ustez, esanez: gure politika bideetan, gauza guztien gainetik, printzipio demokratikoak beti. Besterik ez.",
+        "Eskerrik asko.",
+        "Creo que nos enfrentamos a un cambio geopolítico enorme. Por ello, necesitamos también realizar un esfuerzo gigante. ¿Qué es necesario? Más Unión Europea, una Unión Europea más robusta. Para ello los Estados tendrán que renunciar a algunas de sus políticas y ámbitos. Ahora para garantizar la defensa no es suficiente con un Estado, se necesita la Unión Europea, y para ello también se necesita una política exterior unida. Más Europa y menos Estado.",
+        "Me gustaría concluir con lo que para mí es lo más importante: en los medios de comunicación deben primar los principios democráticos.",
+        "Muchas gracias."
+      ],
+      "pairs": [
+        [
+          4,
+          5
+        ]
+      ],
+      "renderings": [
+        5
+      ]
+    },
+    {
+      "video_id": "761240",
+      "lang": "eu",
+      "duration": 277.026,
+      "notes": "Clean symmetric pair, 1:1 throughout. Delivered 3,609 chars over a 277 s clip = 13.03 c/s. Acoustically verified complete elsewhere; the reading agrees.",
+      "paragraphs": [
+        "Eskerrik asko, mahaiburu jauna.",
+        "Arratsalde on, guztioi!",
+        "Uda honetako suteen ondorioz, Trantsizio Batzordean agerraldi sorta bat egin da eta bertan argi geratu da landa eremu biziak izatea ezinbestekoa dela larrialdi klimatikoari begira egin beharreko egokitzapenak egiteko. Landa eremu hustuek lurralde eremu zabalen, nekazal eta abeltzaintzaren eremu zabalen hustutzea ekartzen du, eta baita baso eremu zabalen utzikeria ekartzen du, kudeaketarik gabe uzten ditu, eta honek, besteak beste, suteen arriskuak areagotzen ditu.",
+        "Euskal Herrian ere pairatzen dugu herri hustuen fenomeno hau. Agian ez dugu estatuko hainbat lekuetan dagoen arazo sakon berdina, baina bai, egia da, errealitate bat da Araba zein Nafarroako hainbat eskualdetan, eta bertan pairatzen dugu egoera hau. Kontua, historia jakina da zerbitzu gutxi inguruan, osasungintza, hezkuntza eta abar urrun. Aukera gutxi, bereziki gazteentzat, eta bereziki gazteak hiriburuetara doaz. Herriak zaharkituak geratzen dira, husturik, bizitza eskasarekin. Despopulazioaren arazoa arazo konplexua da. Arnas luzeko fenomenoa da eta arazo konplexuek ez dute bapateko irtenbide errazik.",
+        "Gaurkoan, talde sozialistak telelanean jartzen du fokoa. Guri ondo iruditzen zaigu hor ere foko bat jartzea. Telelanaren sustapenak ondorio positiboak izan dezake. Landa eremuko herrietan biztanlegoa finkatu dezake. Biztanlego honek zeharkako hainbat jarduera sustatu ditzake, gertuko merkataritza txikia bezala. Zergak herrian ordaintzen badira, udal baliabideak handitu daitezke, nolabait ere espiral positibo batean sartzeko aukera emanez. Telelanak kutsadura murriztu dezake baita ere, bai isuriak, oro har, baita, bereziki hiri kutsadura hauen deskongestioaren bitartez. Telelanak aurrezten duen desplazamendu- denbora kalitatezko lan-denbora bihurtu daiteke. Eta telelanak gazteentzat beste albo abantaila bat izan dezake, bereziki etxebizitzari eta honen prezioari lotuta dagoena, herrietan eta herri txikietan, oro har, etxebizitza lortzea ez da horren lan nekeza eta garestia. Hori bai, telelana baldintza onetan egiten dela bermatu behar da. Hau sustatzeko hainbat kontu bultzatu behar dira eta legez bestekoan aipatzen dira. Izan konexio telematiko sendo eta azkarrak, izan telelana egiteko espazio publikoak sortu, izan garraio publikoaren irismena, ez baitugu nahi telelanak auto pribatuaren sustapena ekartzea.",
+        "Eta gure iritziz, baldintza hauek ez lirateke soilik diru publikoarekin hornitu behar. Telelanaren abantailez sektore pribatua aprobetxatzen baldin bada, honek ere ekarpen bat egin beharko luke hau ahalbidetzeko. Guzti hau esanda, guk telelanaren aldeko apustua babesten dugu orokorrean, betiere baldintza onak bermatzen baldin badira. Presentzialidadea galtzeak izan ditzakeen albo kalteak gainbegiratuz eta telelanaz etekina ateratzen duen orok bere sustapenean parte hartzen duela bermatuz.",
+        "Eta amaitzeko, ez naiz luzatuko, betiko kontua, ekimen hau talde sozialistak bultzatzen du eta horrelako gauzak bultzatzen dituenean, badirudi gobernuan ez dagoela, baina talde sozialista gobernua babesten du eta gobernuan dago. Eta gure ustez, telelanaren sustapena egiteko modurik eraginkorrena neurri zehatzak ekartzea izango litzateke, eta gobernuak bere plangintzetan neurri zehatzak txertatzea. Bestela, gaur gertatzen den moduan, ba sekulako arriskua dago itxurakerietan beste ezertan ez zabiltzatela pentsatzeko. Eta hor ikusten dugu arazorik nagusiena. Oso deklaratiboa da proposamena, beraz, babesteko erraza, baina egia da, neurri zehatzetan islatzen ez den bitartean, ba horretan geldituko da, ezta? Deklarazio hutsetan.",
+        "Besterik ez. Eskerrik asko.",
+        "Gracias, presidente.",
+        "Buenas tardes, señorías.",
+        "En la serie de comparecencias que se han realizado por los incendios de este verano ha quedado claro que la existencia de zonas rurales vivas es imprescindible para realizar las adaptaciones necesarias de cara a la emergencia climática. Las zonas rurales deshabitadas, el vaciado de amplias zonas territoriales agrícolas y ganaderas, y el abandono de amplias zonas forestales, todo eso hace que aumente el riesgo de incendios.",
+        "En Euskal Herria también sufrimos este fenómeno. Quizá no tengamos un problema tan grave como en otros muchos lugares del Estado, pero sí que sufrimos esta situación en muchas comarcas de Álava y Navarra. Es algo ya conocido: hay pocos servicios; los servicios sanitarios, educativos, etcétera, están lejos; hay pocas oportunidades, especialmente para los jóvenes; las personas jóvenes se van a las capitales; los pueblos quedan envejecidos, vacíos, tienen poca vida. El problema de la despoblación es complejo, un fenómeno de largo alcance, y los problemas complejos no tienen una solución sencilla ni rápida.",
+        "Hoy el Grupo Socialista pone el foco en el teletrabajo y a nuestro grupo nos parece bien. La promoción del teletrabajo puede tener efectos positivos, puede fijar población en los pueblos y esa población puede fomentar diversas actividades indirectas, como el pequeño comercio cercano. Si se pagan los impuestos en el pueblo, se pueden aumentar los recursos municipales, permitiendo así entrar en una espiral positiva. El teletrabajo puede reducir la contaminación, tanto las emisiones en general como la contaminación urbana en particular, a través de su descongestión. El tiempo de desplazamiento que se ahorra en el teletrabajo puede revertir en un trabajo de calidad, y el teletrabajo puede tener otra ventaja añadida para los jóvenes, especialmente ligada a la vivienda y a su precio. En los pueblos más pequeños el acceso a la vivienda no es una tarea tan ardua y es menos costosa. Eso sí, hay que garantizar que el teletrabajo se realiza en condiciones adecuadas. Para fomentar el teletrabajo es necesario impulsar conexiones telemáticas robustas y rápidas, la creación de espacios públicos de teletrabajo y el alcance del transporte público, ya que no queremos que el teletrabajo suponga la promoción del coche privado.",
+        "En nuestra opinión, estas condiciones no deberían financiarse únicamente con dinero público, porque si de las ventajas del teletrabajo se aprovecha también el sector privado, este también debería hacer su aportación para posibilitarla. Dicho todo esto, nuestro grupo apoya la apuesta por el teletrabajo, siempre garantizando unas buenas condiciones, supervisando los posibles daños colaterales de la pérdida de la presencialidad y garantizando que todo aquel que se beneficie del teletrabajo participe en su promoción.",
+        "Para terminar ―no me voy a alargar más―, lo de siempre: esta iniciativa la impulsa el Grupo Socialista y parece que no está en el Gobierno, pero sí que está en el Gobierno. Entonces, la forma más eficaz de realizar la promoción del teletrabajo sería aportando medidas concretas, incluyéndolo en sus planes, porque de lo contrario se corre el enorme riesgo, como pasa hoy, de interpretar que ustedes están simplemente aparentando. Es muy declarativa la propuesta; entonces, es fácil de apoyar, pero sí que es verdad que, mientras no reúna medidas concretas, se va a quedar en mera declaración de intenciones.",
+        "Muchas gracias."
+      ],
+      "pairs": [
+        [
+          0,
+          8
+        ],
+        [
+          1,
+          9
+        ],
+        [
+          2,
+          10
+        ],
+        [
+          3,
+          11
+        ],
+        [
+          4,
+          12
+        ],
+        [
+          5,
+          13
+        ],
+        [
+          6,
+          14
+        ],
+        [
+          7,
+          15
+        ]
+      ],
+      "renderings": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ]
+    },
+    {
+      "video_id": "774737",
+      "lang": "eu",
+      "duration": 414.013,
+      "notes": "The fourth shape. [5] renders the BASQUE TAIL of paragraph [2], which is a mixed paragraph with no break — no paragraph-level model can pair it, so it is in `renderings` but not in `pairs`. [8]-[11] are spoken Spanish. Delivered 6,026 chars / 414 s = 14.56 c/s.",
+      "paragraphs": [
+        "Egun on guztioi.",
+        "El Partido Nacionalista Vasco y Geroa Bai tanto en el Parlamento Navarro e instituciones navarras como en las Cortes Generales, llevamos tiempo reclamando al Gobierno ―y, en concreto, al Ministerio de Defensa― el desmantelamiento del polígono de tiro de las Bardenas. Por lo tanto, esta no es la primera vez que defendemos lo recogido en el punto primero de esta proposición no de ley, es decir, el cese de la actividad que se lleva a cabo en el polígono de tiro y bombardeo tras setenta y cinco años. Son setenta y cinco años de vida de una actividad militar en un espacio protegido y declarado Reserva de la Biosfera por la UNESCO que, a nuestro entender, la hace incompatible con la existencia de un campo de tiro. Es una zona de maniobras de militares que pone en riesgo la seguridad de los habitantes de la zona, causa molestias constantes y va en contra de una política de espacios naturales desmilitarizada porque, no olvidemos, se trata de un parque natural.",
+        "Tal y como se recoge en la iniciativa, han sido más de setenta los accidentes generados en la zona, además de la contaminación acústica y el impacto medioambiental causado por la actividad. La Ley Foral 10/1999 declaró parque natural a las Bardenas Reales en Navarra y dejó fuera, en su interior, 2244 hectáreas que conforman el polígono de tiro. Sin embargo, la ley foral invitaba en su exposición de motivos a la revisión del uso y actividad de defensa, quedando recogido en el texto ese espíritu. Por ello, en mayo de 2000 presentamos en el Parlamento Navarro una propuesta de modificación de la ley navarra para que, ante la proximidad del fin del contrato con el Ministerio de Defensa, se pudiera revertir la situación avanzada en la exposición de motivos y alcanzar la plenitud ambiental de las Bardenas Reales. Porque, a nuestro entender, y de la lectura de lo aprobado por la ley foral citada, el uso militar es incompatible con la declaración de parque natural. Pero el contrato con el Ministerio de Defensa se amplió. Primero, por el Gobierno de Aznar desde 2001 hasta 2008 y en 2008 se renovó nuevamente: en un primer momento eran diez años prorrogables a diez más, es decir, veinte años más, con un canon de alquiler a repartir entre los entes congozantes que fue duplicado tras los primeros diez años de contrato. Sin embargo, gran parte de la sociedad navarra aboga por abrir un nuevo tiempo en las Bardenas e iniciar un proceso de transición que permita, tras setenta y cinco años, recuperar un territorio que necesitará, tal y como recoge la iniciativa, un plan de reconversión, impulso económico y financiación suficiente para el territorio y sus entidades. 2028. urtean, Bardeetako Komunitatea eta Defentsa Ministerioaren arteko alokairu-hitzarmen kontratua amaitzen da. Hau ez berritzea, ez luzatzea, eskatzen dugu, hau da, militarki hirurogeita hamabost urtetan erabili den lurra zama horretatik libre uztea eskatzen dugu.",
+        "Saiatu ginen 2000. urtean Parke Naturalen Lege Foralaren aldaketa proposatu genuenean Nafarroako Parlamentuan, eta urteetan egin diren aldarrikapen guztietan. Nafar instituzioek eta herritarren gehiengo nagusi batek behin baino gehiagotan egin duen eskariari ahotsa jarri diogu. Oraingo honetan, zenbait legebiltzar taldeek sinatu dugun legez besteko proposamen honen bitartez. Ganbara honetan makina bat aldiz eskatu duguna, ekimen ezberdinak bultzatuz edo babestuz, berriro ere eskatzen dugu.",
+        "Bardeak parke natural izan daitezen bere osotasunean, ekimen militarra eremu honetatik ezabatuz. Ondorioz, ez dadila 2028. urtean amaitzen den hitzarmena berriro ere luzatu. Defentsako lehentasunezko eremua izatea utz dezala ―eta hau Estatuko Gobernuaren esku dagoela gogoratu nahi dugu― eta Bardeetako bultzada ekonomikorako finantzaketa nahikoa duen plan bat martxan jarri dadila, Nafarroako Gobernua eta Bardeetako komunitatearekin batera.",
+        "En 2028 finaliza el contrato de arrendamiento entre el Ministerio de Defensa y la Junta de Bardenas. Solicitamos el cese de la actividad militar después de setenta y cinco años y que no se renueve el contrato.",
+        "En el año 2000 lo intentamos con la propuesta de modificación de ley de mayo de 2000, y en todas las demás reivindicaciones las instituciones navarras y la mayoría de la población navarra lo han pedido más de una vez, y ahora les estamos dando voz en esta PNL firmada por distintos grupos. En esta Cámara lo hemos solicitado en numerosas ocasiones y lo volvemos a hacer.",
+        "Las Bardenas deben ser una reserva natural de biosfera, un parque natural en su totalidad y, para ello, es fundamental que no se renueve el contrato en 2028, pedir la derogación de la declaración de zona de interés para la defensa ―esto está en manos del Gobierno― y también poner en marcha un plan de reconversión integral con financiación suficiente.",
+        "Ayer, 9 de junio, se cumplieron setenta y cinco años desde que se inauguró el polígono de tiro. Dentro de dos años, en 2028, finaliza el contrato de arrendamiento. Por ello, reclamamos que no se renueve y que tanto el Gobierno de Nafarroa como el del Estado arbitren alternativas para las instituciones afectadas, para que no tengan que depender económicamente de la existencia o no de esta instalación militar que limita su posicionamiento ante la pérdida de los 17 millones de euros que los entes congozantes perciben por el arrendamiento militar.",
+        "Por ello, el punto cuarto de la proposición no de ley expone que la financiación de las entidades locales congozantes es clave para entender su situación. Si no existiera esta financiación, la posición de los vecinos de la zona y de las fuerzas políticas con representación en Nafarroa, no me cabe la menor duda, sería unánimemente contraria a acoger un campo de tiro en un parque natural que, además, limita la implantación de otras actividades económicas en la zona. Por ello, incorporamos la necesidad de un plan de conversión, impulso económico y financiación suficiente para la comunidad de las Bardenas y sus entidades. La financiación es, por lo tanto, un elemento clave para las entidades locales de la zona, con la que llevan a cabo inversiones y otras actuaciones de interés general para su ciudadanía.",
+        "El arrendamiento es no deseado, pero ante el que se callan los veintidós entes congozantes por miedo a perder la financiación que aporta el Ministerio de Defensa. Es un dinero que supera, en muchos casos, el 20 % del presupuesto anual de estos ayuntamientos. ¿Se imaginan que más del 20 % del ingreso de su ayuntamiento dependiera de ello? Aquí hay muchos diputados y muchas diputadas que han sido concejales o alcaldes, y saben de lo que les estoy hablando.",
+        "Finalizo recordando que faltan apenas dos años para que se termine el contrato y las Bardenas dejen de ser un polígono de tiro y se conviertan, verdaderamente, en un parque natural. Estamos a tiempo de dar por acabado un ciclo y comenzar uno nuevo para las Bardenas, tal y como reclaman muchos y muchas navarras.",
+        "Mila esker."
+      ],
+      "pairs": [
+        [
+          3,
+          6
+        ],
+        [
+          4,
+          7
+        ]
+      ],
+      "renderings": [
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "video_id": "726572",
+      "lang": "gl",
+      "duration": 308.01,
+      "notes": "gl 3,731 -> es 3,834 chars (ratio 1.03) so the whole Spanish side is a rendering, but its paragraph boundaries do NOT line up with the Galician: [6] opens on a topic [2] reaches only later. Deliberately under-paired rather than guessed — a partial label beats a wrong one.",
+      "paragraphs": [
+        "Grazas, señor presidente.",
+        "Señora ministra, agradezo a súa sensibilidade, a súa boa disposición, mais ao mesmo tempo, pois, lamento a súa falta de concreción, a súa vaguidade en canto a solución a unha situación que debe ter propostas concretas sobre a mesa o máis rapidamente posíbel porque, eu insisto, estamos falando de cuestións como que a actual normativa non recoñece a incapacidade permanente total co diagnóstico da silicose se non concorre con outras enfermidades, mais esixe ao mesmo tempo que ese traballador ou traballadora sexa afastado da zona de risco e lembramos que na inmensa maioría dos casos non existen postos de traballo que non estean expostos ao po de sílice. Por tanto, efectivamente, esa persoa queda sen sustento porque queda sen un posto de traballo, sen a protección adecuada en relación cunha enfermidade profesional. E eu estou de acordo, o BNG está de acordo, en que hai que facer un traballo de prevención. Estou de acordo, estamos de acordo, en que debe funcionar de maneira máis activa todo ese traballo tanto preventivo como de vixilancia da propia inspección de traballo. Mais agora estamos falando de que solución se lle dá ás persoas que xa se ven afectadas por sílices. E, en segundo lugar, porque en relación cos coeficientes redutores, vostede fala de que isto se vai abordar no marco da adaptación do Real decreto 1698/2011, que, claro, unha das hipóteses son os coeficientes redutores en función pois de circunstancias obxectivas, que sería o caso.",
+        "Mais, con esa xeneralización que fai vostede, non nos queda claro, mais ben fica a dúbida, de se a circunstancia específica da que estamos falando dos traballadores da pedra, do granito, da lousa, das marmoreiras, se van ver incorporados a esa posíbel adaptación que se faga do Real decreto que actualmente regula a aplicación de coeficientes redutores. Pero eu insisto ademais en que hoxe xa se están producindo, tanto no caso da incapacidade permanente total como no caso dos coeficientes redutores, o que se están producindo son sentenzas que recoñecen aos traballadores tanto a incapacidade como os coeficientes redutores. Por tanto, creo que a Administración da Seguridade Social tería oportunidade de actuar de maneira moi áxil para que sexa de aplicación xenérica sen esa necesidade de obrigar os traballadores e as traballadoras a recorrer o ámbito xudicial. En concreto, no relativo recoñecemento de coeficientes redutores para postos de traballo de planta de elaboración e tratamento dos minerais e rochas, unha sentenza da Sala do Contencioso Administrativo do Tribunal Superior de Xustiza de Galiza do 24 de marzo de 2004, ben dada razón aos traballadores e xa recoñece o dereito á aplicación de coeficiente redutor e de idade de xubilación aos traballadores, neste caso da empresa Ramilo, S. A. E hai sentenzas posteriores na mesma liña e para a mesma actividade que serían tamén de aplicación a empresas excluídas.",
+        "Temos o caso de empresas do Porriño, Pavimentos Grupo Imar, Euroroca, Granitos Ibéricos, Peargal Center, etc. en que tamén se produciron sentenzas similares. Por tanto, o que lle estamos pedindo non é boa vontade, senón solucións, e solucións prácticas e rápidas para abordar a situación daquelas persoas que xa se ven afectadas pola silicose, que ven en risco o seu propio sustento, porque efectivamente poden quedar sen emprego se non hai un posto de traballo que non estea exposto ao po de sílice e evidentemente tamén para que as persoas que, traballando nese sector, cremos que é de xustiza que poidan ver reducida a súa idade da xubilación para minimizar precisamente a posibilidade de acabar padecendo silicose. Insisto, é de xustiza e, polo tanto, reclamámoslle axilidade a este respecto. Moito obrigado.",
+        "Gracias, señor presidente.",
+        "Señora ministra, le agradezco su sensibilidad y su buena disposición, pero, al mismo tiempo, lamento su falta de concreción y su vaguedad en lo que se refiere a la solución a una situación que debe tener propuestas concretas sobre la mesa lo más rápidamente posible, porque - insisto- estamos hablando de cuestiones como que la actual normativa no reconoce la incapacidad permanente total con el diagnóstico de la silicosis que no concurre con otras enfermedades. También es cierto, al mismo tiempo, que ese trabajador o trabajadora es apartado de la zona de riesgo, y les recordamos que, en la inmensa mayoría de los casos, no existen puestos de trabajo que no estén expuestos al polvo de sílice. Por lo tanto, esa persona queda sin sustento y queda sin un puesto de trabajo y sin la protección adecuada en relación con una enfermedad profesional. Y el BNG está de acuerdo en que hay que hacer un trabajo de prevención. Estamos de acuerdo en que debe funcionar de manera más activa todo ese trabajo, tanto preventivo como de vigilancia de la propia Inspección de Trabajo, pero ahora estamos hablando de qué solución se les da a las personas que ya se ven afectadas por silicosis.",
+        "En segundo lugar, en relación con los coeficientes reductores, usted habla de que esto se va a abordar en el marco de la adaptación del Real Decreto 1698/2011. Y, claro, una de las hipótesis son los coeficientes reductores en función de circunstancias objetivas, que sería el caso. Pero con esta generalización que hace usted no nos queda claro, más bien nos queda la duda, de si la circunstancia específica de la que estamos hablando de los trabajadores de la piedra, del granito, de la de la pizarra o de las marmoleras se van a ver incorporados a esta posible adaptación que se haga del real decreto que actualmente regula la aplicación de coeficientes reductores. Pero, insisto, además, en que hoy ya se están produciendo, tanto en el caso de la incapacidad permanente total como en el caso de los coeficientes reductores, sentencias que reconocen a los trabajadores tanto la incapacidad como los coeficientes reductores. Por lo tanto, yo creo que la Administración de la Seguridad Social tendría la oportunidad de actuar de manera muy ágil para que esto sea de aplicación genérica, sin esa necesidad de obligar a los trabajadores y trabajadoras a recurrir al ámbito judicial. En concreto, en lo relativo al reconocimiento de los coeficientes reductores para puestos de trabajo de planta de elaboración y tratamiento de los minerales y rocas, una sentencia de la Sala de lo Contencioso-Administrativo del Tribunal Superior de Justicia del 24 de marzo de 2023 acaba de dar la razón a los trabajadores y les reconoce la aplicación del coeficiente reductor en edad de jubilación a los trabajadores, en este caso, de la empresa Amilo S.A. y hay sentencias posteriores en la misma línea para la misma actividad que serían también de aplicación para empresas excluidas. Tenemos el caso de empresas de Porriño, de Pavimentos Grupimar, Euroroca, Granitos Ibéricos, Peargal Center, etcétera, casos en que también se produjeron sentencias similares.",
+        "Por lo tanto, lo que le estamos pidiendo no es buena voluntad, sino soluciones; soluciones prácticas y rápidas para abordar la situación de esas personas que ya se ven afectadas por la silicosis, que ven en riesgo su propio sustento, porque es que, efectivamente, pueden quedar sin trabajo si no hay un puesto de trabajo que no esté expuesto al polvo de sílice. Y, evidentemente, para aquellas personas también que, trabajando en ese sector, creemos que es de justicia que puedan ver reducida su edad de jubilación para minimizar precisamente la posibilidad de acabar padeciendo silicosis. Insisto, es de justicia y, por lo tanto, le reclamamos agilidad a este respecto.",
+        "Muchas gracias."
+      ],
+      "pairs": [
+        [
+          0,
+          4
+        ],
+        [
+          1,
+          5
+        ]
+      ],
+      "renderings": [
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "video_id": "767786",
+      "lang": "gl",
+      "duration": 168.021,
+      "notes": "One-to-many: [3] -> [8]+[9]. Delivered 1,995 chars / 168 s = 11.87 c/s.",
+      "paragraphs": [
+        "Grazas, señora presidenta.",
+        "Moi boa tarde.",
+        "Nisto, como noutras materias, repítese un esquema que xa é bastante habitual, a ineficacia ou incapacidade ou falta de vontade do Partido Socialista para actuar e a demagoxia absoluta e o cinismo do Partido Popular. Incapacidade ou falta de vontade porque é verdade que vostedes levan numerosos anuncios que non se concretan. Na campaña das eleccións municipais do 23, Pedro Sánchez realizou os primeiros anuncios e a partir de aí foi unha cascada deles que sumaba máis de 100 000 vivendas que non sabemos en que grao de execución están. Estes días volveu con un novo anuncio de utilizar o fondo soberano para impulsar a construción de vivenda, agradeceriamos menos anuncios e máis feitos. Porque, miren, vostedes nin sequera fixeron algo tan elemental como para trasladar, traspasar ou poñer en uso as vivendas que teñen de Sareb, no caso de Galiza son sobre 3000 vivendas que están paralizadas en vez de ser transferidas para que poidan ser utilizadas.",
+        "Pero claro, o Partido Popular de que pode dar leccións en materia de vivenda? Absolutamente ningunha, como non sexa defender os grandes tenedores e a especulación inmobiliaria. No caso da Galiza, eu lembrábao aquí onte, houbo anos en que bateron un récord con cero vivendas públicas ou con dúas vivendas públicas ou con cinco vivendas públicas. Polo tanto, non teñen ningunha lexitimidade para recriminar nada a ninguén. Por certo, ambos coinciden en que se debe utilizar esa fórmula de colaboración público privada que non deixa de ser unha maneira de incentivar máis a especulación na vivenda, trasladando o que son, por exemplo, solos públicos para seren utilizados por parte de investidores privados. Non nos parece que esa sexa a formulación. Aquilo que se debe facer que debe ser feito que taxar o prezo dos alugueres e poñer no mercado vivendas suficientes, tanto en réxime de aluguer como de compra de vivendas públicas é precisamente o que nós reclamamos que faga este goberno.",
+        "Moito obrigado.",
+        "Gracias, señora presidenta.",
+        "Muy buenas tardes.",
+        "En esto, como en otras materias, se repite un esquema bastante habitual ya: la ineficacia, la incapacidad, la falta de voluntad del Partido Socialista para actuar y la demagogia absoluta y el cinismo del Partido Popular. Incapacidad o falta de voluntad, porque es verdad que hablan ustedes de numerosos anuncios que no se concretan. En la campaña de las elecciones municipales de 2023, Pedro Sánchez realizó los primeros anuncios y, a partir de ahí, toda una cascada de ellos: más de cien mil viviendas que no sabemos en qué grado de ejecución están. Ahora vuelve con un nuevo anuncio: utilizar el fondo soberano para impulsar la construcción de vivienda. Agradeceríamos menos anuncios y más hechos, porque ustedes ni siquiera hicieron algo tan elemental como trasladar, traspasar o poner en uso las viviendas que tienen de la Sareb paralizadas ―en el caso de Galicia, son unas tres mil― en lugar de ser transferidas, para que puedan utilizarse.",
+        "¿Pero, puede dar lecciones el Partido Popular en materia de vivienda? Ninguna absolutamente, como no sea la de defender a los grandes tenedores y la especulación inmobiliaria. En el caso de Galicia ―lo recordaba yo ayer aquí―, hubo años en que batieron el récord con cero viviendas públicas, o dos, o cinco. Por lo tanto, no tienen ninguna legitimidad para recriminar nada ni a nadie.",
+        "Por cierto, ambos coinciden en que se debe utilizar esa fórmula de colaboración público-privada ―que no deja de ser una manera de incentivar más especulación en la vivienda― de trasladar suelos públicos para que los utilicen inversores privados. No nos parece que sea esa la fórmula. Aquí lo que se debe hacer ―y hay que hacerlo― es tasar los precios de los alquileres y poner en el mercado viviendas suficientes tanto en el régimen de alquiler como de compra de viviendas públicas, y es precisamente lo que reclamamos nosotros que haga este Gobierno.",
+        "Muchas gracias."
+      ],
+      "pairs": [
+        [
+          0,
+          5
+        ],
+        [
+          1,
+          6
+        ],
+        [
+          2,
+          7
+        ],
+        [
+          3,
+          8
+        ],
+        [
+          3,
+          9
+        ],
+        [
+          4,
+          10
+        ]
+      ],
+      "renderings": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "video_id": "771199",
+      "lang": "gl",
+      "duration": 210.037,
+      "notes": "Clean 1:1. Delivered 2,483 chars / 210 s = 11.82 c/s; the whole document would be 23.72, impossible.",
+      "paragraphs": [
+        "Obrigado, señora presidenta.",
+        "Moi boa tarde de novo.",
+        "Ceo que isto é, que este é un tema relevante para alén de que o palabro que vostedes inventaron para se referir a esta actuación do fascismo me parece absolutamente desnecesario. É evidente que fascismo e cultura son antagónicos e que precisamente os fascistas puxeron moito empeño en acabar coa cultura. Citan vostedes esa frase atribuída a Unamuno de: morra a intelixencia, viva a morte. Hoxe está en cuestión que fose real, pero en todo caso podemos dicir que se non é vero é ben trovato como ilustrativo, precisamente desa actuación. Falan vostedes dalgúns casos, permítanme que traia aquí tamén algúns da Galiza, porque se moitos non son coñecidos, os do noso país, probablemente, aínda menos. Quero lembrar hoxe aquí o grande editor da cultura galega dos anos vinte e trinta, Ánxel Casal, alcalde nacionalista de Compostela, asasinado o 19 de agosto de 1936. A súa imprenta, de onde saíron todos os números, a maior parte dos números da revista Nós, que expresou a modernidade da cultura galega foi incendiada e do último número, o 144, aínda non distribuído, só se salvaron dous exemplares. Foi tamén o editor dos poemas galegos de Lorca e, por certo, foron asasinados en circunstancias similares con apenas unhas horas de diferenza. Quero lembrar a Víctor Casas, director de A Nosa Terra, tamén editada na imprenta de Ánxel Casal, asasinado. E quero lembrar os intelectuais que crearon o Seminario de Estudos Galegos, que foi foco durante vinte anos da modernización da cultura galega, da modernidade da cultura galega, cuxa biblioteca, inmensa, vinculada á Universidade de Santiago de Compostela, foi espoliada e pasou a ser posteriormente, a parte que quedou, xestionada polo Instituto Padre Sarmiento de Estudios Gallegos, que en palabras da escritora Marga do Val era a metáfora da visión esclerotizada e folclórica que tiña o franquismo, sobre todo o que tivese que ver coa Galicia. Pero hai que saber que o Instituto Padre Sarmiento hoxe pertence ao CSIC, por tanto, o Estado ten unha responsabilidade moi directa nesta actuación.",
+        "En relación coa proposición non de lei, votaremos a favor, aínda que sinceramente os seus puntos resolutivos nos parecen claramente insuficientes e creo que nalgún momento habería que facer unha revisión completa da Lei de Memoria Democrática, porque xa son demasiadas cousas que traemos aquí por separado porque non foron no seu día incluídas na lei como algúns defendemos.",
+        "Moito obrigado.",
+        "Gracias, señora presidenta.",
+        "Muy buenas tardes de nuevo.",
+        "Creo que este es un tema relevante. Más allá del palabro que se han inventado para referirse a esta actuación del fascismo que me parece completamente innecesario, es evidente que el fascismo y la cultura son antagonistas y, precisamente, los fascistas pusieron mucho empeño en acabar con la cultura. Citan ustedes la frase atribuida a Unamuno: muera la inteligencia, viva la muerte. En todo caso, podemos decir se non è vero, è ben trovato como ilustrativo precisamente de esa actuación. Hablan ustedes de algunos casos. Permítanme que traiga también aquí algunos casos de Galicia, porque si bien muchos no son conocidos en nuestro país, estos probablemente aún menos. Hoy aquí me gustaría hablar del gran editor de la cultura gallega de los años veinte a treinta, Ánxel Casal, alcalde nacionalista de Compostela, asesinado el 19 de agosto de 1936. Su imprenta, de donde salieron todos los números o la mayor parte de los números de la revista Nós, que expresó la modernidad de la cultura gallega, fue incendiada, y del último número, el 144, no distribuido, solo se salvaron dos ejemplares. Fue también el editor de los poemas gallegos de Lorca. Por cierto, fueron asesinados en circunstancias similares con apenas unas horas de diferencia. También me gustaría recordar a Víctor Casas, director de A Nosa Terra, también editada en la imprenta de Ánxel Casal, y quería recordar a los intelectuales que crearon el Seminario de Estudios Gallegos, que fue foco durante años de la modernidad de la cultura gallega, cuya biblioteca inmensa, vinculada a la Universidad de Santiago de Compostela, fue expoliada y pasó a ser posteriormente ―la parte que quedó― gestionada por el Instituto de Estudios Gallegos Padre Sarmiento, que, en palabras de la escritora Marga Doval, era la metáfora de la visión esclerotizada y folclórica que tenía el franquismo, sobre todo lo que tenía que ver con Galicia. Pero hay que saber que el Instituto Padre Sarmiento hoy pertenece al CSIC, por lo tanto, el Estado tiene una responsabilidad muy directa en esta actuación.",
+        "En relación con la proposición no de ley, votaremos a favor, aunque, sinceramente, sus puntos resolutivos nos parecen claramente insuficientes, y creo que en algún momento habría que hacer una revisión completa de la Ley de Memoria Democrática, porque ya son demasiadas cosas las que traemos aquí por separado porque en su día no se incluyeron en la ley como algo conjunto.",
+        "Gracias."
+      ],
+      "pairs": [
+        [
+          0,
+          5
+        ],
+        [
+          1,
+          6
+        ],
+        [
+          2,
+          7
+        ],
+        [
+          3,
+          8
+        ],
+        [
+          4,
+          9
+        ]
+      ],
+      "renderings": [
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    }
+  ]
+}

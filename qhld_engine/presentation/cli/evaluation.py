@@ -284,6 +284,90 @@ def mentions(
             f"missing={counts['missing']}")
 
 
+@app.command("bitext")
+def bitext(
+    instrument: str = typer.Option(
+        "embeddings", "--instrument",
+        help="classifier (end to end, the number that matters) | tokens | embeddings | llm."),
+    goldset: str = typer.Option(
+        None, "--goldset", help="Path to a bitext gold set (defaults to the frozen one)."),
+    prompt_file: str = typer.Option(
+        None, "--prompt-file",
+        help="For --instrument llm: a prompt template with {a}, {b} and {lang}. The "
+             "prompt is the operating point, so this is the knob worth sweeping."),
+    verbose: bool = typer.Option(False, "--verbose", help="Show every disagreement."),
+):
+    """Score an instrument for "is this Spanish paragraph a rendering of that
+    co-official one" against the hand-labelled gold set.
+
+    Reports RANK and GATE separately because they are different questions. RANK — is the
+    true partner the top candidate in this speech — is what the alignment needs. GATE — is
+    there a threshold admitting every pair and rejecting every non-pair — is what deciding
+    whether a rendering exists needs, and it is much harder: within one speech every
+    paragraph shares the subject, the names and the figures. An instrument can rank
+    perfectly and gate nothing, which is exactly what happens for Basque.
+    """
+    from qhld_engine.application.evaluation import bitext_benchmark as bench
+    from qhld_engine.domain.evaluation import bitext_scoring
+
+    runner = bench.RunBitextBenchmark(goldset)
+    pairs = sum(len(s["pairs"]) for s in runner.entries)
+    typer.echo(f"Bitext gold set: {len(runner.entries)} speeches, {pairs} pairs")
+
+    if instrument in ("classifier", "classifier-tokens"):
+        from qhld_ai.infrastructure.language import detect
+
+        similarity = None
+        if instrument == "classifier":
+            from qhld_ai.application.speeches.paragraph_similarity import (
+                create_paragraph_similarity)
+            similarity = create_paragraph_similarity()
+        rows = runner.run_classifier(detect, similarity=similarity)
+        report = bitext_scoring.score_split(rows)
+        typer.echo("")
+        typer.echo(bitext_scoring.format_split(report, f"=== bitext ({instrument}) ==="))
+        for miss in report["misses"]:
+            typer.echo(
+                f"    {miss['video_id']} [{miss['lang']}]"
+                f"{' REFUSED' if miss['undecided'] else ''}"
+                f"  left in as-delivered: {miss['missed'] or '-'}"
+                f"  wrongly removed: {miss['spurious'] or '-'}")
+        return
+
+    if instrument == "llm":
+        template = open(prompt_file).read() if prompt_file else None
+        rows = runner.run_decided(bench.llm_judgement(template))
+        report = bitext_scoring.score_decisions(rows)
+        typer.echo("\n=== bitext (llm) ===")
+        for lang, cell in sorted(report.items()):
+            typer.echo(
+                f"  {lang}  recall {cell['tp']}/{cell['tp'] + cell['fn']}="
+                f"{cell['recall']:.2f}   specificity {cell['tn']}/"
+                f"{cell['tn'] + cell['fp']}={cell['specificity']:.2f}   "
+                f"precision={cell['precision']:.2f}" if cell["precision"] is not None
+                else f"  {lang}  recall {cell['recall']}")
+        existence = bitext_scoring.speech_level(rows)
+        typer.echo(f"  speech-level: a rendering found in "
+                   f"{existence['detected']}/{existence['speeches']} speeches that have "
+                   f"one" + (f"; missed {existence['missed']}" if existence["missed"]
+                             else ""))
+    else:
+        scorer = (bench.token_overlap() if instrument == "tokens"
+                  else bench.embedding_cosine())
+        rows = runner.run_scored(scorer)
+        report = bitext_scoring.score(rows)
+        typer.echo("")
+        typer.echo(bitext_scoring.format_report(report, f"=== bitext ({instrument}) ==="))
+
+    if verbose:
+        for row in rows:
+            said = row.get("decision", row.get("score"))
+            if "decision" in row and bool(row["decision"]) != bool(row["is_pair"]):
+                typer.echo(f"  {row['video_id']} [{row['lang']}] "
+                           f"{row['source']}->{row['candidate']}: "
+                           f"{'FALSE ALARM' if row['decision'] else 'MISSED'}")
+
+
 def _parse_models(value):
     """Parse 'provider:model' specs into (provider, model, label) triples, splitting on
     the FIRST colon so ollama tags like 'gpt-oss:20b' keep their colon."""
