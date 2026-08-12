@@ -101,6 +101,16 @@ class RunBitextBenchmark:
         ordering rule of its own, because the alignment inside ``split_languages`` is
         already monotone, and no negative-class bookkeeping, which is where the pairwise
         scoring twice went wrong.
+
+        Each row also carries where every paragraph *landed* — ``delivered`` and
+        ``spanish`` as paragraph-index sets — plus the gold ``sources``, which is what
+        ``score_pairs`` needs to ask the other half of the question: not only whether the
+        renderings left the record of what was said, but whether the classifier saw that
+        each original HAS a rendering. Both blocks are needed for that, because the answer
+        is a paragraph sitting in both of them.
+
+        Keys on paragraph text, so a speech may not carry the same paragraph twice; the
+        gold-set consistency test asserts that.
         """
         from qhld_engine.domain.speeches.language_split import split_languages
 
@@ -111,14 +121,17 @@ class RunBitextBenchmark:
                                     **split_kwargs)
             delivered = split.blocks[0].text if split.blocks else ""
             rendering = split.blocks[1].text if len(split.blocks) > 1 else ""
+            in_delivered = {i for i, p in enumerate(paragraphs) if p in delivered}
+            in_spanish = {i for i, p in enumerate(paragraphs) if p in rendering}
             # In the rendering block and NOT in the as-delivered one. Option B copies
             # delivered Spanish into both, so presence in the Spanish block alone says
             # nothing about whether it was spoken.
             rows.append({
                 "video_id": speech["video_id"], "lang": speech["lang"],
                 "gold": set(speech["renderings"]),
-                "predicted": {i for i, p in enumerate(paragraphs)
-                              if p in rendering and p not in delivered},
+                "predicted": in_spanish - in_delivered,
+                "sources": {a for a, _ in speech["pairs"]},
+                "delivered": in_delivered, "spanish": in_spanish,
                 "undecided": split.undecided, "blocks": len(split.blocks),
             })
         return rows

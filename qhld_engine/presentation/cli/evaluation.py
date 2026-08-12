@@ -332,6 +332,12 @@ def bitext(
                 f"{' REFUSED' if miss['undecided'] else ''}"
                 f"  left in as-delivered: {miss['missed'] or '-'}"
                 f"  wrongly removed: {miss['spurious'] or '-'}")
+        # The other direction: an original whose rendering the alignment missed stands in
+        # the Spanish block as well as the as-delivered one, and a paragraph in both blocks
+        # is invisible to the figures above.
+        typer.echo("")
+        typer.echo("  --- the co-official side ---")
+        typer.echo(bitext_scoring.format_pairs(bitext_scoring.score_pairs(rows)))
         return
 
     if instrument == "llm":

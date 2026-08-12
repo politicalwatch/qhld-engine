@@ -111,7 +111,66 @@ def test_exact_block_match_is_all_or_nothing_per_speech():
     assert report["exact"] == 1 and report["speeches"] == 2
 
 
+def _split_row(video="s1", lang="ca", gold=(), sources=(), delivered=(), spanish=()):
+    return {"video_id": video, "lang": lang, "gold": set(gold), "sources": set(sources),
+            "delivered": set(delivered), "spanish": set(spanish),
+            "predicted": set(spanish) - set(delivered), "undecided": False, "blocks": 2}
+
+
+def test_a_paragraph_in_both_blocks_is_invisible_to_the_split_score():
+    """Why score_pairs has to exist. Paragraph 0's translation was missed so the original
+    stands in the Spanish block too — and `predicted` subtracts the as-delivered block, so
+    the defect leaves no trace in the figures score_split reports."""
+    row = _split_row(gold={2}, sources={0}, delivered={0, 1}, spanish={0, 2})
+
+    assert bitext_scoring.score_split([row])["micro"]["f1"] == 1.0
+    assert bitext_scoring.score_pairs([row])["missed"] == 1
+
+
+def test_the_duplication_census_leaves_no_paragraph_unclassified():
+    # 0 is a gold source, so a translation exists and was not found. 3 is a rendering, so
+    # it was never spoken and does not belong in the delivered block either. 7 is neither:
+    # spoken, never translated, correctly in both.
+    row = _split_row(gold={3}, sources={0}, delivered={0, 3, 7}, spanish={0, 3, 7})
+    census = bitext_scoring.score_pairs([row])["census"]
+
+    assert [c["paragraph"] for c in census["defect"]] == [0]
+    assert [c["paragraph"] for c in census["es_side"]] == [3]
+    assert [c["paragraph"] for c in census["expected"]] == [7]
+
+
+def test_an_original_the_detector_read_as_spanish_still_counts_as_missed():
+    """The first rejected definition asked the aligner which ORIGINALS it had paired, which
+    cannot see a source whose own paragraph the detector called Spanish — the entire
+    code-mixed class, and the cases most worth seeing."""
+    row = _split_row(gold={5}, sources={2}, delivered={2, 5}, spanish={2, 5})
+
+    report = bitext_scoring.score_pairs([row])
+    assert report["missed"] == 1
+    assert [c["paragraph"] for c in report["census"]["defect"]] == [2]
+
+
+def test_an_original_with_no_spanish_block_to_stand_in_is_unanswerable():
+    """Neither a pass nor a failure. The second rejected definition dropped these speeches
+    silently; counting them as passes would flatter the figure and move the denominator the
+    day the one-block shape is fixed. score_split already fails them on its own side."""
+    row = _split_row(gold={3, 4}, sources={0, 1}, delivered={0, 1, 3, 4}, spanish=())
+
+    report = bitext_scoring.score_pairs([row])
+    assert report["unanswerable"] == 2
+    assert report["answerable"] == 0 and report["recall"] is None
+    assert bitext_scoring.score_split([row])["micro"]["recall"] == 0.0
+
+
 # ---- the frozen gold set itself ----------------------------------------------------
+
+def test_no_speech_carries_the_same_paragraph_twice():
+    """Both scorers key on paragraph text, so a repeated paragraph would be counted in
+    every position it appears."""
+    for speech in RunBitextBenchmark().entries:
+        paragraphs = speech["paragraphs"]
+        assert len(set(paragraphs)) == len(paragraphs), speech["video_id"]
+
 
 def test_the_goldset_is_self_contained_and_consistent():
     runner = RunBitextBenchmark()

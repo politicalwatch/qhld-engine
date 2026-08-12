@@ -160,6 +160,86 @@ def score_split(rows):
             "micro": prf(tp, fp, fn), "per_lang": per_lang, "misses": misses}
 
 
+def score_pairs(rows):
+    """Did the classifier see that each original HAS a rendering — the other half.
+
+    ``score_split`` asks which paragraphs left the record of what was said. It cannot see
+    the opposite failure: an original whose translation the alignment missed, which then
+    stands in the Spanish block *as well as* the as-delivered one. Because such a paragraph
+    is in **both** blocks, ``score_split`` excludes it by construction, and the whole
+    change that introduced it moved that score not at all.
+
+    Two figures, from gold alone:
+
+    **Pair recall** — a gold pair's SOURCE must not stand in the Spanish block. A source
+    definitely has a translation, so this direction is sound.
+
+    **The duplication census** — every paragraph in both blocks, in three classes with no
+    unknown left over. ``defect`` is a gold pair source, i.e. a translation exists and was
+    not found. ``es_side`` is in gold ``renderings``, i.e. never spoken and so wrong in the
+    delivered block too — already counted by ``score_split``, and repeated here only so the
+    census adds up. ``expected`` is neither: spoken, never translated, and therefore
+    correctly in both, which is most of them.
+
+    **Precision has no sound figure here and must not be invented.** Gold ``pairs`` is
+    deliberately partial — a rendering the labeller could not confidently attribute is left
+    out — so a paragraph absent from ``pairs`` is *unknown*, not untranslated. That is why
+    the ``expected`` class is reported as a count to read, not as a score.
+
+    Two definitions were tried and rejected, each silently dropping the cases most worth
+    seeing, and they disagreed on the denominator (115 vs 123 vs 126):
+
+    1. asking the aligner which originals it paired misses a source whose paragraph the
+       detector read as SPANISH — which is the entire code-mixed class;
+    2. asking only speeches that produced two blocks misses the one-block speeches, where
+       most of ``score_split``'s own misses live.
+
+    An original in a speech that produced **no Spanish block** is *unanswerable* rather than
+    correct: nothing can stand in a block that does not exist. It is excluded from the
+    denominator and reported on its own — the same treatment ``score`` gives an
+    unattributable rendering, and for the same reason. Counting them as passes would both
+    flatter the figure and move the denominator silently the day the one-block shape is
+    fixed and those originals become answerable for the first time.
+    """
+    answerable = missed = unanswerable = 0
+    census = {"defect": [], "es_side": [], "expected": []}
+    for row in rows:
+        gold, pairs = row["gold"], row["sources"]
+        both = row["delivered"] & row["spanish"]
+        for source in sorted(pairs):
+            if not row["spanish"]:
+                unanswerable += 1
+                continue
+            answerable += 1
+            missed += source in row["spanish"]
+        for paragraph in sorted(both):
+            key = ("defect" if paragraph in pairs
+                   else "es_side" if paragraph in gold else "expected")
+            census[key].append({"video_id": row["video_id"], "lang": row["lang"],
+                                "paragraph": paragraph})
+    return {"answerable": answerable, "missed": missed, "unanswerable": unanswerable,
+            "recall": (answerable - missed) / answerable if answerable else None,
+            "census": census}
+
+
+def format_pairs(report):
+    lines = [
+        f"  originals whose rendering was found "
+        f"{report['answerable'] - report['missed']}/{report['answerable']}"
+        + (f"  recall {report['recall']:.3f}" if report["recall"] is not None else "")
+        + (f"   (+{report['unanswerable']} unanswerable — their speech has no Spanish "
+           f"block)" if report["unanswerable"] else ""),
+        f"  in both blocks: {len(report['census']['defect'])} a translation exists and was "
+        f"not found · {len(report['census']['es_side'])} never spoken · "
+        f"{len(report['census']['expected'])} spoken and never translated (correct)",
+    ]
+    for key, label in (("defect", "translation missed"), ("es_side", "never spoken")):
+        for row in report["census"][key]:
+            lines.append(f"    {row['video_id']} [{row['lang']}] "
+                         f"paragraph {row['paragraph']} — {label}")
+    return "\n".join(lines)
+
+
 def format_split(report, label):
     lines = [label,
              f"  exact block match {report['exact']}/{report['speeches']} speeches"
