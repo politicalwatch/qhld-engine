@@ -38,6 +38,7 @@ from typing import NamedTuple
 from qhld_engine.domain.speeches.language_runs import (
     CO_LANGS,
     PARAGRAPH_BREAK,
+    contesting_language,
     paragraph_spans,
     quotation_spans,
     sentence_spans,
@@ -207,8 +208,46 @@ def split_languages(text, detect, duration=None, similarity=None):
         return _decided(co_lang, _single_cut(stripped, text, detect, co_lang),
                     True, detect)
 
-    rendered_co, rendering_es = _align_renderings(stripped, co_runs, es_runs,
-                                                  similarity)
+    # Two readings of the same document, in order of preference, and the clip decides
+    # between them. Refusing an over-claim is a hypothesis about the text; how long the
+    # speaker was on their feet is independent evidence about how much of it can have been
+    # spoken at all. Where the stricter reading leaves a speech that could not have been
+    # delivered, it is the reading that is wrong, not the speech.
+    #
+    # This is the module's own rule — no one instrument decides — applied to a place the
+    # text alone genuinely cannot settle. The similarity of two paragraphs is comparable
+    # across language pairs, which is what lets ONE floor serve all of them; the DIFFERENCE
+    # between two such scores is not, because the range it varies over is a property of
+    # the pair. Measured over 3,034 speeches, the difference the over-claim test turns on
+    # is near-symmetric about zero at small magnitudes, so no threshold can tell a decided
+    # comparison from a coin toss. The clip can still tell an impossible outcome.
+    for strict in (True, False):
+        placed = _reading(stripped, text, runs, co_lang, duration, detect,
+                          similarity, strict)
+        if placed is not None:
+            return placed
+
+    # Nothing places it. Keep the shape the single-boundary reading gives, so a speech
+    # that is probably an ordinary pair does not lose its Spanish block while it waits,
+    # and mark it so the adjudication pass can find it.
+    return _decided(co_lang, _single_cut(stripped, text, detect, co_lang),
+                    True, detect)
+
+
+def _reading(stripped, text, runs, co_lang, duration, detect, similarity, strict):
+    """One reading of the document, or ``None`` where the evidence does not place it.
+
+    ``runs`` is the partition the detector handed down; the one this works from may
+    differ, because a paragraph it misread can be offered to the alignment and kept.
+    """
+    co_runs, es_runs, rendered_co, rendering_es = _partition(
+        stripped, [run for run in runs if run[0] in CO_LANGS],
+        [run for run in runs if run[0] == "es"],
+        co_lang, detect, similarity, strict)
+    # Recounted, because the partition may have moved a run across: everything below
+    # measures how much of the speech is co-official, and a paragraph the detector
+    # misread was being counted on the wrong side of that.
+    co_chars = sum(end - start for _, start, end in co_runs)
     rendered = sum(co_runs[j][2] - co_runs[j][1] for j in rendered_co)
     coverage = rendered / co_chars if co_chars else 0.0
     # Everything that is not a rendering was delivered. Built by subtraction rather
@@ -224,15 +263,14 @@ def split_languages(text, detect, duration=None, similarity=None):
                                   co_lang, coverage)
         return _decided(co_lang, blocks, duration is None, detect)
     if _all_of_it_was_spoken(coverage, co_chars, spoken, stripped, duration):
+        # From the runs the DETECTOR read, never the promoted ones. A speech nothing
+        # rendered is named by the language it is mostly written in, and relabelling a
+        # paragraph on the strength of a dispute — when no rendering of it turned up to
+        # settle that dispute — would rename plainly Spanish speeches Catalan.
         dominant = _dominant(runs)
         return _decided(dominant, [Block(dominant, text, True)], duration is None,
                         detect)
-
-    # Nothing places it. Keep the shape the single-boundary reading gives, so a speech
-    # that is probably an ordinary pair does not lose its Spanish block while it waits,
-    # and mark it so the adjudication pass can find it.
-    return _decided(co_lang, _single_cut(stripped, text, detect, co_lang),
-                    True, detect)
+    return None
 
 
 def _renders_whole_speech(coverage, co_chars, spoken, duration):
@@ -303,7 +341,58 @@ def _within(span, spans):
     return any(s <= start and end <= e for s, e in spans)
 
 
-def _align_renderings(stripped, co_runs, es_runs, similarity):
+def _partition(stripped, co_runs, es_runs, co_lang, detect, similarity, strict):
+    """Which runs are the speech and which are the rendering of it, decided rather than
+    taken on trust — ``(co runs, es runs, rendered co indices, rendering es indices)``.
+
+    The detector hands down a partition, and for a handful of paragraphs it is wrong in
+    one direction only: a co-official paragraph carrying enough Spanish reads as Spanish,
+    never the reverse. Filed among the interpreter's paragraphs, nothing can be a
+    rendering *of* such a paragraph, so its own rendering has no source to belong to and
+    stays in the record of what was said. One speech in the gold set loses five judgements
+    to three of them.
+
+    No better reading exists (see ``contesting_language``), so a disputed paragraph is not
+    reclassified on the strength of the dispute. It is **offered** to the alignment, and
+    kept only if a rendering of it then turns up — which is evidence that bears on the
+    question, since a paragraph nobody translated is one nobody had to. An offer nothing
+    takes up leaves no trace.
+
+    A run already serving as somebody's rendering is never offered. A translation is not a
+    misread original, and taking it away from the source it explains would refuse a healthy
+    speech to fix a defect it does not have. So the first alignment is run for that alone,
+    and a speech with nothing disputed pays only it.
+    """
+    align = lambda co, es: _align_renderings(stripped, co, es, similarity, strict)
+    rendered_co, rendering_es = align(co_runs, es_runs)
+    disputed = [(co_lang, start, end)
+                for index, (_, start, end) in enumerate(es_runs)
+                if index not in rendering_es and _contested(stripped, start, end, detect)]
+    if not disputed:
+        return co_runs, es_runs, rendered_co, rendering_es
+
+    offered = sorted(co_runs + disputed, key=lambda run: run[1])
+    kept_es = [run for run in es_runs if (co_lang, run[1], run[2]) not in set(disputed)]
+    grown_co, grown_es = align(offered, kept_es)
+    earned = {offered[index] for index in grown_co}.intersection(disputed)
+    if len(earned) == len(disputed):
+        return offered, kept_es, grown_co, grown_es
+    if not earned:
+        return co_runs, es_runs, rendered_co, rendering_es
+    # Some were offered and not taken. Those go back, and the alignment is settled on the
+    # partition actually kept rather than on the one that was tried.
+    final_co = sorted(co_runs + list(earned), key=lambda run: run[1])
+    final_es = [run for run in es_runs if (co_lang, run[1], run[2]) not in earned]
+    return (final_co, final_es, *align(final_co, final_es))
+
+
+def _contested(stripped, start, end, detect):
+    """Did any paragraph of this Spanish run read as nearly co-official?"""
+    return any(contesting_language(paragraph, detect)
+               for paragraph in stripped[start:end].split(PARAGRAPH_BREAK))
+
+
+def _align_renderings(stripped, co_runs, es_runs, similarity, strict=True):
     """Which paragraphs render which, as ``(rendered co indices, rendering es indices)``.
 
     A monotone alignment rather than a pairing, because **the Diario does not translate
@@ -405,8 +494,64 @@ def _align_renderings(stripped, co_runs, es_runs, similarity):
             length -= _length(weakest)
             del picks[weakest]
 
+    if strict:
+        for source, picks in claimed.items():
+            _drop_what_reads_worse_together(co_text[source], es_text, picks, similarity)
+
     rendered_co |= _merged_into_a_neighbour(co_text, es_text, claimed, similarity)
     return rendered_co, {j for picks in claimed.values() for j in picks}
+
+
+def _drop_what_reads_worse_together(source, es_text, picks, similarity):
+    """Drop a claim that does not help this source read as rendered.
+
+    Proportionality refuses a claim for being too long for its source. This refuses one
+    for not belonging to it, whatever its length — which is what is left over once the
+    alignment has run: a source that found its rendering and took the paragraph beside it
+    as well. A speaker carrying the same thought on in Spanish, or repeating a line of it
+    after an interruption, both read as the source, because they say what the source says.
+    Neither was rendered by anybody, and both are then struck out of the record of what
+    was said.
+
+    The test is the one ``_merged_into_a_neighbour`` makes, from the other side: **does
+    joining the extra to the strongest claim make the reading worse?** A rendering the
+    Diario broke across a paragraph break supplies the half that was missing, so joining
+    it improves the match; a paragraph that merely continues the same argument dilutes it,
+    and the dilution is the evidence. Over the gold set that separates fifteen claims that
+    are no such thing from the two that are.
+
+    Dilution has to be **strict**, like the improvement the merge test asks for, so that
+    both rules act only on evidence. Nothing turns on it with a real instrument — two
+    cosines over different texts are not equal — but a coarse similarity scores every
+    pairing alike, and a rule that dropped on a tie would throw away whatever such a
+    measure happened to claim, having been told nothing either way.
+
+    Deliberately no threshold, for the reason the merge test has none: anything the
+    traceback paired already scored at or above ``SIMILARITY_FLOOR``, so improving on it
+    clears the floor by construction, and there is nothing to re-calibrate when the
+    embedding model changes.
+
+    Each extra is weighed against the strongest claim rather than against a join that
+    grows, so the answer cannot depend on the order they are considered in.
+
+    **Only this source's ``picks`` shrinks.** ``rendered_co`` is untouched, so ``coverage``
+    and ``partial`` cannot move at all; and a Spanish paragraph some OTHER source also
+    claims stays a rendering, which is how one paragraph rendering two originals survives
+    a source that is only part of its business. What does move is ``spoken``: a dropped
+    claim returns to the record of what was said, which is the direction it costs nothing
+    to be wrong in.
+    """
+    if len(picks) < 2:
+        return
+    # Ties broken on length, as the pruning above breaks them: between two equal readings
+    # the shorter claim is the more proportionate one to keep.
+    best = max(picks, key=lambda j: (picks[j], -len(es_text[j])))
+    for other in sorted(picks):
+        if other == best:
+            continue
+        together = PARAGRAPH_BREAK.join(es_text[j] for j in sorted((best, other)))
+        if similarity(source, together) < picks[best]:
+            del picks[other]
 
 
 def _merged_into_a_neighbour(co_text, es_text, claimed, similarity):

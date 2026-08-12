@@ -5,8 +5,11 @@ these are deterministic and never load py3langid.
 import pytest
 
 from qhld_engine.domain.speeches.language_runs import (
+    CONTESTED_SHARE,
     MIN_VOTING_CHARS,
+    contesting_language,
     is_quotation,
+    language_votes,
     paragraph_language,
     paragraph_runs,
     quotation_spans,
@@ -153,6 +156,81 @@ def test_an_annotation_does_not_decide_the_language_of_its_paragraph():
 def test_empty_text_has_no_runs():
     assert paragraph_runs("", _fake_detect) == []
     assert paragraph_runs("   ", _fake_detect) == []
+
+
+# A Catalan paragraph the vote calls Spanish: the speaker is arguing about a Spanish
+# phrase and quoting it back, so only the closing sentence is unmistakably his own
+# language. This is the shape no detector configuration reads correctly.
+CODE_MIXED = ("Y esto, señorías, no lo hace un partido de Estado, se lo digo yo. "
+              "Se lo digo con todo el cariño del mundo, de verdad se lo digo. "
+              "Però nosaltres això no ho farem mai, senyories, mai de la vida.")
+
+
+def test_a_paragraph_the_vote_calls_spanish_can_still_be_reported_as_disputed():
+    assert paragraph_language(CODE_MIXED, _fake_detect) == "es"
+    assert contesting_language(CODE_MIXED, _fake_detect) == "ca"
+
+
+def test_an_unmistakably_spanish_paragraph_is_not_disputed():
+    spanish = ("Señorías, comparezco hoy para hablar del cierre de la fábrica y de "
+               "sus efectos sobre el empleo en la comarca durante los próximos años.")
+
+    assert paragraph_language(spanish, _fake_detect) == "es"
+    assert contesting_language(spanish, _fake_detect) is None
+
+
+def test_a_paragraph_already_read_as_co_official_is_not_disputed():
+    # The dispute only ever runs one way: a co-official paragraph carrying Spanish reads
+    # as Spanish, never the reverse. Reporting the mirror case would offer the alignment
+    # paragraphs it has no business reconsidering.
+    assert contesting_language(CA_PARAGRAPH, _fake_detect) is None
+
+
+def test_a_language_present_only_in_passing_does_not_dispute_the_reading():
+    # One short Catalan courtesy clause inside a long Spanish paragraph is a greeting,
+    # not a misreading, and promoting on it would relabel plainly Spanish speeches.
+    passing = ("Gràcies. Señorías, comparezco hoy para hablar del cierre de la fábrica "
+               "y de sus efectos sobre el empleo en la comarca durante los próximos "
+               "años, que es lo que de verdad preocupa a las familias afectadas.")
+
+    assert paragraph_language(passing, _fake_detect) == "es"
+    assert contesting_language(passing, _fake_detect) is None
+
+
+# Disputed, but not enough. This pins CONTESTED_SHARE FROM BELOW, which nothing else
+# does: lower the constant past this paragraph's share and it is offered to the
+# alignment, where it can pair with the speech's own Spanish and take a plainly Spanish
+# intervention out of the record — 749862 and 750542 are the corpus cases, at 0.235 and
+# 0.171. Neither can be pinned by the bitext gold set: they carry no renderings, so the
+# metric there ("which paragraphs left the as-delivered block") is empty whether the
+# classifier is right or wrong, and only the verdict moves.
+NEARLY_DISPUTED = (
+    "Señorías, comparezco hoy para hablar del cierre de la fábrica y de sus efectos "
+    "sobre el empleo en la comarca. Las cifras del último trimestre son mucho peores "
+    "de lo que el Gobierno reconoce. Però nosaltres això no ho farem mai, senyories, "
+    "mai de mai.")
+
+
+def test_a_reading_disputed_but_not_enough_is_left_where_the_vote_put_it():
+    votes = language_votes(NEARLY_DISPUTED, _fake_detect)
+    share = votes["ca"] / sum(votes.values())
+
+    # Sized to 749862's own 0.235, so this forbids exactly the floors that break it. A
+    # fixture further below the constant would pass while the constant was lowered into
+    # the range that breaks real speeches, and would guard nothing worth guarding.
+    assert 0.23 < share < CONTESTED_SHARE
+    assert contesting_language(NEARLY_DISPUTED, _fake_detect) is None
+
+
+def test_language_votes_report_every_language_that_voted():
+    votes = language_votes(CODE_MIXED, _fake_detect)
+
+    assert set(votes) == {"es", "ca"}
+    assert votes["es"] > votes["ca"] > 0
+
+
+def test_a_paragraph_too_short_to_vote_has_no_votes():
+    assert language_votes("Gràcies.", _fake_detect) == {}
 
 
 def test_renders_scores_a_translation_above_an_unrelated_stretch():

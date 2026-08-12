@@ -40,6 +40,30 @@ MIN_DETECTABLE_CHARS = 12
 # one. Joining its neighbour puts each where it was said instead.
 MIN_VOTING_CHARS = 60
 
+# How much of a paragraph the vote called Spanish must read as one co-official language
+# before that reading counts as disputed rather than settled.
+#
+# It decides nothing. It marks a paragraph as worth a second look, and the alignment then
+# settles it on whether a rendering of that paragraph actually turns up — which is the
+# evidence that bears on the question, since a paragraph nobody translated is one nobody
+# had to. That division of labour is what makes the figure usable at all: reading these
+# paragraphs correctly is a problem no configuration of the detector has solved, but every
+# one of them still reads them as NEARLY co-official, and that much is worth keeping.
+#
+# Swept over the bitext gold set and 3,034 captured speeches. Plateau 0.25-0.28, with both
+# edges pinned by real speeches rather than by a preference:
+#
+#   below ~0.23  750542's opening paragraph (1,646 characters, 0.171 Catalan) is offered,
+#                finds a partner among the speech's OWN Spanish, and a plainly Spanish
+#                intervention is refused and relabelled Catalan. 749862 the same.
+#   above 0.287  771953's "Però, escolti'm, dubtes interpretatius, garrotada" stops being
+#                offered, and the speech this whole change exists to fix reverts.
+#
+# Below the plateau the promotion is more generous and finds more renderings (recall 0.924
+# against 0.907) at the cost of two false positives — rejected because a false positive
+# takes spoken words out of the record, which is the error that cannot be seen once made.
+CONTESTED_SHARE = 0.25
+
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?»])\s+")
 
 # The Diario quotes with angle quotes, and occasionally with curly doubles. Anything
@@ -237,18 +261,61 @@ def paragraph_language(paragraph, detect):
     of the applause minuted after it (741705's closing *"Gracias. (Aplausos de las señoras
     y los señores diputados…)"* is 119 characters, of which 8 are the speaker's).
     """
+    weights = language_votes(paragraph, detect)
+    if not weights:
+        return None
+    return max(weights, key=weights.get)
+
+
+def language_votes(paragraph, detect):
+    """``{language: characters}`` — how this paragraph's sentences voted.
+
+    The distribution rather than the winner alone, because how close the vote was is
+    evidence in its own right: see ``contesting_language``.
+    """
     body = _votable(paragraph)
     if len(body) < MIN_VOTING_CHARS:
-        return None
+        return {}
     weights = {}
     for start, end in sentence_spans(body):
         sentence = body[start:end]
         lang = detect(sentence) if len(sentence) >= MIN_DETECTABLE_CHARS else None
         if lang:
             weights[lang] = weights.get(lang, 0) + len(sentence)
-    if not weights:
+    return weights
+
+
+def contesting_language(paragraph, detect):
+    """The co-official language disputing a paragraph the vote called Spanish, or
+    ``None`` where the reading was not disputed.
+
+    A speaker may argue in Catalan about a *partido de Estado*, quote a Spanish minister
+    and hang a joke about *tres huevos duros* on it. The printed paragraph is then Catalan
+    carrying enough Spanish to read as Spanish — and filed among the interpreter's
+    paragraphs, where nothing can be a rendering *of* it. Its own Spanish rendering,
+    printed further down, finds nobody to belong to and stays in the record of what was
+    said, as though the speaker had delivered both.
+
+    Reading such a paragraph correctly is not on offer: every configuration of the
+    detector tried calls it Spanish, sentence by sentence or whole, and restricting the
+    candidate languages does not help. But every one of them also calls it *nearly*
+    Catalan, and that is the part worth keeping. So this reports a dispute and stops
+    there, leaving the alignment to decide on evidence of its own.
+
+    Only the strongest single claimant counts, never their sum: a Catalan paragraph
+    commonly draws a few Galician sentences as well, and adding that noise in would let
+    two weak readings pass for one strong one.
+    """
+    weights = language_votes(paragraph, detect)
+    if not weights or max(weights, key=weights.get) != "es":
         return None
-    return max(weights, key=weights.get)
+    contenders = {lang: weight for lang, weight in weights.items() if lang in CO_LANGS}
+    if not contenders:
+        return None
+    strongest = max(contenders, key=contenders.get)
+    if contenders[strongest] / sum(weights.values()) < CONTESTED_SHARE:
+        return None
+    return strongest
 
 
 def renders(source, candidate):

@@ -268,6 +268,229 @@ def test_a_merge_that_reads_worse_than_the_neighbour_alone_is_refused():
     assert spanish.partial is True
 
 
+# ---- a paragraph the printed page reads as Spanish ---------------------------------
+#
+# The speaker argues about a Spanish phrase and quotes it back, so only his closing
+# sentence is unmistakably Catalan and the vote calls the paragraph Spanish. Filed among
+# the interpreter's paragraphs, nothing can be a rendering OF it — and its own rendering
+# then has no source to belong to.
+CODE_MIXED_CA = (
+    "Y esto, señorías, no lo hace un partido de Estado, se lo digo yo. "
+    "Se lo digo con todo el cariño del mundo, de verdad se lo digo. "
+    "Però nosaltres això no ho farem mai, senyories, mai de la vida.")
+RENDERS_CODE_MIXED = (
+    "Y esto no lo hace un partido de Estado, se lo digo yo, se lo digo con todo el "
+    "cariño del mundo. Pero nosotros eso no lo haremos nunca, señorías, nunca jamás.")
+
+
+def _pairs(*couples):
+    """A similarity that pairs exactly the given (original, rendering) couples."""
+    def similarity(source, candidate):
+        return 0.95 if any(a in source and b in candidate for a, b in couples) else 0.05
+    return similarity
+
+
+def test_a_paragraph_read_as_spanish_is_an_original_when_something_renders_it():
+    # The whole point: it is offered to the alignment, a rendering of it turns up, and it
+    # takes its place in the record of what was said instead of standing among the
+    # interpreter's paragraphs with its own translation orphaned beside it.
+    text = f"{CATALAN}\n\n{CODE_MIXED_CA}\n\n{SPANISH}\n\n{RENDERS_CODE_MIXED}"
+    delivered, spanish = split_languages(
+        text, _fake_detect, _clip(CATALAN, CODE_MIXED_CA),
+        similarity=_pairs((CATALAN[:30], SPANISH[:30]),
+                          (CODE_MIXED_CA[:30], RENDERS_CODE_MIXED[:30]))).blocks
+
+    assert CODE_MIXED_CA in delivered.text
+    # ...and its rendering leaves the record of what was said, which it could not do
+    # while the paragraph it renders was filed as Spanish
+    assert RENDERS_CODE_MIXED not in delivered.text
+    assert RENDERS_CODE_MIXED in spanish.text
+    assert CODE_MIXED_CA not in spanish.text
+
+
+def test_a_paragraph_read_as_spanish_stays_spanish_when_nothing_renders_it():
+    """The offer has to be earned. A disputed reading is not a better reading — no
+    configuration of the detector reads these paragraphs correctly — so the only thing
+    that may move one is a rendering of it actually turning up. Nothing here renders it,
+    so it stays where the vote put it and, having no counterpart, stands in both blocks."""
+    text = f"{CATALAN}\n\n{CODE_MIXED_CA}\n\n{SPANISH}"
+    split = split_languages(text, _fake_detect, _clip(CATALAN, CODE_MIXED_CA),
+                            similarity=_pairs((CATALAN[:30], SPANISH[:30])))
+    delivered, spanish = split.blocks
+
+    assert split.language == "ca"
+    assert CODE_MIXED_CA in delivered.text
+    assert CODE_MIXED_CA in spanish.text
+    # And it is still counted as Spanish, which is what `partial` reveals: kept as an
+    # original the alignment never paired, it would read as a co-official stretch the
+    # Diario failed to translate, and the Spanish block would be flagged incomplete over
+    # a paragraph whose translation is missing only because none was ever needed.
+    assert spanish.partial is False
+
+
+def test_a_paragraph_already_serving_as_a_rendering_is_never_offered():
+    """A translation is not a misread original. Offering one would take it away from the
+    source it explains, and a healthy speech would be refused to fix a defect it does not
+    have — so a run the alignment has already spoken for is not a candidate, however its
+    own vote went."""
+    text = f"{CATALAN}\n\n{CODE_MIXED_CA}"
+    split = split_languages(text, _fake_detect, _clip(CATALAN),
+                            similarity=_pairs((CATALAN[:30], CODE_MIXED_CA[:30])))
+    delivered, spanish = split.blocks
+
+    assert [(b.lang, b.original) for b in split.blocks] == [("ca", True), ("es", False)]
+    assert CODE_MIXED_CA not in delivered.text
+    assert CODE_MIXED_CA in spanish.text
+
+
+# ---- an extra claim must not read worse joined --------------------------------------
+#
+# The same comparison `_merged_into_a_neighbour` makes, from the other side. Nothing costs
+# the alignment anything to over-claim, and proportionality can only refuse a claim for
+# being too LONG for its source, never for simply not belonging to it.
+SPOKEN_ON = (
+    "Y termino, señorías, con una última consideración sobre ese mismo proyecto: el "
+    "ministerio sabe desde hace meses que la cifra no cuadra y aun así la sigue "
+    "defendiendo en esta Cámara como si nada hubiera pasado.")
+
+# One rendering the Diario broke across a paragraph break — SPANISH, in two halves.
+SPANISH_OPENING = ("La verdad, señorías, esta reforma del transporte en Barcelona "
+                   "costará 4000 millones de euros según el ministerio competente. "
+                   "Pero creemos que la cifra real debería ser mucho más alta, porque "
+                   "el proyecto de Barcelona no incluye el mantenimiento.")
+# Over MIN_VOTING_CHARS on purpose: below it this paragraph gets no vote, joins the run
+# before it, and the two halves become ONE claim — at which point the rule under test
+# never runs and the fixture passes whatever it does.
+SPANISH_REST = ("Eso es lo que ustedes no explican, señorías, y conviene decirlo hoy "
+                "aquí con toda claridad.")
+
+
+def test_a_source_does_not_claim_the_words_spoken_next_to_its_rendering():
+    """The speaker carries the same thought on in Spanish after the interpretation. It
+    says what the original says, so it reads as a rendering of it (0.70, over the floor)
+    and is proportionate enough to survive the length check — and claimed, it leaves the
+    record of what was said. Only measuring it AGAINST the real rendering refuses it."""
+    def _similarity(source, candidate):
+        if "aquesta reforma" not in source:
+            return 0.05
+        if SPANISH in candidate and SPOKEN_ON in candidate:
+            return 0.80          # joined, it reads worse than the rendering alone
+        if SPANISH in candidate:
+            return 0.90
+        if SPOKEN_ON in candidate:
+            return 0.70
+        return 0.05
+
+    text = f"{CATALAN}\n\n{SPANISH}\n\n{SPOKEN_ON}"
+    split = split_languages(text, _fake_detect, _clip(CATALAN, SPOKEN_ON),
+                            similarity=_similarity)
+
+    assert not split.undecided
+    assert [(b.lang, b.original) for b in split.blocks] == [("ca", True), ("es", False)]
+    assert SPOKEN_ON in split.blocks[0].text
+    # the real rendering is untouched, and still the only thing removed
+    assert SPANISH not in split.blocks[0].text
+    assert SPANISH in split.blocks[1].text
+    assert split.blocks[1].partial is False
+
+
+def test_a_rendering_the_diario_broke_in_two_keeps_both_halves():
+    """The negative control, and what it guards is the COMPARISON rather than a level.
+    The second half reads no better against the original than the spoken paragraph above
+    did — 0.70 either way. What separates them is that supplying it IMPROVES the match,
+    because it is the part that was missing, so this fails if the rule is ever relaxed to
+    anything the second claim can be judged on alone."""
+    def _similarity(source, candidate):
+        if "aquesta reforma" not in source:
+            return 0.05
+        if SPANISH_OPENING in candidate and SPANISH_REST in candidate:
+            return 0.95
+        if SPANISH_OPENING in candidate:
+            return 0.85
+        if SPANISH_REST in candidate:
+            return 0.70
+        return 0.05
+
+    text = f"{CATALAN}\n\n{SPANISH_OPENING}\n\n{SPANISH_REST}"
+    # Long enough for the original AND the tail, deliberately: sized to the original
+    # alone, dropping the tail makes the speech unplaceable and the clip falls back to
+    # the unpruned reading, which is the right answer for the wrong reason — and this
+    # then passes even for a rule that drops every extra claim it sees.
+    delivered, spanish = split_languages(
+        text, _fake_detect, _clip(CATALAN, SPANISH_REST),
+        similarity=_similarity).blocks
+
+    assert SPANISH_OPENING not in delivered.text
+    assert SPANISH_REST not in delivered.text
+    assert SPANISH_OPENING in spanish.text and SPANISH_REST in spanish.text
+
+
+def test_one_paragraph_may_render_two_originals_and_belong_to_only_one_of_them():
+    """A Spanish paragraph rendering the end of one original and the whole of the next is
+    claimed by both, and reads as the first one poorly — it is mostly about the second.
+    Refusing it to the first must not take it from the second: what is dropped is a
+    CLAIM, and a paragraph stays a rendering while any source still owns it. Judged per
+    paragraph instead, the translation lands back in the record of what was said as if
+    the speaker had read it out."""
+    def _similarity(source, candidate):
+        if "aquesta reforma" in source:
+            if SPANISH in candidate and SPANISH_TARRAGONA in candidate:
+                return 0.80      # joined, worse than its own rendering alone
+            if SPANISH in candidate:
+                return 0.95
+            if SPANISH_TARRAGONA in candidate:
+                return 0.70      # over the floor, so the alignment takes it too
+        if "hospital de Tarragona" in source:
+            return 0.95 if SPANISH_TARRAGONA in candidate else 0.05
+        return 0.05
+
+    text = f"{CATALAN}\n\n{CATALAN_TARRAGONA}\n\n{SPANISH}\n\n{SPANISH_TARRAGONA}"
+    # A clip long enough for BOTH readings, deliberately: sized to the originals alone,
+    # losing the shared rendering makes the speech unplaceable, the clip falls back to
+    # the unpruned reading and quietly produces the right answer for the wrong reason.
+    # Then this passes even when the drop is applied per PARAGRAPH, which is the mistake
+    # it exists to catch.
+    delivered, spanish = split_languages(
+        text, _fake_detect, _clip(CATALAN, CATALAN_TARRAGONA, SPANISH_TARRAGONA),
+        similarity=_similarity).blocks
+
+    assert SPANISH_TARRAGONA not in delivered.text
+    assert SPANISH not in delivered.text
+    assert SPANISH in spanish.text and SPANISH_TARRAGONA in spanish.text
+
+
+def test_a_reading_the_clip_cannot_place_gives_way_to_one_it_can():
+    """Refusing an over-claim is a hypothesis about the text; the clip is independent
+    evidence about how much of it can have been spoken. Here the strict reading returns
+    500 characters to a speech that only had time for 270, so the speech becomes
+    unplaceable — and it is the reading that is wrong, not the speech. Without the
+    fallback this is refused, and a decided pair loses its Spanish block."""
+    extra = ("Y termino ya, señorías, insistiendo una vez más en que el ministerio "
+             "conocía perfectamente estas cifras desde hace muchos meses y aun así no "
+             "ha movido un solo dedo para corregirlas.")
+
+    def _similarity(source, candidate):
+        if "aquesta reforma" not in source:
+            return 0.05
+        if SPANISH in candidate and extra in candidate:
+            return 0.80          # the strict rule would drop `extra`...
+        if SPANISH in candidate:
+            return 0.90
+        if extra in candidate:
+            return 0.70
+        return 0.05
+
+    text = f"{CATALAN}\n\n{SPANISH}\n\n{extra}"
+    split = split_languages(text, _fake_detect, _clip(CATALAN), similarity=_similarity)
+
+    # ...but only the Catalan fits the clip, so the reading that keeps `extra` a
+    # rendering is the one the evidence supports
+    assert not split.undecided
+    assert [(b.lang, b.original) for b in split.blocks] == [("ca", True), ("es", False)]
+    assert extra not in split.blocks[0].text
+    assert extra in split.blocks[1].text
+
+
 def test_a_quotation_read_aloud_stays_in_the_record_of_what_was_said():
     # The Diario prints the citation on its own paragraph, AFTER the Spanish rendering of
     # the sentence that announces it. Having no language of its own it joins the run
