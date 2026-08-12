@@ -37,6 +37,7 @@ from typing import NamedTuple
 
 from qhld_engine.domain.speeches.language_runs import (
     CO_LANGS,
+    PARAGRAPH_BREAK,
     paragraph_spans,
     quotation_spans,
     sentence_spans,
@@ -436,7 +437,57 @@ def _align_renderings(stripped, co_runs, es_runs, similarity):
             weakest = min(picks, key=lambda j: (picks[j], -_length(j)))
             length -= _length(weakest)
             del picks[weakest]
+
+    rendered_co |= _merged_into_a_neighbour(co_text, es_text, claimed, similarity)
     return rendered_co, {j for picks in claimed.values() for j in picks}
+
+
+def _merged_into_a_neighbour(co_text, es_text, claimed, similarity):
+    """The sources the Diario rendered *together with* the paragraph next to them.
+
+    Whitespace is not a translated quantity: the interpreter re-paragraphs freely, so two
+    co-official paragraphs may be published as one Spanish paragraph (and one as two). The
+    alignment already allows either side to consume several of the other's paragraphs — what
+    defeats it is the SCORE, which compares a whole paragraph against a whole paragraph
+    however much of the other one is about something else. 726204 is the case: one Spanish
+    paragraph renders the speaker's opening line and the paragraph after it, so the opening
+    scores 0.588 against it while the longer neighbour scores 0.895. Below the floor, so the
+    opening looks untranslated, and the Spanish block then carries the Catalan original
+    beside the translation of it.
+
+    The test is whether the merge **reads better than the neighbour did alone**. If that
+    Spanish paragraph really renders both, supplying the half that was missing must improve
+    the match; if it renders only the neighbour, adding foreign text dilutes it. On 726204
+    the true merge goes 0.895 -> 0.931 while a wrong one — the neighbour plus the paragraph
+    after it, which has a rendering of its own — goes 0.895 -> 0.783.
+
+    Deliberately no threshold. Anything the traceback paired already scored at or above
+    ``SIMILARITY_FLOOR``, so an improvement on it clears the floor too, and there is nothing
+    here to calibrate or to re-calibrate when the embedding model changes. A length band was
+    measured instead and rejected: it needed two constants, its lower bound rested on a
+    single counter-example, it could not tell the two candidate neighbours apart, and the
+    sweep found no plateau to anchor a value to.
+
+    Only ``rendered_co`` grows. Which Spanish runs are renderings is decided by the traceback
+    and left alone, so nothing here can take a spoken word out of the record — the
+    as-delivered block holds every co-official run whatever this returns.
+    """
+    rescued = set()
+    for source in range(len(co_text)):
+        if source in claimed:
+            continue
+        for neighbour in (source - 1, source + 1):
+            if neighbour not in claimed:
+                continue
+            first, second = min(source, neighbour), max(source, neighbour)
+            # Joined, never sliced out of the document: the two may have Spanish between
+            # them, and slicing would pull that into the hypothesis.
+            merged = co_text[first] + PARAGRAPH_BREAK + co_text[second]
+            if any(similarity(merged, es_text[rendering]) > alone
+                   for rendering, alone in claimed[neighbour].items()):
+                rescued.add(source)
+                break
+    return rescued
 
 
 def _join(stripped, spans):

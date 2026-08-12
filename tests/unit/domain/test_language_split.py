@@ -204,6 +204,70 @@ def test_a_short_paragraph_does_not_make_a_long_one_its_rendering():
     assert split.blocks[1].partial is True
 
 
+OPENING_CA = ("Gràcies, presidenta. Aquesta vegada parlaré en català perquè així m'ho "
+              "demana el meu grup, i això no ho hauria de sorprendre ningú.")
+# One Spanish paragraph rendering BOTH the opening and the paragraph after it — the shape
+# the Diario produces whenever it re-paragraphs, and the reason whole-paragraph similarity
+# is not enough on its own.
+SPANISH_MERGED = ("Esta vez hablaré en catalán porque así me lo pide mi grupo, y eso no "
+                  "debería sorprender a nadie. " + SPANISH)
+
+
+def _graded_similarity(source, candidate):
+    """Scores the merge above the neighbour alone, which a binary stub cannot express."""
+    if "no explican" not in candidate:
+        return 0.05
+    opening, body = "parlaré en català" in source, "aquesta reforma" in source
+    if opening and body:
+        return 0.95              # both halves: the best reading of this Spanish paragraph
+    if body:
+        return 0.90              # the neighbour alone already pairs
+    if opening:
+        return 0.60              # the opening alone falls under the floor
+    return 0.05
+
+
+def test_a_source_the_diario_merged_with_its_neighbour_is_still_a_source():
+    # The opening scores 0.60 against the Spanish paragraph that renders it, because
+    # two-thirds of that paragraph renders the NEXT one — under the floor, so the alignment
+    # leaves it unpaired and the Spanish block ends up carrying the Catalan original beside
+    # the translation of it.
+    text = f"{OPENING_CA}\n\n{CATALAN}\n\n{SPANISH_MERGED}"
+    delivered, spanish = split_languages(
+        text, _fake_detect, _clip(OPENING_CA, CATALAN),
+        similarity=_graded_similarity).blocks
+
+    assert OPENING_CA in delivered.text
+    # ...and NOT in the Spanish block, because a translation of it exists there already
+    assert OPENING_CA not in spanish.text
+    # the whole original is accounted for, so nothing is missing a translation
+    assert spanish.partial is False
+
+
+def test_a_merge_that_reads_worse_than_the_neighbour_alone_is_refused():
+    """The negative control, and what it guards is the COMPARISON. Any paragraph can be glued
+    to a paired neighbour and the glued text will still read like a rendering of something —
+    here it scores 0.70, comfortably over the floor. Only measuring it against what the
+    neighbour scored alone can refuse it, so this test fails if the rule is ever relaxed to
+    "the merge clears the floor"."""
+    def _worse_merged(source, candidate):
+        if "no explican" not in candidate:
+            return 0.05
+        if "aquesta reforma" in source and UNTRANSLATED[:20] in source:
+            return 0.70          # the merge reads WORSE than the neighbour did alone
+        return 0.90 if "aquesta reforma" in source else 0.05
+
+    text = f"{CATALAN}\n\n{UNTRANSLATED}\n\n{SPANISH}"
+    delivered, spanish = split_languages(
+        text, _fake_detect, _clip(CATALAN, UNTRANSLATED),
+        similarity=_worse_merged).blocks
+
+    # refused, so the paragraph is still nobody's source and still stands in both blocks
+    assert UNTRANSLATED in delivered.text
+    assert UNTRANSLATED in spanish.text
+    assert spanish.partial is True
+
+
 def test_a_quotation_read_aloud_stays_in_the_record_of_what_was_said():
     # The Diario prints the citation on its own paragraph, AFTER the Spanish rendering of
     # the sentence that announces it. Having no language of its own it joins the run
