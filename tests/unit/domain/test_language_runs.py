@@ -5,6 +5,7 @@ these are deterministic and never load py3langid.
 import pytest
 
 from qhld_engine.domain.speeches.language_runs import (
+    MIN_VOTING_CHARS,
     is_quotation,
     paragraph_language,
     paragraph_runs,
@@ -109,6 +110,44 @@ def test_a_leading_unreadable_paragraph_joins_the_run_after_it():
 
     assert [lang for lang, _, _ in runs] == ["ca"]
     assert runs[0][1] == 0
+
+
+def test_a_courtesy_line_cannot_be_pulled_back_over_one_that_chose_to_go_forward():
+    # 767786's boundary: the Galician closes with "Moito obrigado." and the Spanish opens
+    # with two courtesy lines, of which only the SECOND reads as Galician. Each choice is
+    # defensible alone — and taken in order the last one used to reach back over the one
+    # before it and take it into the Galician run, so both Spanish greetings ended up in
+    # the record of what was said with no way out of it.
+    text = "\n\n".join([CA_PARAGRAPH, "Moltes gràcies.", "Muchas gracias, presidenta.",
+                        "Gràcies i bona tarda.", ES_PARAGRAPH])
+    runs = paragraph_runs(text, _fake_detect)
+
+    assert [lang for lang, _, _ in runs] == ["ca", "es"]
+    # the Catalan run ends after its own closing line...
+    assert text[runs[0][1]:runs[0][2]].strip().endswith("Moltes gràcies.")
+    # ...and BOTH greetings are on the Spanish side, including the one reading as Catalan
+    assert text[runs[1][1]:runs[1][2]].strip().startswith("Muchas gracias, presidenta.")
+    assert "Gràcies i bona tarda." in text[runs[1][1]:runs[1][2]]
+
+
+def test_a_closing_line_is_not_lengthened_into_a_vote_by_the_applause_after_it():
+    # 741705's closing "Gracias." is 8 characters of speaker and 111 of stenographer. Left
+    # to count, the annotation carries it over the voting length and it founds a run of its
+    # own — which is how a courtesy line that IS a rendering became impossible to pair,
+    # its 8-character original having no run of its own to be paired with.
+    applauded = ("Gracias. (Aplausos de las señoras y los señores diputados del Grupo "
+                 "Parlamentario Plurinacional SUMAR, puestos en pie).")
+    assert len(applauded) > MIN_VOTING_CHARS
+    assert paragraph_language(applauded, _fake_detect) is None
+
+
+def test_an_annotation_does_not_decide_the_language_of_its_paragraph():
+    # The stenographer writes in Spanish whatever language the speech is in, so an
+    # annotation is the one span guaranteed to vote for the wrong one.
+    paragraph = (f"{CA_PARAGRAPH} (Rumores.―El señor presidente pide silencio y reclama "
+                 "a las señoras y los señores diputados que respeten el turno de "
+                 "palabra del orador que está en la tribuna).")
+    assert paragraph_language(paragraph, _fake_detect) == "ca"
 
 
 def test_empty_text_has_no_runs():

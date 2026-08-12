@@ -13,6 +13,9 @@ roughly a quarter of its Catalan and turned four clean paragraph pairs into nine
 
 Which is also why a quotation does not get a vote on the language of the paragraph
 carrying it: it is the one span reliably written in a language other than the speech's.
+A stenographer's annotation gets no vote for the same reason and more strongly: it is not
+the speaker's voice at all, and it is written in Spanish whatever language the speech was
+delivered in, so it is the one span guaranteed to vote wrong.
 """
 
 import re
@@ -43,10 +46,28 @@ _SENTENCE_SPLIT = re.compile(r"(?<=[.!?»])\s+")
 # unbalanced is left alone rather than swallowing the rest of the paragraph.
 _QUOTED = re.compile(r"«[^»]*»|“[^”]*”")
 
+# The Diario's parenthesized stage directions — "(Aplausos)", "(Rumores.―El señor Tellado
+# Filgueira: Ábalos…)". Deliberately a second copy of qhld-ai's `_ANNOTATION_RE` (see
+# `qhld_ai.domain.annotations`, which owns the fuller treatment: stripping them before
+# mention NER, and mining the interruptions out of them). Copied rather than imported
+# because that module reaches for the persistence models, and nothing in this layer may.
+_ANNOTATED = re.compile(r"\([^()]*\)")
+
 # A token short enough to be shared by chance carries no evidence that one text renders
 # another; digits do, at any length, because a translator copies them.
 _MIN_TOKEN_CHARS = 4
 _TOKEN = re.compile(r"[a-z0-9]+")
+
+
+def _votable(paragraph):
+    """``paragraph`` with everything that has no say in its language taken out: what the
+    stenographer noted, and what the speaker quoted.
+
+    Only the reading is taken over this — the paragraph itself is never altered. An
+    annotation is part of the printed record and stays in whatever block carries it, which
+    is the whole distinction: it is evidence about the sitting, not about the language.
+    """
+    return _QUOTED.sub(" ", _ANNOTATED.sub(" ", paragraph)).strip()
 
 
 def sentence_spans(text):
@@ -83,6 +104,15 @@ def paragraph_spans(text, detect):
     precedes it: a quoted paragraph follows the sentence that announces it
     ("...se puede leer lo siguiente:"), so it continues what it interrupts.
 
+    **No paragraph may join backwards across one that declined to.** Courtesy lines come
+    in twos and threes and their weak readings need not agree: 767786 closes its Galician
+    with *"Moito obrigado."* and opens its Spanish with *"Gracias, señora presidenta."*
+    then *"Muy buenas tardes."*, of which only the second reads as Galician. Each choice
+    was defensible alone, and taken in order the last one reached back over the one before
+    it and took it along, so both Spanish greetings ended up inside the Galician run with
+    no way out of it. Spans are contiguous, so the two choices cannot both hold; the
+    earlier paragraph keeps its own, being the one nearer the run it chose.
+
     Unmerged on purpose. Consecutive paragraphs of one language are a single *run* for
     describing a speech's shape, but they are separate units for deciding what renders
     what: a translation and the Spanish the speaker then went on to deliver are adjacent
@@ -101,9 +131,14 @@ def paragraph_spans(text, detect):
 
     runs = []
     pending = 0  # start of the text not yet attributed to a run
+    waiting = False  # something already pending chose the run that comes next
     for index, ((body, _, end), lang) in enumerate(zip(paragraphs, strong)):
         if lang is None:
-            if _joins_what_follows(body, detect, strong, index):
+            # Short-circuited on purpose: once a paragraph ahead is waiting for the next
+            # run, this one's own reading cannot send it backwards over that paragraph,
+            # so there is nothing left for the detector to decide.
+            if waiting or _joins_what_follows(body, detect, strong, index):
+                waiting = True
                 continue  # stays pending; the next run will begin before it
             if runs:
                 runs[-1][2] = end
@@ -111,6 +146,7 @@ def paragraph_spans(text, detect):
             continue
         runs.append([lang, pending, end])
         pending = end + len(PARAGRAPH_BREAK)
+        waiting = False
 
     for earlier, later in zip(runs, runs[1:]):
         earlier[2] = later[1]
@@ -123,9 +159,14 @@ def _joins_what_follows(body, detect, strong, index):
     """Should an unreadable paragraph attach to the run after it rather than before?
 
     Its own reading decides, when it has one and one of its neighbours matches. With no
-    reading — a paragraph that is only a quotation — it stays with what precedes it.
+    reading — a paragraph that is only a quotation, or only an annotation — it stays with
+    what precedes it.
+
+    Read from the same text the strong vote is taken over, and that matters: a paragraph
+    denied a vote because most of it is an annotation must not then be placed on the
+    strength of that very annotation.
     """
-    stripped = _QUOTED.sub(" ", body).strip()
+    stripped = _votable(body)
     if len(stripped) < MIN_DETECTABLE_CHARS:
         return False
     weak = detect(stripped)
@@ -165,10 +206,14 @@ def is_quotation(paragraph):
     Both halves of the test are load-bearing. Asking only whether the remainder is too
     short to read calls ``"Gracias."`` a quotation, and that closing line really is a
     rendering of the ``"Moito obrigado."`` before it.
+
+    The remainder is what the paragraph itself says, so applause minuted after a quotation
+    does not stop it being one — the same reading of the paragraph that decides its
+    language.
     """
     if not _QUOTED.search(paragraph):
         return False
-    return len(_QUOTED.sub(" ", paragraph).strip()) < MIN_DETECTABLE_CHARS
+    return len(_votable(paragraph)) < MIN_DETECTABLE_CHARS
 
 
 def quotation_spans(text):
@@ -184,12 +229,15 @@ def quotation_spans(text):
 
 
 def paragraph_language(paragraph, detect):
-    """The language holding most of ``paragraph``, ignoring what it quotes.
+    """The language holding most of ``paragraph``, ignoring what it quotes and what the
+    stenographer noted in it.
 
     ``None`` when nothing in it is long enough to read, which includes a paragraph that
-    is only a quotation.
+    is only a quotation, and a courtesy line that reaches the voting length only because
+    of the applause minuted after it (741705's closing *"Gracias. (Aplausos de las señoras
+    y los señores diputados…)"* is 119 characters, of which 8 are the speaker's).
     """
-    body = _QUOTED.sub(" ", paragraph).strip()
+    body = _votable(paragraph)
     if len(body) < MIN_VOTING_CHARS:
         return None
     weights = {}

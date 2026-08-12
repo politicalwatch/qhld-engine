@@ -103,6 +103,17 @@ def test_extract_speeches_172_000001(monkeypatch, capture):
         return 0.95 if len(shared) >= 4 else 0.05
 
     monkeypatch.setattr(mod, "create_paragraph_similarity", lambda: _similar)
+
+    # Record what the splitter was handed, so the blocks can be checked against the
+    # document they came from rather than only against each other.
+    split_inputs = []
+    _split = mod.split_languages
+
+    def _spy_split(text, *args, **kwargs):
+        split_inputs.append(text)
+        return _split(text, *args, **kwargs)
+
+    monkeypatch.setattr(mod, "split_languages", _spy_split)
     # stub mention tagging: this test locks segmentation/language-split, not NER,
     # and must stay Mongo-free (no deputy catalog) and spaCy-free.
     monkeypatch.setattr(mod.Deputies, "get_all", staticmethod(lambda: []))
@@ -152,7 +163,7 @@ def test_extract_speeches_172_000001(monkeypatch, capture):
     assert by_order[1].original_language == "gl"
     assert [(b.lang, b.original) for b in rego] == [("gl", True), ("es", False)]
     assert rego[0].text.startswith("Grazas, señora presidenta")
-    assert rego[1].text.rstrip().endswith("permanente de silicosis…")
+    assert rego[1].text.rstrip().endswith("Muchas gracias.")
     # Not "Muchas gracias.", and the reason is in the source rather than the split: a
     # page turn has merged the tail of the Galician and the tail of its interpretation
     # into ONE paragraph ("… como a aplicación destes coeficientes redutores. Moito
@@ -168,7 +179,11 @@ def test_extract_speeches_172_000001(monkeypatch, capture):
     # Galician, while "Gracias, señora presidenta." opens the interpretation and goes
     # with it.
     assert "Grazas, señora presidenta" not in rego[1].text
-    assert rego[1].text.startswith("Gracias, señora presidenta.\n\nAntes que yo")
+    assert "Gracias, señora presidenta.\n\nAntes que yo" in rego[1].text
+    # It no longer *opens* the Spanish block, because the block now opens with a Galician
+    # paragraph the interpretation has no counterpart for — see the shared-paragraph
+    # golden below.
+    assert rego[1].text.startswith("No Real decreto 1299/2006")
 
     minister = by_order[2].speech
     assert by_order[2].original_language == "es"
@@ -197,17 +212,35 @@ def test_extract_speeches_172_000001(monkeypatch, capture):
             assert not any(
                 p and p[-1] not in ".!?…»:\"”)" for p in block.text.split("\n\n"))
 
-    # No paragraph may sit in BOTH blocks. Option B copies as-delivered Spanish into
-    # the original block on purpose, but only Spanish that renders NOTHING; a paragraph
-    # in both is a rendering the aligner failed to spot, sitting in the record of what
-    # was said next to the original it translates. This fixture used to carry exactly
-    # one (387 characters, and the reason the Galician block was 10953/18 rather than
-    # 10566/17) — whole-token overlap could not pair it with its Galician original.
-    for speech in saved:
-        if len(speech.speech) == 2:
-            first = set(speech.speech[0].text.split("\n\n"))
-            second = set(speech.speech[1].text.split("\n\n"))
-            assert not (first & second), speech.video_id
+    # Every block holds the whole speech: between them the blocks account for every
+    # paragraph of the document, because each is the whole text minus what the other one
+    # covers. Nothing else in the suite checks this, and it is the property the reader and
+    # the subtitle tracks both depend on.
+    #
+    # Paragraph for paragraph, and so only for a speech the evidence placed. The
+    # provisional reading a refused speech falls back to cuts on a SENTENCE boundary, so it
+    # can leave half a paragraph on each side — 729026 is the case, and it loses no words,
+    # only the paragraph's integrity. All four here are decided (asserted below).
+    assert len(split_inputs) == len(saved)
+    for source, speech in zip(split_inputs, saved):
+        paragraphs = {p.strip() for p in source.strip().split("\n\n") if p.strip()}
+        for block in speech.speech:
+            paragraphs -= {p.strip() for p in block.text.split("\n\n")}
+        assert not paragraphs, (speech.video_id, [p[:70] for p in paragraphs])
+
+    # Which paragraphs sit in BOTH blocks, and why. A paragraph appears twice exactly when
+    # nothing on the other side renders it, so this golden is a direct read-out of the
+    # pairing: 726572's interpretation is complete and shares nothing, while 726566 shares
+    # three — the merged page-turn paragraph described above, the closing line that follows
+    # it, and the decree citation, which the SIMILARITY STUB fails to pair. The real
+    # embedder does pair that one (measured), so this third entry is the stub's coarseness
+    # showing through, and it is worth leaving visible: under the mirror a pairing failure
+    # duplicates a paragraph instead of silently dropping it out of the Spanish block.
+    shared = {
+        speech.video_id: len(set(speech.speech[0].text.split("\n\n"))
+                             & set(speech.speech[1].text.split("\n\n")))
+        for speech in saved if len(speech.speech) == 2}
+    assert shared == {"726566": 3, "726572": 0}
 
     # golden per-block lengths and paragraph counts — update deliberately if the
     # logic changes
@@ -215,7 +248,7 @@ def test_extract_speeches_172_000001(monkeypatch, capture):
         i: [(len(b.text), len(b.text.split("\n\n"))) for b in by_order[i].speech]
         for i in (1, 2, 3, 4)}
     assert block_shapes == {
-        1: [(10566, 17), (10708, 9)],
+        1: [(10566, 17), (11282, 12)],
         2: [(9608, 13)],
         3: [(3737, 4), (3842, 5)],  # unchanged from the single-boundary split
         4: [(3694, 7)],

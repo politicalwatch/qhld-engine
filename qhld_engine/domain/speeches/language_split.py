@@ -3,9 +3,13 @@
 Pure logic — no HTTP, no DB. The language detector is injected as ``detect(str) -> str |
 None``; the py3langid adapter that backs it lives in the infrastructure layer.
 
-A block is a **role**, not a slice of the document: ``original`` holds what was delivered,
-whatever languages it mixes, and a second block holds a Spanish rendering of it when the
-Diario published one. Three shapes cover the corpus:
+A block is a **role**, not a slice of the document, and each role holds the *whole*
+intervention: ``original`` is the speech as delivered, whatever languages it mixes, and the
+second block is the same speech in Spanish when the Diario published a rendering. Anything
+that was never translated — a greeting, a citation read aloud, a stretch the speaker gave
+in Spanish — has no counterpart, so it stands in both blocks unchanged. The two are
+therefore near mirror images, and the only thing that separates them in content is a
+translation the Diario left incomplete. Three shapes cover the corpus:
 
 1. co-official **and** a Spanish rendering exists — appended at the end or interleaved
    paragraph by paragraph. Two blocks.
@@ -40,9 +44,9 @@ from qhld_engine.domain.speeches.language_runs import (
 
 
 class Block(NamedTuple):
-    """One block of a speech. ``partial`` marks a rendering that covers only part of
-    the original — never set on an ``original`` block, which is complete by
-    construction.
+    """One block of a speech. ``partial`` marks a Spanish block part of which is not a
+    translation at all but the original standing in for one the Diario never printed —
+    never set on an ``original`` block, which has nothing to stand in for.
 
     ``langs`` names every language the block is really in, commonest first, with ``lang``
     always the first of them. The as-delivered block holds what was spoken whatever
@@ -229,8 +233,8 @@ def split_languages(text, detect, duration=None, similarity=None):
 
     if _renders_whole_speech(comparable, coverage, co_chars, spoken, stripped,
                              duration, es_runs, co_lang):
-        blocks = _rendered_blocks(stripped, co_runs, es_runs, delivered_es, co_lang,
-                                  coverage, comparable)
+        blocks = _rendered_blocks(stripped, co_runs, es_runs, rendered_co, delivered_es,
+                                  co_lang, coverage, comparable)
         return _decided(co_lang, blocks, duration is None, detect)
     if _all_of_it_was_spoken(comparable, coverage, co_chars, spoken, stripped, duration):
         dominant = _dominant(runs)
@@ -276,30 +280,43 @@ def _fits(chars, duration):
 
 
 
-def _rendered_blocks(stripped, co_runs, es_runs, delivered_es, co_lang, coverage,
-                     comparable):
+def _rendered_blocks(stripped, co_runs, es_runs, rendered_co, delivered_es, co_lang,
+                     coverage, comparable):
     """The two blocks of a speech that has a rendering.
 
-    The original block carries every co-official run **plus** any Spanish that renders
-    nothing — a citation read aloud, an aside, a closing stretch the speaker delivered in
-    Spanish. All of it was spoken, so all of it belongs in the record of what was said;
-    the Spanish block keeps the whole Spanish side as the Diario prints it, so those
-    stretches appear in both. That duplication is deliberate: each block is complete for
-    its own purpose.
+    **Both blocks hold the whole speech**, and each is built by subtracting from it the
+    stretches the other one accounts for. They are exact mirrors:
 
-    A quotation on its own paragraph is one of those stretches and cannot be found by the
-    alignment, which works in runs: having no language of its own it attaches to the
-    paragraph before it, and when that paragraph is a rendering it leaves the record along
-    with it. So it is added back here, by position.
+    - the original block is everything except the Spanish that renders something;
+    - the Spanish block is everything except the co-official that something rendered.
+
+    So a stretch with no counterpart on the other side — a greeting nobody translated, a
+    citation read aloud, an aside, a closing stretch the speaker delivered in Spanish, a
+    switch to Spanish that runs to the end of the speech — appears in **both**. That
+    duplication is the point rather than a cost: neither block is a slice of the document,
+    each is the whole intervention seen one way, and the only thing that can make them
+    asymmetric is a translation the Diario left incomplete.
+
+    Which is what ``partial`` marks, and the mirror sharpens what it means: not that this
+    block is missing anything, but that some of what it holds is the original rather than a
+    translation of it.
+
+    A quotation on its own paragraph cannot be found by either subtraction, because both
+    work in runs: having no language of its own it attaches to the paragraph before it, and
+    when that paragraph is accounted for on the other side it leaves along with it. So it
+    is added back on both sides, by position.
     """
+    quotations = quotation_spans(stripped)
     delivered = [(start, end) for _, start, end in
                  co_runs + [run for i, run in enumerate(es_runs) if i in delivered_es]]
-    delivered += [span for span in quotation_spans(stripped)
-                  if not _within(span, delivered)]
-    original = _join(stripped, sorted(delivered))
-    spanish = _join(stripped, [(start, end) for _, start, end in es_runs])
+    delivered += [span for span in quotations if not _within(span, delivered)]
+    spanish = [(start, end) for _, start, end in es_runs] + [
+        (start, end) for i, (_, start, end) in enumerate(co_runs)
+        if i not in rendered_co]
+    spanish += [span for span in quotations if not _within(span, spanish)]
     partial = _is_partial(co_runs, es_runs, coverage, comparable, co_lang)
-    return [Block(co_lang, original, True), Block("es", spanish, False, partial)]
+    return [Block(co_lang, _join(stripped, sorted(delivered)), True),
+            Block("es", _join(stripped, sorted(spanish)), False, partial)]
 
 
 def _within(span, spans):

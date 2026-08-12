@@ -134,18 +134,41 @@ def test_a_co_official_speech_with_no_rendering_is_one_block():
     assert aside in split.blocks[0].text
 
 
+UNTRANSLATED = (
+    "Però aquesta esmena, senyories, nosaltres la vam presentar fa mesos al "
+    "registre i encara no hauria estat contestada per ningú del Govern. Això és "
+    "el que volem denunciar aquí avui, perquè no és la primera vegada.")
+
+
 def test_a_rendering_that_covers_only_part_is_marked_partial():
-    # Two paragraphs delivered, one of them rendered: the Spanish block is real but
-    # does not stand for the whole speech.
-    untranslated = (
-        "Però aquesta esmena, senyories, nosaltres la vam presentar fa mesos al "
-        "registre i encara no hauria estat contestada per ningú del Govern. Això és "
-        "el que volem denunciar aquí avui, perquè no és la primera vegada.")
-    text = f"{CATALAN}\n\n{untranslated}\n\n{SPANISH}"
-    split = split_languages(text, _fake_detect, _clip(CATALAN, untranslated), similarity=_fake_similarity)
+    # Two paragraphs delivered, one of them rendered: the Spanish block is real but part
+    # of what it holds is the original rather than a translation of it.
+    text = f"{CATALAN}\n\n{UNTRANSLATED}\n\n{SPANISH}"
+    split = split_languages(text, _fake_detect, _clip(CATALAN, UNTRANSLATED), similarity=_fake_similarity)
 
     assert len(split.blocks) == 2
     assert split.blocks[1].partial is True
+
+
+def test_a_stretch_nobody_translated_stands_in_both_blocks():
+    # Each block is the whole speech seen one way, so a stretch with no counterpart on the
+    # other side belongs to both: the Diario printed no Spanish for this paragraph, so the
+    # Spanish side has nothing of its own to put in its place and keeps the Catalan.
+    text = f"{CATALAN}\n\n{UNTRANSLATED}\n\n{SPANISH}"
+    delivered, spanish = split_languages(
+        text, _fake_detect, _clip(CATALAN, UNTRANSLATED),
+        similarity=_fake_similarity).blocks
+
+    assert UNTRANSLATED in delivered.text
+    assert UNTRANSLATED in spanish.text
+    # ...while the pair that IS translated is split, each side in its own block only
+    assert CATALAN in delivered.text and CATALAN not in spanish.text
+    assert SPANISH in spanish.text and SPANISH not in delivered.text
+    # so between them the two blocks account for every paragraph of the document
+    assert not {p for p in text.split("\n\n")} - set(
+        delivered.text.split("\n\n")) - set(spanish.text.split("\n\n"))
+    # and the Spanish block names the language it had to borrow
+    assert spanish.langs == ("es", "ca")
 
 
 def test_a_short_paragraph_does_not_make_a_long_one_its_rendering():
@@ -169,7 +192,11 @@ def test_a_short_paragraph_does_not_make_a_long_one_its_rendering():
     # ...and still in the Spanish side as the Diario prints it
     assert spoken_tail in split.blocks[1].text
     # the real rendering is unaffected
-    assert split.blocks[1].text.startswith("La verdad")
+    assert SPANISH in split.blocks[1].text
+    # and `closing` stands in both blocks: nothing renders it, so the Spanish side has
+    # nothing of its own to put there
+    assert closing in split.blocks[0].text
+    assert closing in split.blocks[1].text
     # ...and the Spanish side is correctly PARTIAL, because `closing` is Catalan that
     # nothing renders. Whole-token overlap used to pair `closing` with the Spanish tail
     # on their shared proper nouns and call the rendering complete; scoring meaning
