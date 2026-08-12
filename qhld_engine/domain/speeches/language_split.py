@@ -131,12 +131,6 @@ COVERAGE_COMPLETE = 0.85
 # speech with a Catalan passage in it (27-30%).
 CO_SHARE_FLOOR = 0.5
 
-# Characters of Spanish a complete rendering runs to, per character of original.
-# Measured on the speeches whose original demonstrably covers its own clip. Used only
-# where `renders` is blind, to guess whether a Basque speech's rendering is partial —
-# n=7 behind the Basque figure, so treat it as provisional.
-RENDERING_RATIO = {"ca": 1.00, "gl": 1.03, "eu": 1.24}
-
 # What share of a block a language needs before it is named among the block's languages.
 # A courtesy line should not make a speech bilingual: greetings sit at or below 3% of the
 # block (726710 opens "Gracias, señor presidente. Eskerrik asko." — 41 of 1,430
@@ -213,7 +207,6 @@ def split_languages(text, detect, duration=None, similarity=None):
         return _decided(co_lang, _single_cut(stripped, text, detect, co_lang),
                     True, detect)
 
-    comparable = True
     rendered_co, rendering_es = _align_renderings(stripped, co_runs, es_runs,
                                                   similarity)
     rendered = sum(co_runs[j][2] - co_runs[j][1] for j in rendered_co)
@@ -222,22 +215,15 @@ def split_languages(text, detect, duration=None, similarity=None):
     # than by selection, because the as-delivered block is the record of what was said:
     # anything the alignment cannot account for belongs in it, including a greeting the
     # detector misreads. Selecting only what is *provably* delivered loses those.
-    #
-    # Only where the score means something, though. Basque shares no vocabulary with
-    # Spanish, so NOTHING matches and "not a rendering" is true of the entire
-    # interpretation — subtracting there would copy the whole Spanish side into the
-    # record of what was said. With no evidence either way, claim none of it.
-    delivered_es = ({i for i in range(len(es_runs)) if i not in rendering_es}
-                    if comparable else set())
+    delivered_es = {i for i in range(len(es_runs)) if i not in rendering_es}
     spoken = co_chars + sum(end - start for i, (_, start, end) in enumerate(es_runs)
                             if i in delivered_es)
 
-    if _renders_whole_speech(comparable, coverage, co_chars, spoken, stripped,
-                             duration, es_runs, co_lang):
+    if _renders_whole_speech(coverage, co_chars, spoken, duration):
         blocks = _rendered_blocks(stripped, co_runs, es_runs, rendered_co, delivered_es,
-                                  co_lang, coverage, comparable)
+                                  co_lang, coverage)
         return _decided(co_lang, blocks, duration is None, detect)
-    if _all_of_it_was_spoken(comparable, coverage, co_chars, spoken, stripped, duration):
+    if _all_of_it_was_spoken(coverage, co_chars, spoken, stripped, duration):
         dominant = _dominant(runs)
         return _decided(dominant, [Block(dominant, text, True)], duration is None,
                         detect)
@@ -249,27 +235,19 @@ def split_languages(text, detect, duration=None, similarity=None):
                     True, detect)
 
 
-def _renders_whole_speech(comparable, coverage, co_chars, spoken, stripped, duration,
-                          es_runs, co_lang):
+def _renders_whole_speech(coverage, co_chars, spoken, duration):
     """Is this a co-official speech with a Spanish rendering of it?"""
-    fits = _fits(spoken, duration)
-    if comparable:
-        return (coverage >= COVERAGE_FLOOR
-                and co_chars / spoken >= CO_SHARE_FLOOR
-                and fits is not False)
-    # Basque: no vocabulary in common, so the clip decides alone. The original alone
-    # accounting for the audio is what makes the Spanish a translation of it.
-    return _fits(co_chars, duration) is True and _fits(len(stripped), duration) is False
+    return (coverage >= COVERAGE_FLOOR
+            and co_chars / spoken >= CO_SHARE_FLOOR
+            and _fits(spoken, duration) is not False)
 
 
-def _all_of_it_was_spoken(comparable, coverage, co_chars, spoken, stripped, duration):
+def _all_of_it_was_spoken(coverage, co_chars, spoken, stripped, duration):
     """Was the whole document delivered — no rendering, just a speech that changed
     language?"""
     if _fits(len(stripped), duration) is False:
         return False
-    if comparable:
-        return coverage < COVERAGE_FLOOR or co_chars / spoken < CO_SHARE_FLOOR
-    return _fits(len(stripped), duration) is True
+    return coverage < COVERAGE_FLOOR or co_chars / spoken < CO_SHARE_FLOOR
 
 
 def _fits(chars, duration):
@@ -282,7 +260,7 @@ def _fits(chars, duration):
 
 
 def _rendered_blocks(stripped, co_runs, es_runs, rendered_co, delivered_es, co_lang,
-                     coverage, comparable):
+                     coverage):
     """The two blocks of a speech that has a rendering.
 
     **Both blocks hold the whole speech**, and each is built by subtracting from it the
@@ -315,25 +293,14 @@ def _rendered_blocks(stripped, co_runs, es_runs, rendered_co, delivered_es, co_l
         (start, end) for i, (_, start, end) in enumerate(co_runs)
         if i not in rendered_co]
     spanish += [span for span in quotations if not _within(span, spanish)]
-    partial = _is_partial(co_runs, es_runs, coverage, comparable, co_lang)
     return [Block(co_lang, _join(stripped, sorted(delivered)), True),
-            Block("es", _join(stripped, sorted(spanish)), False, partial)]
+            Block("es", _join(stripped, sorted(spanish)), False,
+                  coverage < COVERAGE_COMPLETE)]
 
 
 def _within(span, spans):
     start, end = span
     return any(s <= start and end <= e for s, e in spans)
-
-
-def _is_partial(co_runs, es_runs, coverage, comparable, co_lang):
-    if comparable:
-        return coverage < COVERAGE_COMPLETE
-    # Without a usable rendering score, length is the only evidence: a complete rendering
-    # runs to a known multiple of its original, so a much shorter one is missing some.
-    co_chars = sum(end - start for _, start, end in co_runs)
-    es_chars = sum(end - start for _, start, end in es_runs)
-    expected = RENDERING_RATIO.get(co_lang, 1.0) * co_chars
-    return es_chars < 0.8 * expected
 
 
 def _align_renderings(stripped, co_runs, es_runs, similarity):
