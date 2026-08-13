@@ -1221,6 +1221,118 @@
         8,
         9
       ]
+    },
+    {
+      "video_id": "726702",
+      "lang": "eu",
+      "duration": 197.005,
+      "notes": "THE FOURTH SHAPE, and the case that decides how the two readings of a document are ordered. A Spanish speech with three Basque passages, each printed with its Spanish interpretation right after it: [2]->[3], [5]->[6], [8]->[10], and the farewell [9] 'Eskerrik asko.'->[11] 'Gracias.'. [0] is a bilingual greeting given in both languages, [1] [4] [7] are spoken Spanish. Basque is 1,126 of 3,943 characters, so the speech is Spanish and the co-official share of what was spoken is 0.37. The whole document runs at 20.01 c/s, impossible; without the four renderings it is 15.5. The lenient reading leaves an over-claim standing, which shrinks what the speech is measured against until the share reads 0.52 and the speech looks like a Basque original with a translation — which is what the strict reading is preferred to avoid.",
+      "paragraphs": [
+        "Gracias, presidente. Eskerrik asko, presidentea.",
+        "Hoy debatimos una moción presentada por el BNG para la protección de las personas trabajadoras afectadas de silicosis, moción, por cierto, que fue prácticamente debatida en términos bastante similares a través de una PNL en comisión presentada en marzo de 2017, que fue debatida un año después, es decir, en abril de 2018, y que fue apoyada por la mayoría de los grupos parlamentarios. Es una moción, desde luego, para tomar conciencia de lo que supone esta enfermedad, que está vinculada a sectores de la pizarra y el granito, pero también de la minería, y cuyo objetivo, por un lado, es que se reconozca de forma general la incapacidad permanente de las personas trabajadoras diagnosticadas con silicosis de primer grado - incapacidad, por cierto, que ha sido reconocida por distintas sentencias judiciales- y, por otro, la revisión de los coeficientes reductores de jubilación para equiparar la categoría de la minería a cielo abierto con la minería de interior.",
+        "Mozio hau silikosiaren gaixotasunak dakarrenaz jabetzeko da. Mozio honek, alde batetik, lehen mailako silikosia diagnostikatutako langileei ezintasun iraunkorra modu orokorrean aitortzeko eskatzen dau. Epai judizial batzuek aitortutako ezintasuna, hain zuzen be. Eta, bestetik, erretirorako koefiziente murriztailea berrikustea eskatzen dau. Aire zabaleko meatzaritzaren kategoria barne meatzaritzakoarekin parekatzeko.",
+        "Esta moción es para tratar sobre las consecuencias de la enfermedad de la silicosis, para reconocer la incapacidad, en módulo general, a los afectados por silicosis y, por otra parte, también para que se revise el coeficiente reductor del retiro.",
+        "A mí me gustaría señalar, al hilo de esta moción además, que este tipo de enfermedades señaladas, que son muy concretas, deberían ser encuadradas en la necesidad de que exista una regulación de las enfermedades profesionales, así como de su prejubilación. La silicosis, además, es un supuesto especial, pero también hay que decir que con medidas protectoras no tendrían por qué producirse estos efectos, cosa que en la minería parece inevitable.",
+        "Ezin gara ibili beti kasu edo patologia partikular bakoitzaren abstrakzioa egiten, azterketa global eta zehatz bat egin beharko genuke, lanaren gaitasuna edo indar murrizten daben patologiak edo jarduerak zeintzuk dirazen zehaztu ahal izateko, gero irtenbide zehatzak aplikatzeko. Gainera, uste dot Toledoko Itunaren gobernuari dei egin jakola azterketa eta araudi horretan aurrera egiteko.",
+        "No podemos estar siempre haciendo una fracción de casos particulares, hay que hacer un estudio global y concreto. Hay que estudiar las patologías que reducen la capacidad laboral y definirlas para luego proponer soluciones concretas. Además, creo que se ha hecho un llamamiento al Gobierno en el Pacto de Toledo para que avance en ese estudio.",
+        "Conocemos que se está trabajando en una enmienda transaccional y vamos a esperar para fijar nuestra posición. Pero sí me gustaría al menos emplazar al Gobierno para que dé los pasos necesarios, a la mayor brevedad posible, para ayudar a este colectivo, tal y como han anunciado precisamente en la Mesa de Diálogo Social, donde precisamente se va a regular el procedimiento de los coeficientes reductores de la jubilación en actividades peligrosas.",
+        "Uste dot zuzenketa transakzional bat lantzen ari zartela eta, beraz, EAJ-PNVren jarrera finkatzeko itxarongo dugu. Baina, era beran, be bai gobernuari dei egin gura deutsat benetan kolektibo horri laguntzeko behar diren neurriak edo urratsak emon ditzan, elkarrizketa sozialerako mahaian esan daben lez.",
+        "Eskerrik asko.",
+        "Creo que se está elaborando una enmienda transaccional y, por tanto, esperaremos para el posicionamiento del PNV. En la misma medida, queremos hacer un llamamiento al Gobierno para que apoye a ese colectivo adoptando las medidas necesarias, tal y como se ha dicho en la Mesa de Diálogo Social.",
+        "Gracias."
+      ],
+      "pairs": [
+        [
+          2,
+          3
+        ],
+        [
+          5,
+          6
+        ],
+        [
+          8,
+          10
+        ],
+        [
+          9,
+          11
+        ]
+      ],
+      "renderings": [
+        3,
+        6,
+        10,
+        11
+      ]
+    },
+    {
+      "video_id": "730547",
+      "lang": "eu",
+      "duration": 321.038,
+      "notes": "THE FOURTH SHAPE. Opens in Basque ([0] greeting, [1], [2]), which the Diario prints again in Spanish ([3], [4], [5] — [5] carries the rendering of [2] and runs on, as the interpreter re-paragraphs freely), then spoken Spanish [6] [7], then a Basque close [8] rendered by [9] ('Eta amaitzen dut, hasieran esan bezala' -> 'Voy acabando. Como ya he dicho al principio'). [10] 'Muchas gracias.' is left OUT of the renderings on purpose: no Basque farewell precedes it, so it is the speaker's own and the conservative reading keeps it in the record. Basque is 2,058 of 6,677 characters; the document runs at 20.80 c/s and 14.4 without the renderings.",
+      "paragraphs": [
+        "Arratsalde on, berriro.",
+        "Euskadin 2020 urtean egindako inkesta batean lau pertsonetatik batek nahi ez den bakardadea sufritzen zuela aitortzen zuen. Pandemiako urtea zen eta, hala ere, datuok ez dira hobetu urteetan. Nahi ez den bakardadeak eragiten dituen ondorioak garrantzia handikoak dira eta administrazio publikoek, gizarte zibilarekin lankidetzan, egoera honi aurre egiteko neurriak hartu behar dituzte. Hau esanda, legez besteko proposamen honek eskaera zuzen bat egiten dio estatuko gobernuari: politika publikoak bultzatzea eta estrategia nazional baten bitartez ekimenak koordinatzea. Eta eskaera honekin bi gauza agerian gelditzen dira gure ustetan. Hasteko, eta esaten ez bada ere, inplizituki estatuak gaiaren inguruan ofizialki behintzat ezer egin ez duela aitortzea suposatzen du, akaso konpetentziarik ez duelako.",
+        "Eta, bestetik, legez besteko proposamena sinatzen duen Alderdi Sozialistak ez du kontutan hartzen, nahiz eta bere testuan idazten duen, erkidego autonimokoek edota, Euskadiren kasuan, foru aldundiek eta zenbait udalek, eta beren eskumenen markoaren arabera, nahi ez den bakardadearen inguruan badutela plan edota estrategia bat. Eta hau auzolanean eta komunitate ikuspegiarekin gizarte politika jakin bat garatzen dutela, hirugarren sektorearekin lankidetzan beti. Zeren esaten bada ere «ya se han puesto en marcha numerosoas iniciativas» eta «las administraciones publicas deben seguir impulsando desde los diferentes ámbitos medidas que tengan finalidad de prevenir, detectar, acompañar y sensibilizar en relación con la soledad no deseada», jarraian, baieztapen horiek ahaztu eta estatuko gobernuari gai koordinatu dezala eskatzen zaio.",
+        "Buenas tardes de nuevo.",
+        "En una encuesta realizada en Euskadi en el año 2020 se vio que una de cada cuatro personas sufría soledad no deseada. Entonces estábamos en plena pandemia, pero los datos no han mejorado. La soledad no deseada provoca consecuencias de gran envergadura y por eso es necesario que las administraciones públicas colaboren con la sociedad civil para hacer frente a esa situación.",
+        "Dicho esto, esta proposición no de ley hace una interpelación directa al Gobierno del Estado, y es la siguiente: impulsar políticas públicas y coordinar iniciativas a través de una estrategia nacional. Con esta interpelación creemos que quedan claras dos cuestiones: la primera es que, aunque no se diga, se viene a reconocer que el Estado, por lo menos a nivel oficial, no ha hecho nada respecto de este tema, quizás porque no tiene competencias, y, por otra parte, en segundo lugar, el Partido Socialista, como firmante de esta proposición no de ley, no toma en consideración, aunque sí aparece en el texto, que las comunidades autónomas, y, en el caso de Euskadi, las diputaciones forales y los ayuntamientos, sí cuentan con un plan o una estrategia en torno a la soledad no deseada, y todo ello en el marco de sus competencias. Por su parte, la estrategia que ustedes impulsan está basada en el trabajo colaborativo y un punto de vista comunitario para desarrollar una política social concreta, trabajando codo con codo con el tercer sector. Y es que, si bien el texto dice que las administraciones públicas deben seguir impulsando desde los diferentes ámbitos medidas que tengan la finalidad de prevenir, detectar, acompañar y sensibilizar en relación con la soledad no deseada, a continuación se pide al Gobierno del Estado que coordine este tema.",
+        "Coordinar con las comunidades autónomas en el ámbito de sus competencias es a lo que insta esta proposición no de ley al Gobierno del Estado. Pero ¿en qué ámbito respecto de las competencias de las comunidades autónomas es el Gobierno del Estado quien tiene que coordinar? Y, por otro lado, ¿coordinar lo que estas ya hacen? Evidentemente, como viene siendo habitual, para ello se propone la elaboración de una estrategia nacional que coordine las acciones correspondientes. Y si no es una estrategia nacional, es un plan estatal, que establece principios y acciones que tienen que desarrollar otras administraciones, es decir, que quien no tiene la competencia dice a quien sí la tiene, e incluso puede que ya tenga una estrategia propia, lo que tiene que hacer y cómo lo tiene que hacer. Un ejemplo de lo absurdo es la petición que se formula al Gobierno del Estado para que - eso sí, en coordinación con las comunidades autónomas- promueva los grupos de apoyo mutuo y las iniciativas comunitarias para la prevención de la soledad no deseada. Además de no tener marco competencial cabal esta petición, es poco realista. Queda muy bien sobre el papel, pero no obedece a la realidad y difícilmente, tal y como está planteada, va a conseguir cumplir con los objetivos que pretende, con los que sí estamos de acuerdo. Y ustedes dicen que pasemos a la acción, como si antes de que ustedes plantearan el pasar a la acción no hubiera Administración y tercer sector social trabajando en ello.",
+        "En cualquier caso, creemos que toda estrategia tiene que estar basada en la evidencia y ser realista en su aplicabilidad, al tiempo que ha de tener en cuenta lo que ya hacen otras administraciones y el tercer sector. Ha de ser una estrategia que aborde las soledades desde un enfoque integral y en la que la comunidad tenga un papel determinante, con redes de apoyo en las que participen entidades públicas y el tercer sector, es decir, desde lo comunitario, lo local, la cercanía, donde se tiene en cuenta todo el proceso de vida, aunque centrado en las personas mayores, pero sin obviar a los niños y niñas, a los jóvenes y todos los grupos de edad, cada uno con sus especificidades y necesidades; también teniendo en cuenta la equidad en el acceso a los recursos que se pongan a disposición y desde un enfoque de género, y, por último, con la implicación del conjunto de la sociedad. Y todo ello lo tiene que hacer quien tiene la competencia en la materia, ya que, si no, como he dicho antes, solamente será un documento lleno de buenas intenciones.",
+        "Eta amaitzen dut, hasieran esan bezala, administrazio publikoetatik nahi ez den bakardadeari aurre egiteko lan egin behar dela esaten. Estrategiak diseinatu eta garatu behar direla, bai, baina, hauek operatiboak izan daitezen, konpetentzia duten instituzioek egin behar duten lana da hau. Bestela, paperetan idatzita gelditzen diren asmoak izango dira, baina besterik ez, asmoak. Mila esker.",
+        "Voy acabando. Como ya he dicho al principio, las Administraciones públicas deben trabajar para hacer frente a la soledad no deseada. Se deben diseñar y desarrollar estrategias, pero que estas sean operativas es un deber de las instituciones competentes. Si no, todo ello quedará en papel mojado.",
+        "Muchas gracias."
+      ],
+      "pairs": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          4
+        ],
+        [
+          2,
+          5
+        ],
+        [
+          8,
+          9
+        ]
+      ],
+      "renderings": [
+        3,
+        4,
+        5,
+        9
+      ]
+    },
+    {
+      "video_id": "776200",
+      "lang": "ca",
+      "duration": 310.032,
+      "notes": "THE FOURTH SHAPE, and the hardest of them: only ONE of the two Catalan paragraphs is rendered. [2] is Catalan ('jo soc diputada de Compromís') and [3] renders it ('yo soy diputada de Compromís'); [1] is Catalan that nobody translated, and [4]-[7] are spoken Spanish. The trap is that the language vote reads [2] as Spanish (es 971 against ca 436) and contests it at 0.31, while the alignment claims it as the rendering of the Catalan run [0]+[1] before it — so the spoken Catalan leaves the record of what was said and the real rendering stays in it. A paragraph disputed by a language cannot be the rendering of that same language. Document 19.10 c/s, 17.4 without [3].",
+      "paragraphs": [
+        "Gràcies, president.",
+        "Senyor Sánchez, jo avui vull posar-me ací en la pell, ja no d’una persona que siga votant del Partit Socialista, sinó de qualsevol persona que siga progressista. I només em ve al cap una paraula: decepció. Decepció perquè en els últims anys hem vist dos secretaris d’organització del seu partit, un d’ells també exministre, implicats en casos de corrupció. I ara també veiem un expresident com Zapatero en eixa fina línia entre la falta d’ètica política i la corrupció política. Decepció perquè, davant d’açò que està passant, no hi ha una reacció contundent per part de vosté, ni hi ha explicacions convincents. Senyor president, vosté ha tardat a comparéixer quatre setmanes, des que li ho vam demanar diferents grups parlamentaris. I jo esperava que estes quatre setmanes hagueren servit perquè vosté haguera donat explicacions més profundes sobre tot el que ha passat i també sobre el full de ruta dels pròxims mesos. I no ho ha fet, senyor president, no ho ha fet, no ho fa mai. Porta tres anys sense aplicar les mesures anticorrupció que va explicant.",
+        "I miren, senyories del Partit Socialista, jo soc diputada de Compromís. De veres volen explicar-nos a nosaltres què és la persecució judicial? Ho sabem massa bé. I és que no tot és lawfare, senyor president, no es pot amagar darrere del lawfare, perquè tot no és lawfare. I soc valenciana també, i tinc claríssim que el Partit Popular és la pura imatge de la hipocresia, perquè són el partit més corrupte d’Europa. Però, compte amb açò, perquè la ciutadania no es conformarà en un «y tú más», que és el que estan fent vostés tota l’estona. … solo me viene una palabra a la cabeza: decepción. Porque hemos visto a dos secretarios de Organización de su partido - uno de ellos también exministro- implicados en casos de corrupción y ahora vemos también a un expresidente como Zapatero en esa fina línea entre la falta de ética política y la corrupción política. Decepción, porque, ante lo que está pasando, no hay una reacción contundente por parte de usted ni hay explicaciones convincentes, señor presidente. Usted ha tardado en comparecer cuatro semanas desde que lo pedimos varios grupos parlamentarios. Y yo esperaba que estas cuatro semanas hubieran servido para que usted hubiera dado explicaciones más profundas sobre todo lo que ha pasado y también sobre la hoja de ruta de los próximos meses, pero no lo ha hecho, señor presidente. No lo ha hecho, no lo hace nunca. Lleva tres años sin aplicar las medidas anticorrupción que va explicando.",
+        "Señorías del Grupo Socialista, yo soy diputada de Compromís. ¿De verdad quieren explicarnos a nosotros qué es la persecución judicial? Lo sabemos demasiado bien. Y es que no todo es lawfare, señor presidente. No se puede ocultar detrás del lawfare porque no todo es lawfare. Y soy valenciana también y tengo clarísimo que el Partido Popular es la pura imagen de la hipocresía, porque es el partido más corrupto de Europa. Pero la ciudadanía no va a conformarse con el «y tú más», que es lo que están haciendo ustedes todo el rato.",
+        "Está claro que oír hoy aquí al señor Feijóo dar lecciones de moralidad y de ética pública a mí, personalmente, me produce náuseas. Señor Feijóo, usted, que mantiene a Carlos Mazón como diputado mientras se ríe de las víctimas de la dana, ¿viene aquí a hablarnos de ética pública? ¿Eso no es corrupción moral? Señor Feijóo, señorías del Grupo Popular, ustedes, que son el partido de Zaplana (el señor De los Santos González: ¡Y usted de Oltra!), de Fabra, de Camps, de Rus, de Blasco, de la Gürtel, de la Púnica, de la Kitchen; ustedes, que robaron el dinero de la visita del papa en Valencia ; ustedes, que robaron el dinero de la cooperación internacional; ustedes, que contaban billetes de mil en mil (protestas.-Aplausos), ¿vienen aquí a dar lecciones? ¿Lecciones de qué? (El señor Ibáñez Hernando junta y separa repetidamente los dedos de la mano imitando el movimiento de una boca que se abre y se cierra). ¿Lecciones de qué nos van a dar?",
+        "Hoy, las señorías del Grupo Popular han vuelto a pedir elecciones generales. A mí no me sorprende, porque llevan haciéndolo toda la legislatura. Sin embargo, por lo que sea, todo lo que sirve aquí no sirve en Valencia. ¿Por qué no lo aplican en Valencia? ¡Convoquen elecciones en Valencia! ¡Convóquenlas! ¡Sean valientes! ¡Convoquen elecciones en Valencia! ¿Por qué no lo hacen? No se atreven después de las barbaridades de Mazón y del maltrato de Llorca a los profesores valencianos. ¡No se atreven! ¡Atrévanse a convocar elecciones en Valencia, señorías del Grupo Popular, que son unos hipócritas! (La señora presidenta ocupa la Presidencia).",
+        "Los valencianos y las valencianas, señorías del Grupo Socialista, sabemos muy bien - ya lo he dicho- que el Partido Popular es el partido más corrupto de Europa. Lo sabemos, pero, señor Sánchez, le digo de nuevo que nadie va a aceptar que usted lo intente tapar con el «y tú más». No puede tapar condenas gravísimas de corrupción de su Gobierno, fontaneras pilladas mediando para que no le salpique al Partido Socialista y joyas de más de un millón de euros que un expresidente no sabe explicar ni por qué las tiene. Esto no puede ser. Usted ha dicho exactamente hace un rato: ¿cómo no vamos a continuar? Y yo le pregunto: ¿para qué vamos a continuar? ¿Para qué quieren continuar? Porque su objetivo no puede ser aguantar por aguantar; su objetivo debería ser que cada día que están ustedes en la Moncloa sirvan para mejorar la vida de la gente. Tienen que frenar ya la especulación con la vivienda, reformar el sistema de financiación autonómico y compensarnos a las valencianas y a los valencianos y llevar a cabo todas las medidas anticorrupción que anunció hace un año y que no llegan.",
+        "Acabo, presidenta. ¿Cómo no vamos a continuar?, dice usted. No hay que continuar, señor presidente, hay que reaccionar, aunque quizás - y lamentablemente- ya sea demasiado tarde."
+      ],
+      "pairs": [
+        [
+          2,
+          3
+        ]
+      ],
+      "renderings": [
+        3
+      ]
     }
   ]
 }
