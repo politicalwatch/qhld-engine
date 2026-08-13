@@ -849,7 +849,7 @@
       "video_id": "750415",
       "lang": "eu",
       "duration": 844.005,
-      "notes": "One Basque paragraph [4] rendered by [5] (ratio 0.91); [1]-[3] and [6]-[15] are spoken Spanish — thirteen genuine negatives. Whole text 13.95 c/s and delivered 13.41: duration cannot see this one at all.",
+      "notes": "Two Basque passages, each printed with its Spanish interpretation: [4] rendered by [5] (ratio 0.91), and the close [17]+[18] rendered by [19]+[20]+[21] — the last of these three is 'Muchas gracias.' answering 'Eskerrik asko.', and it is the one judgement call in this entry. RELABELLED 2026-08-12: the closing three were missing, and the entry recorded [6]-[15] as spoken Spanish while stopping short of the tail. Read from the source: [17] ends 'Amaitu gura dut ... printzipio demokratikoak beti', which is [20] 'Me gustaría concluir con lo que para mí es lo más importante ... los principios democráticos', and 'estatu gutxiago, Europa gehiago' is [19]'s closing 'Más Europa y menos Estado'. [1]-[3] and [6]-[16] are spoken Spanish — fourteen genuine negatives. Whole text 13.95 c/s and delivered 12.71: duration cannot see this one at all.",
       "paragraphs": [
         "Egun on. Buenos días.",
         "Un resort en Gaza. Sonó chocante. Debería sonar terrible y no deberíamos dejarlo pasar, más si lo unimos ahora al anuncio por parte del Gobierno israelí de la creación de una agencia para el desplazamiento voluntario de los palestinos. Suena a lo que parece que va a ser, un desplazamiento masivo de población y, en ese sentido, sí que es un genocidio. ¿No hemos vivido horrores suficientes? ¿No los ha vivido el pueblo judío en sus propias carnes? Porque lo que está haciendo Israel no lo justifica ni el terrible atentado de Hamás ni tampoco todos los sufrimientos padecidos durante la Segunda Guerra Mundial. Hay principios, hay valores sobre los que se suponía que también se había construido el Estado de Israel. Y les debería hacer reflexionar que los herederos del Eje sean quienes defienden ahora su postura, en esta Cámara, evidentemente, VOX, por ejemplo. ¿Dónde quedan los principios morales y democráticos a los que nos afirmamos todos tras la Segunda Guerra Mundial y sobre los que construimos este mundo que ahora está llegando a su fin, pero que ha mantenido una paz bastante estable, desde luego sí en Europa, durante tantos años? Europa tiene que recuperar su prestigio y su influencia en el sur global. Y, en ese sentido, España se juega mucho, porque está junto a ese sur. Nos jugamos mucho en seguridad y esa credibilidad pasa por actuar con idéntico rasero.",
@@ -878,10 +878,25 @@
         [
           4,
           5
+        ],
+        [
+          17,
+          19
+        ],
+        [
+          17,
+          20
+        ],
+        [
+          18,
+          21
         ]
       ],
       "renderings": [
-        5
+        5,
+        19,
+        20,
+        21
       ]
     },
     {
