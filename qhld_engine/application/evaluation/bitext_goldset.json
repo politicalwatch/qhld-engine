@@ -1,5 +1,5 @@
 {
-  "policy": "Hand-labelled gold for deciding which paragraphs of a co-official speech are a Spanish RENDERING of the original and which were SPOKEN. Labelled 2026-08-11.\n\nLABELLING RULE, and it is the whole point of this asset: every label was made by reading the SOURCE document — the text the segmenter hands to split_languages — and nothing else. Not stored blocks, not a previous extraction, not a previous label, not a summary. Re-joining stored blocks does NOT reproduce the document: option B deliberately copies delivered Spanish into the as-delivered block, so a re-joined document contains some paragraphs twice. Two labels that had been carried in project notes for weeks ('760011 and 738994 are code-mixed with NO rendering') were refuted by reading the documents, and had already been used to reject a classifier rule.\n\n`pairs` are (original paragraph, Spanish paragraph) that render each other; one Spanish paragraph may render two originals, and one original may be rendered by two Spanish paragraphs. `renderings` lists every paragraph that was NEVER SPOKEN — this is the product-level truth, since the as-delivered block is the document minus exactly these, and it is complete even where `pairs` is deliberately partial.\n\nSCORING RULE: a paragraph listed in `renderings` but absent from `pairs` is NEITHER a positive NOR a negative. It is a rendering the labeller could not confidently pair (a re-paragraphed Spanish side, or one glued to the tail of another paragraph). Counting it as a negative measures the labeller's caution rather than the instrument — doing so understated Galician by 0.114.",
+  "policy": "Hand-labelled gold for deciding which paragraphs of a co-official speech are a Spanish RENDERING of the original and which were SPOKEN. Labelled 2026-08-11.\n\nLABELLING RULE, and it is the whole point of this asset: every label was made by reading the SOURCE document — the text the segmenter hands to split_languages — and nothing else. Not stored blocks, not a previous extraction, not a previous label, not a summary. Re-joining stored blocks does NOT reproduce the document: option B deliberately copies delivered Spanish into the as-delivered block, so a re-joined document contains some paragraphs twice. Two labels that had been carried in project notes for weeks ('760011 and 738994 are code-mixed with NO rendering') were refuted by reading the documents, and had already been used to reject a classifier rule.\n\n`pairs` are (original paragraph, Spanish paragraph) that render each other; one Spanish paragraph may render two originals, and one original may be rendered by two Spanish paragraphs. `renderings` lists every paragraph that was NEVER SPOKEN — this is the product-level truth, since the as-delivered block is the document minus exactly these, and it is complete even where `pairs` is deliberately partial.\n\nSCORING RULE: a paragraph listed in `renderings` but absent from `pairs` is NEITHER a positive NOR a negative. It is a rendering the labeller could not confidently pair (a re-paragraphed Spanish side, or one glued to the tail of another paragraph). Counting it as a negative measures the labeller's caution rather than the instrument — doing so understated Galician by 0.114.\n\nEXTENDED 2026-08-13 for board item 8b (the absorbed-paragraph defect), same rule: 737667, 741155 and 758710 were labelled by reading their Diario and were each checked against the clip. They exist to pin a defect the earlier set covered only in Basque — a paragraph under MIN_VOTING_CHARS has no language of its own, is folded into a neighbouring run, and leaves whichever block that run leaves. 741155 covers both directions at once. ANCHOR ON THE LONGEST PARAGRAPH when locating a speech in a Diario, never on the opening line: 758710's speaker opens an earlier unrelated turn in the same sitting with the same words.",
   "speeches": [
     {
       "video_id": "726204",
@@ -1332,6 +1332,207 @@
       ],
       "renderings": [
         3
+      ]
+    },
+    {
+      "video_id": "737667",
+      "lang": "gl",
+      "duration": 195.0,
+      "notes": "Added 2026-08-13 for board item 8b. Pins the ABSORBED-PARAGRAPH defect in Galician with real content rather than boilerplate: [5] 'Evidentemente, votaremos en contra. Moito obrigado.' is 51 chars, so it is under MIN_VOTING_CHARS and has no language of its own; it reads weakly as Spanish, joins the Spanish run that follows, and that run is a rendering — so the classifier subtracts spoken Galician words from the as-delivered block. Diario DSCD-15-PL-60 confirms the whole Galician turn runs [0]-[5] and the Spanish translation [6]-[9]. Clip: delivered [0]-[5] is 2,010 c over 195 s = 10.3 c/s (feasible); the stored as-delivered block is 1,957 c, i.e. exactly 2,010 minus [5] and its separator. [5,8] is the truncated 'Y votaremos...' the chair cut off; [5,9] is 'Moito obrigado.' -> 'Muchas gracias.'",
+      "paragraphs": [
+        "Grazas, presidenta. Nun minuto.",
+        "Señoras e señores do Partido Popular, hipócritas e con exixencias democráticas selectivas sempre en función do que interese ó amigo americano. Non condenaron aínda o xenocidio do sionismo en Gaza, máis de 40 000 mortes. Non vin que criticasen a brutal represión de Milei contra os traballadores e traballadoras que protestan polas consecuencias das políticas ultraliberais na Arxentina. Non condenaron o golpe de Estado en Bolivia contra Evo Morales. E non lles preocupa, evidentemente, que Macron roubase a vontade popular en Francia nomeando un primeiro ministro de dereitas, a pesar de ter gañado a esquerda as eleccións.",
+        "Por que tan selectivos? Porque para vostedes a cuestión non é nin de democracia nin de dereitos humanos, senón de intereses xeoestratéxicos. Quen ten as maiores reservas de petróleo do mundo? Venezuela, que casualidade. Por menos, os Estados Unidos armaron campañas tachando gobernantes de ditadores, iniciaron guerras, invadiron países e mataron millóns de persoas. Lembran Iraq e a complicidade nesa guerra do Goberno do Partido Popular?",
+        "Agora queren recoñecer presidente o candidato da ultradereita apoiándose só en datos dunha web da propia oposición con actas que, en casos, se demostraron falsificadas e que se negou a entregar ó Tribunal Superior de Xustiza como fixeron outros candidatos. Ben, xa antes recoñeceran a Guaidó como presidente sen sequera terse presentado ás eleccións presidenciais. Velaí a súa coherencia democrática.",
+        "Nós podemos discrepar de como se conducen os procesos políticos en determinados países, podemos estar moi distantes ideoloxicamente de moitos Estados, porque nin fomos nin somos nin seremos nunca confesionais de ningún país. Acabo. Mais, a diferenza de vostedes, sempre defenderemos a soberanía dos pobos fronte ás políticas inxerencistas do imperialismo norteamericano, aquilo de que ás veces para saber onde estar chega con observar quen está en fronte.",
+        "Evidentemente, votaremos en contra. Moito obrigado.",
+        "Gracias, presidenta. En un minuto.",
+        "Señoras y señores del Partido Popular, hipócritas y con exigencias democráticas selectivas, siempre en función de lo que le interesa al amigo americano. No condenaron todavía el genocidio de sionismo en Gaza, con más de cuarenta mil muertes. No he visto que criticasen la brutal represión de Milei contra los trabajadores y las trabajadoras que protestan por las consecuencias de las políticas ultraliberales en Argentina. No habéis condenado el golpe de Estado en Bolivia contra Evo Morales. Y no les preocupa tampoco, evidentemente, que Macron robase la voluntad popular en Francia nombrando un primer ministro de derechas, a pesar de haber ganado la izquierda las elecciones. ¿Por qué tan selectivos? Pues porque para ustedes la cuestión no es ni de democracia ni de derechos humanos, sino de intereses geoestratégicos. ¿Quién tiene las mayores reservas de petróleo en el mundo? Venezuela. ¡Qué casualidad! Por lo menos, los Estados Unidos organizaron campañas tachando a gobernantes de dictadores, iniciaron guerras, invadieron países y mataron a millones de personas. ¿Recordáis Irak y la complicidad en esa guerra del Gobierno del PP? Ahora queréis reconocer como presidente al candidato de la ultraderecha apoyándose solo en datos de una web de la propia oposición, con actas que se demostraron eran falsificadas y que se negaron a entregar al Tribunal Superior de Justicia, como lo hicieron los demás candidatos. Pues antes ya habéis reconocido a Guaidó como presidente, aunque no se había presentado a las elecciones presidenciales. Esta es vuestra coherencia democrática.",
+        "Pues podemos discrepar de cómo se conducen los procesos políticos en algunos países. Podemos estar distantes ideológicamente de muchos Estados, porque ni fuimos ni somos ni seremos nunca concesionarios de ningún país, pero, a diferencia de ustedes, siempre defenderemos la soberanía de los pueblos frente a las políticas injerencistas del imperialismo norteamericano. Muchas veces basta con saber dónde estamos cuando vemos quién tenemos en frente. Y votaremos...",
+        "Muchas gracias. (Rumores y protestas)."
+      ],
+      "pairs": [
+        [
+          0,
+          6
+        ],
+        [
+          1,
+          7
+        ],
+        [
+          2,
+          7
+        ],
+        [
+          3,
+          7
+        ],
+        [
+          4,
+          8
+        ],
+        [
+          5,
+          8
+        ],
+        [
+          5,
+          9
+        ]
+      ],
+      "renderings": [
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "video_id": "741155",
+      "lang": "ca",
+      "duration": 343.011,
+      "notes": "Added 2026-08-13 for board item 8b. The only gold speech exercising BOTH directions of the absorbed-paragraph defect. Diario DSCD-15-PL-... confirms the turn opens 'Molt bona tarda a totes i a tots. Muy buenas tardes a todas y a todos.' — a BILINGUAL greeting, both halves spoken, so [1] is NOT a rendering of [0]; it is absorbed into the Catalan run and goes missing from the SPANISH block. [11] 'Moltes gràcies.' is spoken and rendered by [16] 'Gracias.', but is absorbed into the Spanish run and goes missing from the AS-DELIVERED block. [2] is a Spanish quotation of the motion, spoken once and printed once. The Spanish translation starts at the equivalent of [3] — the greeting and the quotation are not re-rendered. Clip: delivered [0]-[11] is 4,522 c over 343 s = 13.2 c/s, on the delivery median; the stored as-delivered block is 4,503 c, i.e. missing [11].",
+      "paragraphs": [
+        "Molt bona tarda a totes i a tots.",
+        "Muy buenas tardes a todas y a todos.",
+        "«El sector primario es un sector estratégico para España, dada su importancia económica y social».",
+        "Així, amb aquesta rotunda afirmació comença aquesta proposició no de llei. Una afirmació que nosaltres no només compartim - que no serveixi de precedent- amb la gent de VOX, sinó que a més reafirmem. De fet, estic convençuda que absolutament totes i tots, tots els grups polítics en aquest arc parlamentari, subscrivim també aquesta afirmació amb totes les seves lletres.",
+        "Però malgrat ser un sector estratègic, avui, avui el sector primari pateix i pateix molt: preu de venda sota preus de producció, encariment del preu de les matèries primes, competència deslleial, afectacions desiguals segons la mida de les explotacions, manca de relleu generacional, burocràcia desproporcionada, poca - poca, per no dir nul·la- empatia a l’hora d’aplicar les polítiques ambientals i també a l’hora d’articular períodes de transició perquè el sector s’hi pugui adaptar bé, menysteniment del col·lectiu durant dècades i dècades, un sistema d’assegurances agràries estatal, caduc, pervers i que en cap cas s’adapta a la realitat del mercat ni al sistema en sí mateix, però tampoc s’adapta a les tarifes. Una política agrària comuna uniforme.",
+        "En definitiva, una PAC que just ara que fa un any de la seva aplicació, des del grup republicà, constatem una vegada més allò que ja vàrem dir en el seu moment: que s’ha perdut una oportunitat, l’oportunitat d’apropar se al sector. I això, entre altres coses, només es podia fer regionalitzant aquesta mateixa política agrària adaptant-la a cada territori.",
+        "I la gran pregunta és: S’imaginen que el sector primari, que el campo español que diu VOX, no fos un sector estratègic? Perquè tot això està passant i constatem en aquest hemicicle que aquest és un sector absolutament estratègic. S’imaginen totes i tots vostès que la pagesia, que la ramaderia, que són qui abasteixen d’aliments i de matèries bàsiques per al desenvolupament de l’activitat socioeconòmica, tal i com es va evidenciar, per exemple, durant la pandèmia no fos un sector estratègic? S’imaginen totes i tots vostès un país desenvolupat, capaç de desatendre el seu sector proveïdor d’aliments?",
+        "Doncs bé, si tothom té claríssim que el sector primari és un sector estratègic, per què els nostres pagesos i els nostres ramaders i ramaderes avui no es guanyen encara la vida? Doncs els hi diré jo, per què. Perquè no hi ha cap política que es faci a favor seu. De veritat, diputades i diputats de l’extrema dreta espanyola que creuen de debò que revertir la situació alarmant que viu el sector primari es soluciona amb una proposició no de llei, llençol, de nou punts i atiant foguerades arreu, negant les evidències de l’escalfament global? Així solucionarem el problema del sector primari? Doncs els hi diré jo: Així, no.",
+        "Com es soluciona la problemàtica? Doncs es soluciona creient de veritat que sí, que aquest és un sector estratègic. Que es soluciona posant damunt d’aquest faristol una proposició de llei per reformar i fer útil la llei de la cadena alimentària. I això avui només ho ha fet Esquerra Republicana de Catalunya. Una proposició de llei avui admesa a tràmit i també presa en consideració. Què esperem per debatre-la? Es soluciona deixant d’estar supeditats als interessos de la gran indústria i de la gran distribució. Qui s’atreveix a plantar cara a la gran indústria i a la gran distribució? De bancada a bancada, diguin-m’ho vostès. Es soluciona abordant amb valentia la venda a pèrdues. Es soluciona definint amb claredat els estàndards de costos de producció. S’ha de ser valent, eh?, això sí, i encarar-se als de sempre.",
+        "Es soluciona votant en contra a la Unió Europea els acords de lliure comerç que generen competència deslleial. Es soluciona fent polítiques per a petites i mitjanes produccions, per als qui preserven el territori i no fent polítiques pels terratinents que volen assemblar-se a la duquessa de Alba. Es soluciona fent compatibles les polítiques conservacionistes amb les polítiques productivistes. Es soluciona, en definitiva, adaptant a la realitat climàtica, el sistema d’assegurances agràries i dotant-la també de més recursos.",
+        "En definitiva, senyories de VOX, no serveix de res repetir textos que ja presenten en una comissió d’agricultura per fer veure que els importa molt el campo español. Es soluciona deixant de fer proclames i fent polítiques, sobretot fent polítiques valentes.",
+        "Moltes gràcies.",
+        "Así, con esta afirmación rotunda, empieza esta proposición no de ley; una afirmación que nosotros no solo compartimos ―que no sirva de precedente― con la gente de VOX, sino que, además, lo reafirmamos. Además, estoy convencida de que absolutamente todos los grupos políticos de este arco parlamentario suscribimos también esa afirmación con todas sus letras.",
+        "Pero, a pesar de ser un sector estratégico, hoy el sector primario sufre, y sufre mucho: precios de venta sobre precios de producción; encarecimiento del precio de las materias primas; competencia desleal; afectaciones desiguales según la medida de las explotaciones; falta de relevo generacional; burocracia desproporcionada; poca, por no decir nula empatía a la hora de aplicar las políticas ambientales y de articular periodos de transición para que el sector se pueda adaptar bien; se menosprecia al colectivo durante décadas y décadas; un sistema de seguros agrícolas estatal caduco, perverso y que en ningún caso se adapta a la realidad del mercado ni al sistema en sí mismo, pero que tampoco se adapta a las tarifas; una política agraria común uniforme, en definitiva, una PAC que, justo ahora que hace un año de su aplicación, desde el Grupo Republicano constatamos una vez más lo que ya dijimos en su día, que se ha perdido una oportunidad, la oportunidad de acercarse al sector, y eso, entre otras cosas, solo se podía hacer racionalizando esa misma política agraria, adaptándola a cada territorio.",
+        "Y la gran pregunta es: ¿se imaginan que el sector primario ―el campo español, como lo llama VOX― no fuera un sector estratégico? Porque todo esto está pasando y constatamos en este hemiciclo que es un sector absolutamente estratégico. ¿Se imaginan todas y todos ustedes que los agricultores y los ganaderos que abastecen de materias básicas el desarrollo de su actividad económica ―tal y como se vio, por ejemplo, durante la pandemia― no fueran un sector estratégico? ¿Se imaginan todas y todos ustedes un país desarrollado capaz de desatender a su sector proveedor de alimentos? Pues bien, si todo el mundo tiene clarísimo que el sector primario es un sector estratégico, ¿por qué nuestros agricultores y ganaderos y ganaderas a día de hoy no se ganan todavía la vida? Pues se lo voy a decir yo: porque no hay ninguna política a favor de ellos.",
+        "Diputadas y diputados de la extrema derecha española, ¿creen de verdad que revirtiendo la situación alarmante que vive el sector primario eso se va a solucionar con una proposición no de ley de nueve puntos donde se niegan las evidencias del calentamiento global? ¿Así vamos a solucionar el problema del sector primario? Se lo voy a decir yo: Así, no. ¿Cómo se soluciona todo este problema? Se soluciona creyendo de verdad que sí, que es un sector estratégico; se soluciona poniendo sobre esta mesa que hay que reafirmar la ley de la cadena alimentaria. Y eso solo lo ha hecho hasta ahora Esquerra Republicana de Cataluña: una proposición de ley que hoy ha sido admitida a trámite y se ha tomado en consideración. ¿Qué esperamos para debatirla? No podemos estar supeditados a la gran industria, a la gran distribución. ¿Quién se atreve a plantar cara a la gran distribución y a la gran industria, de bancada a bancada? Díganmelo ustedes. Se soluciona abordando con valentía las pérdidas, los costes de producción. Hay que ser valientes, sí, y hacer frente a los de siempre. Se soluciona votando en contra, en la Unión Europea, de los acuerdos de libre comercio, que lo que hacen es crear competencia desleal, y haciendo políticas para pequeñas y medianas producciones, para aquellos que conservan el territorio, y no haciendo políticas para los terratenientes que quieren parecerse a la duquesa de Alba. Se soluciona haciendo compatibles las políticas conservacionistas con las políticas productivistas; se soluciona, en definitiva, adaptando a la realidad climática el sistema de seguros agrarios, dotándola, también, de más recursos. En definitiva, señorías de VOX, no sirve de nada repetir textos que ya se presentan en la Comisión de Agricultura para hacer ver que les importa mucho el campo español. Se soluciona dejándose de proclamas y haciendo política, sobre todo haciendo políticas valientes.",
+        "Gracias."
+      ],
+      "pairs": [
+        [
+          3,
+          12
+        ],
+        [
+          4,
+          13
+        ],
+        [
+          5,
+          13
+        ],
+        [
+          6,
+          14
+        ],
+        [
+          7,
+          14
+        ],
+        [
+          7,
+          15
+        ],
+        [
+          8,
+          15
+        ],
+        [
+          9,
+          15
+        ],
+        [
+          10,
+          15
+        ],
+        [
+          11,
+          16
+        ]
+      ],
+      "renderings": [
+        12,
+        13,
+        14,
+        15,
+        16
+      ]
+    },
+    {
+      "video_id": "758710",
+      "lang": "ca",
+      "duration": 429.029,
+      "notes": "Added 2026-08-13 for board item 8b. Pins the hardest case of the absorbed defect: [15] 'Acabo ja. Creo que se ha entendido. Gràcies.' is genuinely code-mixed, was spoken as printed, and IS rendered — by [17] 'Acabo ya. Creo que se ha entendido.', which is the same sentence minus the Catalan word. So the two are separated only by 'Gràcies.', and any rule keyed on the detector's reading rather than on co-official spelling must get this wrong. It currently leaves the as-delivered block. TRAP: this speaker takes an earlier, unrelated turn in the same sitting that ALSO opens 'Bona tarda a tothom.', so anchoring on the opening paragraph finds the wrong speech — the turn is at offset 235693 of DSCD-15-PL-136, opening 'Bona tarda a tothom. Gràcies, president. Una PNL para que el despido improcedente...'. [2] is a Spanish island with a Catalan interior clause, spoken as printed and never rendered. Clip: delivered [0]-[8] + [14] + [15] is 5,384 c over 429 s = 12.5 c/s; the stored as-delivered block is 5,338 c, i.e. exactly that minus [15] and its separator.",
+      "paragraphs": [
+        "Bona tarda a tothom.",
+        "Gràcies, president.",
+        "Una PNL para que el despido improcedente, que en muchos países está prohibido, sea castigado con una indemnización que sea disuasoria y reparadora. Yo creo que esto de aquí, con la simpatía que tengo a la proponente y a muchos miembros de su grupo, son las disculpas. Yo creo que esta PNL es una disculpa para el BNG, una disculpa para Bildu y una disculpa para Esquerra, y voy a explicarlo y lo voy a olvidar después. No es que me guste, pero el otro día el presidente del Gobierno decía: la reforma laboral que votamos, etcétera, etcétera... Primero de todo, tienen ustedes el Ministerio de Trabajo, son Gobierno. Segundo, esto está aquí porque UGT y Comisiones Obreras van fer una demanda a Europa perquè es complís la Carta Social Europea. La Carta Social Europea es de 1961, es de antes de la reforma laboral; de 1961.",
+        "La realitat és que el 2022, anem a parlar de dades, 2022: 528 413 acomiadaments improcedents. Xifra rècord. 2023: 606 625 acomiadaments improcedents, més del 14 %. Més de cinc mil quatre-cents treballadors amb indemnitzacions menors de 2000 euros. 34,6 % més d’EREs fins al maig del 2025. Les indemnitzacions per acomiadaments improcedents són una autèntica vergonya.",
+        "Com diuen els catedràtics Cristóbal Molina i Antonio Baños, és impensable parlar de drets laborals reals mentre acomiadar sigui barat i les indemnitzacions no tinguin efectes dissuasius i reparador. Podem tenir tots els contractes indefinits que vulguem, ja siguin fixos, discontinus, parcials o complet, però si l’acomiadament és barat, no és dissuasori i no és reparador, no serveix per a res.",
+        "Nosaltres vam advertir, senyors del PSOE, senyors també de Podemos i de SUMAR, vam advertir el 2021, quan ens vam oposar a la reforma laboral, que se’ns va dir de tot, se’ns va dir. Se’ns va dir de tot. Vam dir tres coses que avui Europa confirma tres coses que vostès llavors van preferir pactar amb Ciutadans, que llavors es deia PDeCAT. Ho recordo. Ciutadans i el PDeCAT. I els hi vam dir que potser era una ocasió perduda. Potser era una ocasió perduda, que mai més tindríem la possibilitat de poder recuperar i derogar definitivament la reforma laboral del Partit Popular. Vam dir tres coses. La primera: no derogava la reforma el PP. Era el nucli del poder empresarial, continuava vigent. Dos: el procediment d’urgència sense tramitació parlamentària ens portava, ens portava els debats als partits polítics de presentar esmenes, de no poder defensar el nostre programa electoral. I tercera, no tocava les causes ni indemnitzacions i deixava l’acomiadament tan barat com sempre. I crec que teníem raó. Crec que tenien raó. Les reformes laborals per si mateixes, i això és important. La reforma laboral per si mateixa no crea ocupació, el que crea és més o menys ocupació. I de deu llençols perduts, en la reforma del Partit Popular vam recuperar tres i vam millorar un. És veritat, és veritat. Però el mateix Pepe Álvarez advertia, podeu mirar l’hemeroteca, advertia al gener, un mes abans de l’aprovació de la reforma laboral, advertia: «Queda por negociar lo más importante: El despido». Ara no sé si arribarem a temps. En aquell moment es podia, es podia.",
+        "Europa condemna Espanya. Condemna Espanya i el Govern va intentar manipular l’àrbitre. Va passar amb la senyora aquella que deia la Carmen Salcedo, la gran catedràtica. Les indemnitzacions de 33 dies per any ni repara ni dissuadeix. Espanya, com deia abans, viola la Carta Social Europea l’article 24. Jo penso que aquesta PNL és la resposta forçada a les condemnes europees i encara així han triat l’instrument més feble. La PNL, que votarem, evidentment a favor, i ho dic amb tot el carinyo del món. No té força normativa, ho sabeu. No té forma normativa. No estableix calendaris. No hi ha memòria històrica. Amb tots els funcionaris que tenim el Ministeri de Treball podrien portar una fórmula o una proposta concreta. Tant de bo vingués com el Real Decret llei aquesta vegada i en poder tramitar-lo.",
+        "Però la veritat és que estem una mica enfadats. 606 025 persones acomiadades el 2024. Darrere de cada acomiadament hi ha un drama. Hi ha gent que potser no pot pagar la hipoteca. Hi ha gent que potser no posa els Reis aquell any. No són tan bons com altres anys. I penso que això no es podia d’haver deixat escapar. I jo no volia treure aquest tema, però l’altre dia va treure el president Sànchez quan va respondre al senyor Rufián dient que la reforma laboral al TC es votarà en contra. Tant de bo l’haguéssim votat a nosaltres amb els senyors del PNB, Bildu i nosaltres, perquè tindríem una millor reforma laboral, amb més protecció per als treballadors.",
+        "I repeteixo, l’ocupació la crea el model productiu, perquè amb la mateixa legislació laboral, les xifres d’atur al País Basc i a Andalusia són diferents. És el model productiu el que fa que hi hagi més aturats o menys aturats. Pel que fa al dret del treball, pel que fa a la reforma laboral, és protegir més o menys els treballadors i en aquest sentit es podria millorar. Els hi posem unes quantes propostes concretes.",
+        "Hablemos de datos. 2022, 521 413 despidos improcedentes, cifras récord. 2023, 606 625 despidos improcedentes, más del 14 %. Más de 5400 trabajadores con indemnizaciones menores de 2000 euros, 34,6 % más de ERE hasta mayo de 2025. Los despidos improcedentes son una auténtica vergüenza.",
+        "Como dicen los catedráticos Cristóbal Molina y Antonio Baylos, es impensable hablar de derechos laborales mientras despedir sea barato y las indemnizaciones no tengan efectos disuasorios y reparadores. Podemos tener todo tipo de contratos - indefinidos, etcétera-, pero si el despido es barato, no es disuasorio y no es reparador, no sirve para nada.",
+        "Nosotros ya advertimos, señores de PSOE, señores de Podemos y SUMAR, en 2021, cuando hablábamos de la reforma laboral ―y si se nos dijo de todo― tres cosas que hoy Europa confirma. Ustedes prefirieron hablar con el PDeCAT y Ciudadanos, y dijimos que quizás era una ocasión perdida, que nunca más tendríamos la posibilidad de derogar la reforma laboral del Partido Popular. Dijimos tres cosas. El PP era el núcleo del poder empresarial. No se podía seguir, si seguía vigente. El procedimiento de urgencia sin tramitación parlamentaria no permitía a los partidos políticos defender su programa electoral y dejaba el despido tan barato como siempre. Creo que teníamos razón. Las reformas laborales por sí mismas no crean ocupación, lo que crean es más o menos, y de diez aspectos perdidos recuperamos alguno. Pero el PP advertía, un mes antes de la aprobación de la reforma laboral: queda por negociar lo más importante, el despido. Yo no sé si vamos a llegar a tiempo, entonces se podía.",
+        "Europa condena a España y el Gobierno intenta manipular al árbitro. Pasó con la señora Salcedo, una gran catedrática. Las indemnizaciones de 33 días por año ni reparan ni disuaden. España viola el artículo 24 de la Carta Social Europea. Yo creo que esta PNL es la respuesta forzada a las condenas europeas y hemos escogido, aun así, el instrumento más débil. La PNL ―y vamos a votar a favor, y lo digo con todo el cariño del mundo― no tiene fuerza normativa. Lo saben. No establece calendarios, no hay memoria histórica. Con todos los funcionarios que tenemos en el Ministerio de Trabajo podrían proponer algo concreto, un decreto ley que se pueda tramitar.",
+        "Pero estamos un poco enfadados. 606 025 personas despedidas en 2024. Detrás de cada despido hay un drama, hay gente que no puede pagar la hipoteca, quizás que no puede, por ejemplo, seguir adelante. Y esto no se tenía que haber dejado escapar. El otro día, el presidente Sánchez, cuando respondió al señor Rufián lo que dijo… Nos hubiera gustado que se hubiera votado a favor de nuestra propuesta, porque tendríamos una mejor reforma laboral. Porque, con la misma legislación laboral, las cifras de paro en Andalucía y en otras comunidades son distintas. El derecho al trabajo, la reforma laboral protege más o menos a los trabajadores, y en este sentido se podía mejorar.",
+        "I acabo. Propostes concretes: readmissió obligatòria quan hi hagi causa objectiva justificada. Procediment legislatiu ja obert. Indemnitzacions mínimes de sis mesos de salari per acomiadament, com proposa la UGT. I ho deixo aquí perquè no tinc més temps.",
+        "Acabo ja. Creo que se ha entendido. Gràcies.",
+        "Les hacemos unas propuestas concretas: readmisión obligatoria cuando haya causa justificada, procedimiento legislativo abierto, indemnizaciones mínimas de seis meses de sueldo por despido, como propone la UGT. Y lo dejo aquí. termino ya.",
+        "Acabo ya. Creo que se ha entendido."
+      ],
+      "pairs": [
+        [
+          3,
+          9
+        ],
+        [
+          4,
+          10
+        ],
+        [
+          5,
+          11
+        ],
+        [
+          6,
+          12
+        ],
+        [
+          7,
+          13
+        ],
+        [
+          8,
+          13
+        ],
+        [
+          8,
+          16
+        ],
+        [
+          14,
+          16
+        ],
+        [
+          15,
+          17
+        ]
+      ],
+      "renderings": [
+        9,
+        10,
+        11,
+        12,
+        13,
+        16,
+        17
       ]
     }
   ]
