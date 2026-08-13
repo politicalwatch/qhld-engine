@@ -95,13 +95,24 @@ def _bilingual():
     ]
 
 
+def _two_spanish_blocks():
+    """A speech given mostly in Spanish whose Basque passage the Diario also printed in
+    Spanish: both blocks are ``es``, and only their role tells them apart."""
+    return [
+        SpeechText(lang="es", text="Buenas tardes. Eskerrik asko, presidenta.",
+                   original=True, langs=["es", "eu"]),
+        SpeechText(lang="es", text="Buenas tardes. Muchas gracias, presidenta.",
+                   original=False, langs=["es"]),
+    ]
+
+
 @pytest.fixture(autouse=True)
 def _repositories(monkeypatch):
     """Keep the service off Mongo; each test overrides what it needs."""
     saved = []
     monkeypatch.setattr(mod.Speeches, "get", lambda id: _speech(), raising=False)
-    monkeypatch.setattr(mod.SpeechAlignments, "exists", lambda id, lang: False,
-                        raising=False)
+    monkeypatch.setattr(mod.SpeechAlignments, "exists",
+                        lambda id, lang, original=True: False, raising=False)
     monkeypatch.setattr(mod.SpeechAlignments, "save", lambda record: saved.append(record),
                         raising=False)
     return saved
@@ -121,7 +132,7 @@ def test_stores_cues_with_offsets_into_the_stored_text(_repositories):
     assert _repositories == records
     assert len(records) == 1
     record = records[0]
-    assert record.id == "sp-1:es"
+    assert record.id == "sp-1:es:original"
     assert record.speech_id == "sp-1"
     assert record.lang == "es"
     assert record.block_index == 0
@@ -167,7 +178,7 @@ def test_every_language_block_gets_its_own_track(monkeypatch, _repositories):
 
     assert [(r.lang, r.block_index, r.original) for r in records] == [
         ("gl", 0, True), ("es", 1, False)]
-    assert [r.id for r in records] == ["sp-1:gl", "sp-1:es"]
+    assert [r.id for r in records] == ["sp-1:gl:original", "sp-1:es:translation"]
     assert aligner.words_for("gl") == ["Grazas,", "señora", "presidenta."]
     assert aligner.words_for("es") == ["Gracias,", "señora", "presidenta."]
     assert _repositories == records
@@ -329,10 +340,10 @@ def test_each_track_carries_its_own_verdict(monkeypatch, _repositories):
 
 def test_an_already_aligned_speech_is_not_realigned(monkeypatch, _repositories):
     existing = _stored("es")
-    monkeypatch.setattr(mod.SpeechAlignments, "exists", lambda id, lang: True,
-                        raising=False)
-    monkeypatch.setattr(mod.SpeechAlignments, "get", lambda id, lang: existing,
-                        raising=False)
+    monkeypatch.setattr(mod.SpeechAlignments, "exists",
+                        lambda id, lang, original=True: True, raising=False)
+    monkeypatch.setattr(mod.SpeechAlignments, "get",
+                        lambda id, lang, original=True: existing, raising=False)
     aligner = _FakeAligner()
 
     assert _service(aligner).execute("sp-1") == [existing]
@@ -347,9 +358,9 @@ def test_only_the_missing_language_is_aligned(monkeypatch, _repositories):
                         raising=False)
     existing = _stored("gl")
     monkeypatch.setattr(mod.SpeechAlignments, "exists",
-                        lambda id, lang: lang == "gl", raising=False)
-    monkeypatch.setattr(mod.SpeechAlignments, "get", lambda id, lang: existing,
-                        raising=False)
+                        lambda id, lang, original=True: lang == "gl", raising=False)
+    monkeypatch.setattr(mod.SpeechAlignments, "get",
+                        lambda id, lang, original=True: existing, raising=False)
     aligner = _FakeAligner()
 
     records = _service(aligner).execute("sp-1")
@@ -360,9 +371,45 @@ def test_only_the_missing_language_is_aligned(monkeypatch, _repositories):
     assert [r.lang for r in _repositories] == ["es"]
 
 
+def test_two_blocks_of_one_language_each_get_their_own_track(monkeypatch,
+                                                             _repositories):
+    """A speech mostly given in Spanish, one passage of which the Diario also printed in
+    Spanish, has two blocks of the same language. Keyed on language alone the second
+    would overwrite the first, and the page would caption the speech with its own
+    translation."""
+    monkeypatch.setattr(mod.Speeches, "get",
+                        lambda id: _speech(_two_spanish_blocks()), raising=False)
+
+    records = _service().execute("sp-1")
+
+    assert [r.id for r in records] == ["sp-1:es:original", "sp-1:es:translation"]
+    assert [r.original for r in records] == [True, False]
+    assert [r.block_index for r in records] == [0, 1]
+
+
+def test_an_already_aligned_block_does_not_answer_for_its_same_language_sibling(
+        monkeypatch, _repositories):
+    """The incremental skip asks by language AND role, so the as-delivered track of a
+    two-Spanish-block speech cannot stand in for the translation that is still missing."""
+    monkeypatch.setattr(mod.Speeches, "get",
+                        lambda id: _speech(_two_spanish_blocks()), raising=False)
+    existing = _stored("es")
+    monkeypatch.setattr(mod.SpeechAlignments, "exists",
+                        lambda id, lang, original=True: original, raising=False)
+    monkeypatch.setattr(mod.SpeechAlignments, "get",
+                        lambda id, lang, original=True: existing, raising=False)
+    aligner = _FakeAligner()
+
+    records = _service(aligner).execute("sp-1")
+
+    assert len(aligner.requests) == 1          # only the missing one was timed
+    assert records[0] is existing
+    assert records[1].id == "sp-1:es:translation"
+
+
 def test_force_realigns_an_already_aligned_speech(monkeypatch, _repositories):
-    monkeypatch.setattr(mod.SpeechAlignments, "exists", lambda id, lang: True,
-                        raising=False)
+    monkeypatch.setattr(mod.SpeechAlignments, "exists",
+                        lambda id, lang, original=True: True, raising=False)
     aligner = _FakeAligner()
 
     records = _service(aligner).execute("sp-1", force=True)

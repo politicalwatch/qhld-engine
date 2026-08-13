@@ -84,8 +84,12 @@ class AlignSpeech:
 
         stored, pending = [], []
         for block_index, block, words, spans in blocks:
-            if not force and SpeechAlignments.exists(speech.id, block.lang):
-                stored.append(SpeechAlignments.get(speech.id, block.lang))
+            # By language AND role: two blocks of one speech can be the same language,
+            # and asking by language alone would find the wrong track for one of them.
+            if not force and SpeechAlignments.exists(speech.id, block.lang,
+                                                     block.original):
+                stored.append(SpeechAlignments.get(speech.id, block.lang,
+                                                   block.original))
                 continue
             pending.append((block_index, block, words, spans))
         if not pending:
@@ -134,7 +138,7 @@ class AlignSpeech:
         # guard cannot fail through the two ends disagreeing about the hash.
         text_sha256, text_length = text_fingerprint(block.text)
         return SpeechAlignment(
-            _id=track_id(speech.id, block.lang),
+            _id=track_id(speech.id, block.lang, block.original),
             speech_id=speech.id,
             lang=block.lang,
             block_index=block_index,

@@ -25,6 +25,10 @@ def align(
         None, "--lang",
         help="Which track --vtt writes. Defaults to the as-delivered language; a "
              "co-official speech also has one in Spanish."),
+    translation: bool = typer.Option(
+        False, "--translation",
+        help="Write the Diario's rendering rather than what was said — the only way "
+             "to name it on a speech whose two blocks are both Spanish."),
     force: bool = typer.Option(
         False, "--force",
         help="Re-align languages that already have cues. Off by default because it "
@@ -57,7 +61,7 @@ def align(
 
     if not vtt:
         return
-    chosen = _track(alignments, lang)
+    chosen = _track(alignments, lang, False if translation else None)
     # The same renderer the API serves from, guard included — so what is written
     # here is exactly what a player would receive.
     track = subtitle_track(chosen, speech.speech)
@@ -73,20 +77,27 @@ def align(
     else:
         with open(vtt, "w") as handle:
             handle.write(track)
-        typer.echo(f"wrote {vtt} ({chosen.lang})")
+        typer.echo(f"wrote {vtt} ({chosen.lang}, "
+                   f"{'as delivered' if chosen.original else 'translation'})")
 
 
-def _track(alignments, lang):
+def _track(alignments, lang, original=None):
     """The alignment ``--vtt`` should render.
 
     Without ``--lang`` this is the as-delivered one, which is the track a monolingual
-    speech has and the one a reader checking the timings against the video wants.
+    speech has and the one a reader checking the timings against the video wants. A
+    speech whose co-official passage the Diario also printed in Spanish has two ``es``
+    tracks, and ``--translation`` is what tells them apart; asked by language alone, the
+    as-delivered one answers, as it does everywhere else.
     """
-    if lang is None:
+    if lang is None and original is None:
         return next((a for a in alignments if a.original), alignments[0])
-    for alignment in alignments:
-        if alignment.lang == lang:
-            return alignment
+    wanted = [a for a in alignments
+              if (lang is None or a.lang == lang)
+              and (original is None or bool(a.original) is original)]
+    if wanted:
+        return next((a for a in wanted if a.original), wanted[0])
     raise typer.BadParameter(
-        f"no {lang} track; this speech has "
-        + ", ".join(a.lang for a in alignments))
+        f"no {lang or 'matching'} track; this speech has "
+        + ", ".join(f"{a.lang} ({'as delivered' if a.original else 'translation'})"
+                    for a in alignments))
