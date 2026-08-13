@@ -1270,7 +1270,7 @@
       "video_id": "730547",
       "lang": "eu",
       "duration": 321.038,
-      "notes": "THE FOURTH SHAPE. Opens in Basque ([0] greeting, [1], [2]), which the Diario prints again in Spanish ([3], [4], [5] — [5] carries the rendering of [2] and runs on, as the interpreter re-paragraphs freely), then spoken Spanish [6] [7], then a Basque close [8] rendered by [9] ('Eta amaitzen dut, hasieran esan bezala' -> 'Voy acabando. Como ya he dicho al principio'). [10] 'Muchas gracias.' is left OUT of the renderings on purpose: no Basque farewell precedes it, so it is the speaker's own and the conservative reading keeps it in the record. Basque is 2,058 of 6,677 characters; the document runs at 20.80 c/s and 14.4 without the renderings.",
+      "notes": "THE FOURTH SHAPE. Opens in Basque ([0] greeting, [1], [2]), which the Diario prints again in Spanish ([3], [4], [5] — [5] carries the rendering of [2] and runs on, as the interpreter re-paragraphs freely), then spoken Spanish [6] [7], then a Basque close [8] rendered by [9] ('Eta amaitzen dut, hasieran esan bezala' -> 'Voy acabando. Como ya he dicho al principio'). Basque is 2,058 of 6,677 characters; the document runs at 20.80 c/s and 14.4 without the renderings.\n\nCORRECTED 2026-08-13: [10] 'Muchas gracias.' IS a rendering, of the 'Mila esker.' that ENDS [8]. The previous label excluded it on the stated grounds that 'no Basque farewell precedes it', which is simply false — [8] ends 'baina besterik ez, asmoak. Mila esker.' The Diario (DSCD-15-PL-33, offset 247489) reads '...asmoak. Mila esker. Voy acabando. ... quedará en papel mojado. Muchas gracias. La señora PRESIDENTA:', so 'Muchas gracias.' closes the Spanish rendering and was never spoken separately. This is the COMMONEST shape in the corpus, not an exception: the Diario splits an embedded co-official farewell out as its own Spanish paragraph, so the source farewell never founds a run while its rendering gets a paragraph of its own. Confirmed on 20 sampled fourth-shape speeches (731547, 736234, 760522, 770299, 774222 ...), every one of them the same. The label had made this the only known case of spoken Spanish leaving the as-delivered block.",
       "paragraphs": [
         "Arratsalde on, berriro.",
         "Euskadin 2020 urtean egindako inkesta batean lau pertsonetatik batek nahi ez den bakardadea sufritzen zuela aitortzen zuen. Pandemiako urtea zen eta, hala ere, datuok ez dira hobetu urteetan. Nahi ez den bakardadeak eragiten dituen ondorioak garrantzia handikoak dira eta administrazio publikoek, gizarte zibilarekin lankidetzan, egoera honi aurre egiteko neurriak hartu behar dituzte. Hau esanda, legez besteko proposamen honek eskaera zuzen bat egiten dio estatuko gobernuari: politika publikoak bultzatzea eta estrategia nazional baten bitartez ekimenak koordinatzea. Eta eskaera honekin bi gauza agerian gelditzen dira gure ustetan. Hasteko, eta esaten ez bada ere, inplizituki estatuak gaiaren inguruan ofizialki behintzat ezer egin ez duela aitortzea suposatzen du, akaso konpetentziarik ez duelako.",
@@ -1300,13 +1300,18 @@
         [
           8,
           9
+        ],
+        [
+          8,
+          10
         ]
       ],
       "renderings": [
         3,
         4,
         5,
-        9
+        9,
+        10
       ]
     },
     {
