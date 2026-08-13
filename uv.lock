@@ -2280,7 +2280,7 @@ ollama = [
 [[package]]
 name = "qhld-data"
 version = "2.0.1"
-source = { git = "https://github.com/politicalwatch/qhld-data.git?branch=feat%2Fparliamentary-speech-analysis#69401a3b46c41e7df2c94ef4ce00b6b5740c7614" }
+source = { git = "https://github.com/politicalwatch/qhld-data.git?branch=feat%2Fparliamentary-speech-analysis#8df123a49f14966242ecd8e036dbb50c5251d19d" }
 dependencies = [
     { name = "pydantic" },
     { name = "pymongo" },
@@ -2350,7 +2350,7 @@ dev = [
 [[package]]
 name = "qhld-tasks"
 version = "2.0.1"
-source = { git = "https://github.com/politicalwatch/qhld-tasks.git?branch=feat%2Fparliamentary-speech-analysis#f5e729904bd6ecd71019b8a3aa2f2398da9a21c1" }
+source = { git = "https://github.com/politicalwatch/qhld-tasks.git?branch=feat%2Fparliamentary-speech-analysis#432d02d2153b518ab9c78ae585179343a31d36f8" }
 dependencies = [
     { name = "celery", extra = ["redis"] },
     { name = "jinja2" },
