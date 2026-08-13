@@ -42,7 +42,7 @@ from qhld_ai.infrastructure.ner.factory import create_ner_from_env
 
 
 def taggable_text(blocks) -> str:
-    """The text of a speech to run NER over.
+    """The text of a speech to run NER over — one block of it, never a concatenation.
 
     Spanish is preferred — the models and the persons catalog are Spanish, and a
     co-official speech usually carries the Diario's Spanish interpretation. But not
@@ -50,10 +50,16 @@ def taggable_text(blocks) -> str:
     with no interpretation published has only its original. Falling back to that
     original tags it imperfectly rather than not at all, which is the difference
     between a speech that is merely harder to find and one that is invisible to every
-    person and entity filter."""
-    spanish = " ".join(b.text for b in (blocks or []) if b.lang == "es" and b.text)
+    person and entity filter.
+
+    A speech whose co-official passage the Diario also printed in Spanish has two
+    blocks that are both ``es``, and each holds the whole speech. Reading both would
+    put the same words through NER twice, counting every mention and interruption in
+    them double. The published rendering is the one taken, being the block that is
+    Spanish the whole way through."""
+    spanish = [b for b in (blocks or []) if b.lang == "es" and b.text]
     if spanish:
-        return spanish
+        return next((b.text for b in spanish if not b.original), spanish[0].text)
     return next((b.text for b in (blocks or []) if b.original and b.text), "")
 
 

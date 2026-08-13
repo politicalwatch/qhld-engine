@@ -57,6 +57,24 @@ def test_taggable_text_prefers_the_spanish_blocks():
     assert taggable_text(blocks) == "texto en castellano"
 
 
+def test_taggable_text_reads_only_one_of_two_spanish_blocks():
+    # A mostly-Spanish speech whose co-official passage the Diario also printed in
+    # Spanish: both blocks carry the whole speech, so reading both would count every
+    # mention in it twice.
+    blocks = [
+        SpeechText(lang="es", text="lo dijo la señora Belarra, eta gero",
+                   original=True),
+        SpeechText(lang="es", text="lo dijo la señora Belarra, y después",
+                   original=False),
+    ]
+    assert taggable_text(blocks) == "lo dijo la señora Belarra, y después"
+
+
+def test_taggable_text_reads_a_monolingual_speech_whole():
+    blocks = [SpeechText(lang="es", text="texto en castellano", original=True)]
+    assert taggable_text(blocks) == "texto en castellano"
+
+
 def test_taggable_text_falls_back_to_the_original_when_no_translation_exists():
     # A speech delivered wholly in a co-official language and never interpreted:
     # tagging its original imperfectly beats leaving it invisible to every filter.
