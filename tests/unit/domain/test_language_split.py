@@ -653,3 +653,119 @@ def test_paragraph_breaks_survive_inside_each_block():
     assert len(split.blocks) == 2
     assert "\n\n" in split.blocks[0].text
     assert "\n\n" in split.blocks[1].text
+
+
+# ---- shape 4: a Spanish speech carrying a passage the Diario rendered ----------------
+
+SPANISH_BODY = (
+    "Señorías, comparezco para hablar del cierre de la fábrica y de sus efectos sobre "
+    "el empleo en la comarca durante los próximos años. Las cifras del último "
+    "trimestre son mucho peores de lo que el Gobierno reconoce, y la situación de las "
+    "familias afectadas empeora cada mes que pasa sin acuerdo.")
+SPANISH_TAIL = (
+    "Termino pidiendo al Gobierno que convoque la mesa sectorial antes de que acabe el "
+    "mes, porque cada semana que pasa sin convocarla cuesta empleos que después ya no "
+    "se recuperan nunca.")
+
+
+def test_a_spanish_speech_whose_co_official_passage_was_rendered_gets_two_blocks():
+    # Most of it was given in Spanish, one passage in Catalan, and the Diario printed
+    # that passage in Spanish as well. The rendering was never spoken, so it cannot stay
+    # in the record of what was said — but the speech is Spanish and must not be renamed
+    # over one passage.
+    text = f"{SPANISH_BODY}\n\n{CATALAN}\n\n{SPANISH}\n\n{SPANISH_TAIL}"
+    split = split_languages(text, _fake_detect,
+                            _clip(SPANISH_BODY, CATALAN, SPANISH_TAIL),
+                            similarity=_pairs((CATALAN[:30], SPANISH[:30])))
+    delivered, spanish = split.blocks
+
+    assert split.language == "es"
+    assert not split.undecided
+    assert [(b.lang, b.original) for b in split.blocks] == [("es", True), ("es", False)]
+    # `lang` names both blocks Spanish; `langs` is what says the Catalan was spoken
+    assert delivered.langs == ("es", "ca")
+    assert CATALAN in delivered.text and CATALAN not in spanish.text
+    assert SPANISH in spanish.text and SPANISH not in delivered.text
+    # everything delivered in Spanish stands in both, as it does in any other pair
+    assert SPANISH_BODY in delivered.text and SPANISH_BODY in spanish.text
+    assert SPANISH_TAIL in delivered.text and SPANISH_TAIL in spanish.text
+
+
+def test_a_spanish_speech_whose_co_official_passage_was_not_rendered_stays_one_block():
+    """The negative control. The same document without the rendering is shape 3, and the
+    difference is only whether a rendering of the passage turns up — so this fails if the
+    new shape is ever allowed to fire on the passage alone."""
+    text = f"{SPANISH_BODY}\n\n{CATALAN}\n\n{SPANISH_TAIL}"
+    split = split_languages(text, _fake_detect,
+                            _clip(SPANISH_BODY, CATALAN, SPANISH_TAIL),
+                            similarity=_pairs((CATALAN[:30], SPANISH[:30])))
+
+    assert split.language == "es"
+    assert len(split.blocks) == 1
+    assert CATALAN in split.blocks[0].text
+
+
+def test_a_rendered_passage_with_no_clip_is_flagged():
+    # No video published yet, so nothing can say the shortened speech is still deliverable.
+    # The reading stands, because leaving the rendering in the record is not the safer
+    # answer, but it is marked for the adjudication pass like every other unconfirmed one.
+    text = f"{SPANISH_BODY}\n\n{CATALAN}\n\n{SPANISH}\n\n{SPANISH_TAIL}"
+    split = split_languages(text, _fake_detect, None,
+                            similarity=_pairs((CATALAN[:30], SPANISH[:30])))
+
+    assert split.undecided is True
+    assert [(b.lang, b.original) for b in split.blocks] == [("es", True), ("es", False)]
+
+
+# ---- a claimed rendering in the language it claims to render -------------------------
+
+def _detect_with_galician(text):
+    """The fake detector, plus a marker for a language that is neither the speech's nor
+    Spanish — the noise a paragraph draws when it is read sentence by sentence."""
+    return "gl" if "moito" in text.lower() else _fake_detect(text)
+
+
+def test_a_paragraph_disputed_by_the_language_it_would_render_is_offered_after_all():
+    # 776200: a Catalan paragraph the vote reads as Spanish, claimed as the rendering of
+    # the Catalan before it. A Catalan paragraph does not render Catalan, so the claim
+    # refutes itself — and left standing it takes the spoken Catalan out of the record
+    # while the paragraph that really does render it stays in.
+    text = f"{CATALAN}\n\n{CODE_MIXED_CA}\n\n{RENDERS_CODE_MIXED}"
+    delivered, spanish = split_languages(
+        text, _fake_detect, _clip(CATALAN, CODE_MIXED_CA),
+        similarity=_pairs((CATALAN[:30], CODE_MIXED_CA[:30]),
+                          (CODE_MIXED_CA[:30], RENDERS_CODE_MIXED[:30]))).blocks
+
+    assert CODE_MIXED_CA in delivered.text
+    assert RENDERS_CODE_MIXED not in delivered.text
+    assert RENDERS_CODE_MIXED in spanish.text
+
+
+def test_a_rendering_disputed_by_some_other_language_is_left_alone():
+    """The guard this narrows, and the reason it is narrowed rather than dropped. A real
+    translation commonly draws a few sentences of a third language, and taking it away
+    from the source it explains would refuse a healthy speech to fix a defect it does not
+    have. Only a dispute naming the source's OWN language contradicts the claim.
+
+    Sized so that offering it CHANGES the answer: something here would render it, so a
+    rule that offered every disputed run would move it into the record of what was said
+    and this would fail. Without that, the offer is simply never taken up and the test
+    passes whatever the rule does."""
+    noisy = ("Y esto, señorías, no lo hace un partido de Estado, se lo digo yo. "
+             "Se lo digo con todo el cariño del mundo, de verdad se lo digo. "
+             "Moito obrigado, señora presidenta, de verdade llo digo hoxe aquí.")
+    spoken_after = (
+        "Y añado una última cosa, señorías, que conviene recordar hoy aquí: el "
+        "ministerio lleva meses sin contestar al registro y nadie ha dado todavía "
+        "ninguna explicación pública de por qué.")
+    text = f"{CATALAN}\n\n{noisy}\n\n{spoken_after}"
+    delivered, spanish = split_languages(
+        text, _detect_with_galician, _clip(CATALAN, spoken_after),
+        similarity=_pairs((CATALAN[:30], noisy[:30]),
+                          (noisy[:30], spoken_after[:30]))).blocks
+
+    # it stays the rendering it was read as, and stays out of the record of what was said
+    assert noisy not in delivered.text
+    assert noisy in spanish.text
+    # ...and the paragraph that would have rendered it is still a spoken one
+    assert spoken_after in delivered.text

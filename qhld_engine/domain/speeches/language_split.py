@@ -9,12 +9,21 @@ second block is the same speech in Spanish when the Diario published a rendering
 that was never translated — a greeting, a citation read aloud, a stretch the speaker gave
 in Spanish — has no counterpart, so it stands in both blocks unchanged. The two are
 therefore near mirror images, and the only thing that separates them in content is a
-translation the Diario left incomplete. Three shapes cover the corpus:
+translation the Diario left incomplete. Four shapes cover the corpus:
 
 1. co-official **and** a Spanish rendering exists — appended at the end or interleaved
    paragraph by paragraph. Two blocks.
 2. mostly co-official, Spanish only as quotations, no rendering. One block.
 3. mostly Spanish, co-official only as a greeting or farewell. One block.
+4. mostly Spanish, but a passage of it was delivered in a co-official language **and the
+   Diario printed a rendering of that passage**. Two blocks, both Spanish: it is a
+   Spanish speech, and the rendering is no more spoken than any other interpretation.
+
+The fourth is the awkward one, because it is shape 1 and shape 3 at once — a speech
+nobody would call co-official, carrying words nobody said. Read as shape 3 it stores the
+rendering as though the speaker had uttered it; read as shape 1 it would rename a Spanish
+intervention. So the shapes are tried in the order above, and this one only where no
+reading of the document supports a translation of the whole speech.
 
 Telling them apart needs three things, because no one of them is sufficient:
 
@@ -132,6 +141,23 @@ COVERAGE_COMPLETE = 0.85
 # speech with a Catalan passage in it (27-30%).
 CO_SHARE_FLOOR = 0.5
 
+# How much of the co-official passage of a mostly-Spanish speech must be rendered before
+# the speech is read as carrying a rendering at all.
+#
+# Deliberately far below COVERAGE_FLOOR, and it is a different question: that one asks
+# whether a co-official SPEECH has a translation, this one whether a PASSAGE inside a
+# Spanish one does. A speech is not made co-official by the passage, so there is no
+# proportion of it that has to be covered — only enough that the reading rests on more
+# than a single weak pairing.
+#
+# The gold set cannot pin this figure and does not pretend to: every value from 0.10 to
+# 0.85 scores the same 17/20 there. Corpus-wide the quantity is bimodal — of 190
+# single-block Spanish speeches with a co-official run, 182 sit at or above 0.25 and 174
+# at or above 0.85, because the passage is usually one or two paragraphs that are either
+# rendered or not. So the plateau is 0.15 to 0.47, its upper edge pinned by 774737, whose
+# Basque runs on past the paragraph the Diario rendered (0.472). 0.25 sits inside it.
+RENDERED_PASSAGE_COVERAGE = 0.25
+
 # What share of a block a language needs before it is named among the block's languages.
 # A courtesy line should not make a speech bilingual: greetings sit at or below 3% of the
 # block (726710 opens "Gracias, señor presidente. Eskerrik asko." — 41 of 1,430
@@ -221,11 +247,20 @@ def split_languages(text, detect, duration=None, similarity=None):
     # the pair. Measured over 3,034 speeches, the difference the over-claim test turns on
     # is near-symmetric about zero at small magnitudes, so no threshold can tell a decided
     # comparison from a coin toss. The clip can still tell an impossible outcome.
+    # The reading comes first and the shapes are tried within it, so a reading that
+    # places the document at all is never passed over for a later one. Which matters
+    # most where the two disagree about how much was spoken: the lenient reading leaves
+    # an over-claim standing, so it counts spoken Spanish as rendering, which shrinks
+    # what the speech is measured against and lifts its co-official share above the
+    # floor. 726702 and 730547 are the cases — 29% and 31% Basque by the document, read
+    # as Basque speeches by the lenient arm and as Spanish ones with a rendered passage
+    # by the strict arm, which is what they are.
     for strict in (True, False):
-        placed = _reading(stripped, text, runs, co_lang, duration, detect,
-                          similarity, strict)
-        if placed is not None:
-            return placed
+        read = _read(stripped, runs, co_lang, detect, similarity, strict)
+        for shape in (_a_translated_speech, _a_rendered_passage, _a_speech_as_spoken):
+            placed = shape(read, stripped, text, runs, co_lang, duration, detect)
+            if placed is not None:
+                return placed
 
     # Nothing places it. Keep the shape the single-boundary reading gives, so a speech
     # that is probably an ordinary pair does not lose its Spanish block while it waits,
@@ -234,8 +269,21 @@ def split_languages(text, detect, duration=None, similarity=None):
                     True, detect)
 
 
-def _reading(stripped, text, runs, co_lang, duration, detect, similarity, strict):
-    """One reading of the document, or ``None`` where the evidence does not place it.
+class _Read(NamedTuple):
+    """One reading of the document: which runs are the speech, which render it, and the
+    three quantities the shape rules are decided on."""
+
+    co_runs: list
+    es_runs: list
+    rendered_co: set
+    delivered_es: set
+    coverage: float
+    co_chars: int
+    spoken: int
+
+
+def _read(stripped, runs, co_lang, detect, similarity, strict):
+    """Read the document once, under one pruning of the alignment's claims.
 
     ``runs`` is the partition the detector handed down; the one this works from may
     differ, because a paragraph it misread can be offered to the alignment and kept.
@@ -249,28 +297,76 @@ def _reading(stripped, text, runs, co_lang, duration, detect, similarity, strict
     # misread was being counted on the wrong side of that.
     co_chars = sum(end - start for _, start, end in co_runs)
     rendered = sum(co_runs[j][2] - co_runs[j][1] for j in rendered_co)
-    coverage = rendered / co_chars if co_chars else 0.0
     # Everything that is not a rendering was delivered. Built by subtraction rather
     # than by selection, because the as-delivered block is the record of what was said:
     # anything the alignment cannot account for belongs in it, including a greeting the
     # detector misreads. Selecting only what is *provably* delivered loses those.
     delivered_es = {i for i in range(len(es_runs)) if i not in rendering_es}
-    spoken = co_chars + sum(end - start for i, (_, start, end) in enumerate(es_runs)
-                            if i in delivered_es)
+    return _Read(
+        co_runs, es_runs, rendered_co, delivered_es,
+        rendered / co_chars if co_chars else 0.0, co_chars,
+        co_chars + sum(end - start for i, (_, start, end) in enumerate(es_runs)
+                       if i in delivered_es))
 
-    if _renders_whole_speech(coverage, co_chars, spoken, duration):
-        blocks = _rendered_blocks(stripped, co_runs, es_runs, rendered_co, delivered_es,
-                                  co_lang, coverage)
-        return _decided(co_lang, blocks, duration is None, detect)
-    if _all_of_it_was_spoken(coverage, co_chars, spoken, stripped, duration):
-        # From the runs the DETECTOR read, never the promoted ones. A speech nothing
-        # rendered is named by the language it is mostly written in, and relabelling a
-        # paragraph on the strength of a dispute — when no rendering of it turned up to
-        # settle that dispute — would rename plainly Spanish speeches Catalan.
-        dominant = _dominant(runs)
-        return _decided(dominant, [Block(dominant, text, True)], duration is None,
-                        detect)
-    return None
+
+def _a_translated_speech(read, stripped, text, runs, co_lang, duration, detect):
+    """Shape 1: a co-official speech the Diario published a Spanish rendering of."""
+    if not _renders_whole_speech(read.coverage, read.co_chars, read.spoken, duration):
+        return None
+    return _decided(co_lang, _rendered_blocks(stripped, read, co_lang),
+                    duration is None, detect)
+
+
+def _a_rendered_passage(read, stripped, text, runs, co_lang, duration, detect):
+    """Shape 4: a Spanish speech, part of which was delivered in a co-official language
+    and printed in Spanish as well.
+
+    The blocks are the ones any other rendering gets — everything except the Spanish
+    that renders something, and everything except the co-official that something
+    rendered — so the passage stands in the record of what was said and its
+    interpretation stands beside it, where it cannot be mistaken for a spoken word.
+
+    What differs is only the name: the speech is Spanish and stays Spanish, because a
+    passage does not make it otherwise. So the as-delivered block is named for the
+    language most of it is in, which leaves ``langs`` to say that the co-official
+    passage was spoken at all, and leaves the corpus, the reader and the language filter
+    describing the speech as what it is.
+
+    Tried only where no reading supports shape 1, so it needs no co-official share of
+    its own: whether the speech is co-official has already been asked and answered.
+    """
+    if read.coverage < RENDERED_PASSAGE_COVERAGE:
+        return None
+    # The one thing the text cannot argue with. Subtracting a rendering that was in fact
+    # spoken leaves a speech too slow for its own clip, and a speaker who translates
+    # themselves aloud is exactly the case this shape must not swallow.
+    #
+    # It is deliberately NOT also asked whether the document as printed is too long to
+    # have been spoken, which would be the stronger evidence: the passage is a tenth of
+    # the speech, so printing it twice moves the rate by a c/s or two and leaves it well
+    # inside a band four wide. 774737 reads at 16.80 with the rendering in it and would
+    # pass such a test. What the clip settles here is the population rather than the
+    # speech: over the 219 the corpus offers, the document runs at 15.7 c/s against a
+    # monolingual median of 13.3, and taking out exactly what the alignment claims puts
+    # them back at 13.5.
+    if _fits(read.spoken, duration) is False:
+        return None
+    spoken_lang = _dominant(runs)
+    return _decided(spoken_lang, _rendered_blocks(stripped, read, spoken_lang),
+                    duration is None, detect)
+
+
+def _a_speech_as_spoken(read, stripped, text, runs, co_lang, duration, detect):
+    """Shapes 2 and 3: the whole document was delivered, in one language or two."""
+    if not _all_of_it_was_spoken(read.coverage, read.co_chars, read.spoken, stripped,
+                                 duration):
+        return None
+    # From the runs the DETECTOR read, never the promoted ones. A speech nothing
+    # rendered is named by the language it is mostly written in, and relabelling a
+    # paragraph on the strength of a dispute — when no rendering of it turned up to
+    # settle that dispute — would rename plainly Spanish speeches Catalan.
+    dominant = _dominant(runs)
+    return _decided(dominant, [Block(dominant, text, True)], duration is None, detect)
 
 
 def _renders_whole_speech(coverage, co_chars, spoken, duration):
@@ -297,9 +393,11 @@ def _fits(chars, duration):
 
 
 
-def _rendered_blocks(stripped, co_runs, es_runs, rendered_co, delivered_es, co_lang,
-                     coverage):
+def _rendered_blocks(stripped, read, lang):
     """The two blocks of a speech that has a rendering.
+
+    ``lang`` names the as-delivered block: the co-official language of a speech given in
+    one, and Spanish where only a passage of it was.
 
     **Both blocks hold the whole speech**, and each is built by subtracting from it the
     stretches the other one accounts for. They are exact mirrors:
@@ -325,15 +423,16 @@ def _rendered_blocks(stripped, co_runs, es_runs, rendered_co, delivered_es, co_l
     """
     quotations = quotation_spans(stripped)
     delivered = [(start, end) for _, start, end in
-                 co_runs + [run for i, run in enumerate(es_runs) if i in delivered_es]]
+                 read.co_runs + [run for i, run in enumerate(read.es_runs)
+                                 if i in read.delivered_es]]
     delivered += [span for span in quotations if not _within(span, delivered)]
-    spanish = [(start, end) for _, start, end in es_runs] + [
-        (start, end) for i, (_, start, end) in enumerate(co_runs)
-        if i not in rendered_co]
+    spanish = [(start, end) for _, start, end in read.es_runs] + [
+        (start, end) for i, (_, start, end) in enumerate(read.co_runs)
+        if i not in read.rendered_co]
     spanish += [span for span in quotations if not _within(span, spanish)]
-    return [Block(co_lang, _join(stripped, sorted(delivered)), True),
+    return [Block(lang, _join(stripped, sorted(delivered)), True),
             Block("es", _join(stripped, sorted(spanish)), False,
-                  coverage < COVERAGE_COMPLETE)]
+                  read.coverage < COVERAGE_COMPLETE)]
 
 
 def _within(span, spans):
@@ -358,16 +457,24 @@ def _partition(stripped, co_runs, es_runs, co_lang, detect, similarity, strict):
     question, since a paragraph nobody translated is one nobody had to. An offer nothing
     takes up leaves no trace.
 
-    A run already serving as somebody's rendering is never offered. A translation is not a
+    A run already serving as somebody's rendering is not offered. A translation is not a
     misread original, and taking it away from the source it explains would refuse a healthy
     speech to fix a defect it does not have. So the first alignment is run for that alone,
     and a speech with nothing disputed pays only it.
+
+    Unless the language disputing it is the very one it is supposed to render — and then
+    the claim refutes itself, because a Catalan paragraph does not render Catalan. 776200
+    is the case: its second paragraph is Catalan, reads as Spanish to the vote (971
+    characters against 436) and is claimed as the rendering of the Catalan before it, so
+    the spoken Catalan leaves the record of what was said and the paragraph that really
+    does render it stays in. Three speeches corpus-wide are decided by this.
     """
     align = lambda co, es: _align_renderings(stripped, co, es, similarity, strict)
     rendered_co, rendering_es = align(co_runs, es_runs)
     disputed = [(co_lang, start, end)
                 for index, (_, start, end) in enumerate(es_runs)
-                if index not in rendering_es and _contested(stripped, start, end, detect)]
+                if _worth_offering(stripped, start, end, detect, co_lang,
+                                   index in rendering_es)]
     if not disputed:
         return co_runs, es_runs, rendered_co, rendering_es
 
@@ -386,10 +493,21 @@ def _partition(stripped, co_runs, es_runs, co_lang, detect, similarity, strict):
     return (final_co, final_es, *align(final_co, final_es))
 
 
-def _contested(stripped, start, end, detect):
-    """Did any paragraph of this Spanish run read as nearly co-official?"""
-    return any(contesting_language(paragraph, detect)
-               for paragraph in stripped[start:end].split(PARAGRAPH_BREAK))
+def _worth_offering(stripped, start, end, detect, co_lang, is_a_rendering):
+    """Should this Spanish run be offered to the alignment as a co-official one?
+
+    Any dispute is enough for a run nothing has claimed. For one already serving as a
+    rendering the dispute has to name ``co_lang`` itself, which is the only case where
+    the claim contradicts what the run is being read as — a paragraph a quarter of which
+    reads as Catalan is not the Spanish translation of Catalan. Contests by some *other*
+    co-official language are commonly detector noise (a Catalan paragraph draws a few
+    Galician sentences), and those must not unpick a translation.
+    """
+    contests = {contesting_language(paragraph, detect)
+                for paragraph in stripped[start:end].split(PARAGRAPH_BREAK)} - {None}
+    if not contests:
+        return False
+    return co_lang in contests if is_a_rendering else True
 
 
 def _align_renderings(stripped, co_runs, es_runs, similarity, strict=True):
