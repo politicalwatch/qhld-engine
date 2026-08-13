@@ -624,6 +624,24 @@ def test_a_speech_nothing_places_is_left_undecided():
     assert split.blocks  # a provisional reading, not nothing
 
 
+def test_a_refused_speech_is_named_by_what_most_of_it_is_in():
+    # A Spanish speech quoting one Catalan paragraph in the middle of it. The cut has no
+    # co-official front to separate — Spanish both precedes and follows the quotation —
+    # so the reading is a single block, and naming that block after the quotation would
+    # file a Spanish speech under Catalan.
+    quotation = ("Però nosaltres això ho hem denunciat aquí moltes vegades i mai no "
+                 "hem obtingut cap resposta.")
+    text = f"{SPANISH}\n\n{quotation}\n\n{SPANISH_TARRAGONA}"
+    split = split_languages(text, _fake_detect, duration=5.0,
+                            similarity=_fake_similarity)
+
+    assert split.undecided is True
+    assert len(split.blocks) == 1
+    assert split.blocks[0].text == text   # nothing is dropped by naming it
+    assert split.blocks[0].lang == "es"
+    assert split.language == "es"
+
+
 def test_without_a_clip_the_verdict_is_provisional():
     text = f"{CATALAN}\n\n{SPANISH}"
     split = split_languages(text, _fake_detect, duration=None, similarity=_fake_similarity)

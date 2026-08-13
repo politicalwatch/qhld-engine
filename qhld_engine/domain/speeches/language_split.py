@@ -231,8 +231,7 @@ def split_languages(text, detect, duration=None, similarity=None):
         return _decided(co_lang, [Block(co_lang, text, True)], False, detect)
 
     if similarity is None:
-        return _decided(co_lang, _single_cut(stripped, text, detect, co_lang),
-                    True, detect)
+        return _unplaced(stripped, text, detect, co_lang)
 
     # Two readings of the same document, in order of preference, and the clip decides
     # between them. Refusing an over-claim is a hypothesis about the text; how long the
@@ -265,8 +264,7 @@ def split_languages(text, detect, duration=None, similarity=None):
     # Nothing places it. Keep the shape the single-boundary reading gives, so a speech
     # that is probably an ordinary pair does not lose its Spanish block while it waits,
     # and mark it so the adjudication pass can find it.
-    return _decided(co_lang, _single_cut(stripped, text, detect, co_lang),
-                    True, detect)
+    return _unplaced(stripped, text, detect, co_lang)
 
 
 class _Read(NamedTuple):
@@ -733,6 +731,20 @@ def _dominant(runs):
 
 # ---- the provisional reading, for a speech nothing places --------------------
 
+def _unplaced(stripped, text, detect, co_lang):
+    """The verdict for a speech the evidence cannot place.
+
+    A speech is named by the language of the block that holds what was delivered, which
+    is the invariant the whole corpus already satisfies — so the name follows the cut
+    rather than being decided ahead of it. That distinction only shows when the cut
+    finds no real second block: the document is then one speech in one language, and
+    calling it by whatever co-official paragraph it happens to contain is how a Spanish
+    speech comes to be filed as Galician on the strength of a single quotation.
+    """
+    blocks = _single_cut(stripped, text, detect, co_lang)
+    return _decided(blocks[0].lang, blocks, True, detect)
+
+
 def _single_cut(stripped, text, detect, co_lang):
     """The one-boundary reading: cut where it best separates a co-official front from a
     Spanish tail. Kept only for speeches the evidence cannot place, so that they hold the
@@ -745,7 +757,12 @@ def _single_cut(stripped, text, detect, co_lang):
     original = stripped[:spans[k - 1][1]] if k else ""
     castellano = stripped[spans[k][0]:] if k < len(spans) else ""
     if not original or len(castellano) / total < _MIN_RATIO:
-        return [Block(co_lang, text, True)]
+        # No second block, so there is no co-official front to name: what is left is
+        # the whole document, and it belongs to whichever language most of it is in.
+        # The sibling branch above already reads an unsplittable speech this way.
+        return [Block(_dominant([(lang, start, end)
+                                 for (start, end), lang in zip(spans, langs) if lang]),
+                      text, True)]
     return [Block(co_lang, original, True), Block("es", castellano, False)]
 
 
