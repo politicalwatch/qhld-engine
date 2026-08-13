@@ -111,9 +111,13 @@ def test_exact_block_match_is_all_or_nothing_per_speech():
     assert report["exact"] == 1 and report["speeches"] == 2
 
 
-def _split_row(video="s1", lang="ca", gold=(), sources=(), delivered=(), spanish=()):
+def _split_row(video="s1", lang="ca", gold=(), sources=(), delivered=(), spanish=(),
+               absorbed=(), total=None):
+    placed = set(delivered) | set(spanish) | set(gold) | set(sources) | set(absorbed)
     return {"video_id": video, "lang": lang, "gold": set(gold), "sources": set(sources),
             "delivered": set(delivered), "spanish": set(spanish),
+            "absorbed": set(absorbed),
+            "total": total if total is not None else (max(placed) + 1 if placed else 0),
             "predicted": set(spanish) - set(delivered), "undecided": False, "blocks": 2}
 
 
@@ -160,6 +164,57 @@ def test_an_original_with_no_spanish_block_to_stand_in_is_unanswerable():
     assert report["unanswerable"] == 2
     assert report["answerable"] == 0 and report["recall"] is None
     assert bitext_scoring.score_split([row])["micro"]["recall"] == 0.0
+
+
+# ---- block coverage: the absorbed-paragraph defect ---------------------------------
+
+def test_an_absorbed_paragraph_is_told_apart_from_an_alignment_over_claim():
+    """Both leave the as-delivered block although they were spoken, so score_split adds
+    them into one `fp` count and neither can then be graded. Paragraph 1 had no language of
+    its own, so it was never a pairing unit and left only because the run around it did;
+    paragraph 4 was read and over-claimed."""
+    row = _split_row(gold={3}, delivered={0, 2}, spanish={0, 1, 3, 4}, absorbed={1},
+                     total=5)
+
+    assert bitext_scoring.score_split([row])["micro"]["fp"] == 2
+    lost = bitext_scoring.score_coverage([row])["spoken_lost"]
+    assert [r["paragraph"] for r in lost["absorbed"]] == [1]
+    assert [r["paragraph"] for r in lost["claimed"]] == [4]
+
+
+def test_a_paragraph_in_neither_block_is_counted_although_fp_cannot_express_it():
+    """`predicted` is `spanish - delivered`, so a paragraph missing from BOTH blocks is
+    absent from `predicted` and scores as a true negative. It is the worst case there is —
+    the text is in no block at all — and it is why this figure is a superset of `fp`."""
+    row = _split_row(delivered={0}, spanish={0}, absorbed={1}, total=2)
+
+    assert bitext_scoring.score_split([row])["micro"]["fp"] == 0
+    lost = bitext_scoring.score_coverage([row])["spoken_lost"]
+    assert [r["paragraph"] for r in lost["absorbed"]] == [1]
+    assert lost["absorbed"][0]["in_spanish"] is False
+
+
+def test_a_rendering_absent_from_the_delivered_block_is_not_a_loss():
+    """The whole point of the delivered block. Gold `renderings` is complete, so its
+    complement is what was spoken — nothing else may be subtracted from that figure."""
+    row = _split_row(gold={2, 3}, delivered={0, 1}, spanish={0, 1, 2, 3}, total=4)
+
+    assert bitext_scoring.score_coverage([row])["spoken_lost"] == {"absorbed": [],
+                                                                   "claimed": []}
+
+
+def test_the_mirror_direction_excuses_a_gold_pair_source_and_nothing_else():
+    """A co-official original that something rendered belongs only in the as-delivered
+    block, so its absence from the Spanish one is correct. Paragraph 2 is not a gold source,
+    so its absence is reported — as a count, because gold pairs is partial and an
+    unattributed original would look identical."""
+    row = _split_row(gold={3}, sources={0}, delivered={0, 1, 2}, spanish={1, 3},
+                     absorbed={2}, total=4)
+
+    es_lost = bitext_scoring.score_coverage([row])["es_lost"]
+    assert [r["paragraph"] for r in es_lost] == [2]
+    assert es_lost[0]["absorbed"] is True
+    assert "precision" not in es_lost[0] and "recall" not in es_lost[0]
 
 
 # ---- the frozen gold set itself ----------------------------------------------------

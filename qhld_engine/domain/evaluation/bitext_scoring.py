@@ -222,6 +222,98 @@ def score_pairs(rows):
             "census": census}
 
 
+def score_coverage(rows):
+    """Is every paragraph in the block it belongs to — the question the two above cannot ask.
+
+    ``score_split`` measures which paragraphs left the as-delivered block and grades that
+    against gold ``renderings``; ``score_pairs`` measures paragraphs standing in both
+    blocks. Between them they miss a whole failure: a paragraph under
+    ``MIN_VOTING_CHARS`` has no language of its own, so ``paragraph_spans`` folds it into a
+    neighbouring run, and when that run turns out to be a rendering the paragraph is
+    subtracted along with it. **Which block it falls out of depends only on which run
+    absorbed it** — the paragraph's own content decides nothing.
+
+    Two figures, and they are deliberately unequal in strength.
+
+    **``spoken_lost`` is sound and is the one to read.** Gold ``renderings`` is complete —
+    every paragraph never spoken is listed — so its complement is exactly the paragraphs
+    that WERE spoken, and any of those absent from the as-delivered block is a word missing
+    from the record of what was said. It is a strict superset of ``score_split``'s
+    ``fp``, which cannot express a paragraph absent from *both* blocks.
+
+    It is split by **structural cause**, from the classifier's own reading of the paragraph
+    rather than from any word list:
+
+    - ``absorbed`` — the paragraph never had a language, so it was never a pairing unit and
+      the alignment never decided anything about it. This defect.
+    - ``claimed`` — the paragraph had its own language, so the alignment read it and
+      over-claimed it. A different defect with the same symptom, and mixing the two into
+      one ``fp`` count is what makes either of them ungradable.
+
+    Keeping the split lexicon-free is the point. A rule that rescues these paragraphs will
+    want a curated closed-class lexicon, and a yardstick sharing that lexicon could not
+    fail the rule. This one is answerable from gold labels alone.
+
+    **``es_lost`` is a count to read, never a score.** The mirror direction: a paragraph
+    absent from the Spanish block is legitimate only if it is a co-official original that
+    something rendered, and the only handle on that is gold ``pairs``, which is
+    deliberately partial. So an original whose rendering the labeller could not attribute
+    is *unknown* here, not lost — the same reason ``score_pairs`` refuses to invent a
+    precision.
+    """
+    lost = {"absorbed": [], "claimed": []}
+    es_lost = []
+    for row in rows:
+        everything = set(range(row["total"]))
+        for paragraph in sorted(everything - row["delivered"]):
+            if paragraph in row["gold"]:
+                continue  # a rendering, correctly absent from the record of what was said
+            lost["absorbed" if paragraph in row["absorbed"] else "claimed"].append({
+                "video_id": row["video_id"], "lang": row["lang"],
+                "paragraph": paragraph, "undecided": row["undecided"],
+                "in_spanish": paragraph in row["spanish"]})
+        for paragraph in sorted(everything - row["spanish"]):
+            if paragraph in row["sources"]:
+                continue  # a gold pair source, correctly absent from the Spanish block
+            es_lost.append({
+                "video_id": row["video_id"], "lang": row["lang"],
+                "paragraph": paragraph, "undecided": row["undecided"],
+                "absorbed": paragraph in row["absorbed"]})
+    return {"spoken_lost": lost, "es_lost": es_lost}
+
+
+def format_coverage(report):
+    absorbed, claimed = report["spoken_lost"]["absorbed"], report["spoken_lost"]["claimed"]
+    es_lost = report["es_lost"]
+
+    def decided(rows):
+        return [row for row in rows if not row["undecided"]]
+
+    lines = [
+        f"  spoken but missing from the as-delivered block: "
+        f"{len(absorbed)} absorbed into a neighbouring run · "
+        f"{len(claimed)} over-claimed by the alignment"
+        f"   ({len(decided(absorbed))}/{len(decided(claimed))} on decided speeches)",
+    ]
+    for key, rows in (("absorbed", absorbed), ("over-claimed", claimed)):
+        for row in rows:
+            lines.append(
+                f"    {row['video_id']} [{row['lang']}]"
+                f"{' REFUSED' if row['undecided'] else ''} paragraph {row['paragraph']}"
+                f" — {key}"
+                f"{'' if row['in_spanish'] else ', and in NEITHER block'}")
+    absorbed_es = [row for row in es_lost if row["absorbed"]]
+    lines.append(
+        f"  missing from the Spanish block and not a gold pair source: {len(es_lost)}"
+        f" ({len(absorbed_es)} absorbed) — a count to read, not a score: gold pairs is "
+        f"partial, so an unattributed original is unknown here")
+    for row in absorbed_es:
+        lines.append(f"    {row['video_id']} [{row['lang']}]"
+                     f"{' REFUSED' if row['undecided'] else ''} "
+                     f"paragraph {row['paragraph']} — absorbed")
+    return "\n".join(lines)
+
+
 def format_pairs(report):
     lines = [
         f"  originals whose rendering was found "

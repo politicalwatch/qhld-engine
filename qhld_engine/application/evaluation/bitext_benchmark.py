@@ -109,9 +109,18 @@ class RunBitextBenchmark:
         each original HAS a rendering. Both blocks are needed for that, because the answer
         is a paragraph sitting in both of them.
 
+        ``absorbed`` records which paragraphs had no language of their own — under
+        ``MIN_VOTING_CHARS`` once quotations and annotations are removed, so
+        ``paragraph_language`` returns ``None`` and ``paragraph_spans`` folds them into a
+        neighbouring run. Such a paragraph is never a pairing unit, so the alignment never
+        decided anything about it: it leaves a block only because the run around it did.
+        That is what lets ``score_coverage`` tell this defect apart from an alignment that
+        really did over-claim a paragraph it had read.
+
         Keys on paragraph text, so a speech may not carry the same paragraph twice; the
         gold-set consistency test asserts that.
         """
+        from qhld_engine.domain.speeches.language_runs import paragraph_language
         from qhld_engine.domain.speeches.language_split import split_languages
 
         rows = []
@@ -132,6 +141,9 @@ class RunBitextBenchmark:
                 "predicted": in_spanish - in_delivered,
                 "sources": {a for a, _ in speech["pairs"]},
                 "delivered": in_delivered, "spanish": in_spanish,
+                "absorbed": {i for i, p in enumerate(paragraphs)
+                             if paragraph_language(p, detect) is None},
+                "total": len(paragraphs),
                 "undecided": split.undecided, "blocks": len(split.blocks),
             })
         return rows

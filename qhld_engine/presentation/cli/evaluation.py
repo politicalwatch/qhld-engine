@@ -338,6 +338,13 @@ def bitext(
         typer.echo("")
         typer.echo("  --- the co-official side ---")
         typer.echo(bitext_scoring.format_pairs(bitext_scoring.score_pairs(rows)))
+        # And the third failure: a paragraph too short to have a language of its own is
+        # absorbed into a neighbouring run, and leaves whichever block that run leaves.
+        # Neither figure above separates that from an alignment that over-claimed a
+        # paragraph it had actually read.
+        typer.echo("")
+        typer.echo("  --- block coverage ---")
+        typer.echo(bitext_scoring.format_coverage(bitext_scoring.score_coverage(rows)))
         return
 
     if instrument == "llm":
