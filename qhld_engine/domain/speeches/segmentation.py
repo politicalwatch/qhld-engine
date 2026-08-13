@@ -50,6 +50,31 @@ REMOVABLE_PATTERNS = (
     r"órganos parlamentarios\.\s?",
 )
 
+# The next item on the order of the day, printed straight after the last speech of a
+# debate. ``normalize_session_text`` anchors the START of the window on this
+# initiative's own ``(Número de expediente <ref>)``, but nothing bounds its END, so the
+# closing speaker's text runs on into the heading that follows them. Left in, an
+# all-caps legal title reads as Galician to the detector and renames the speech.
+#
+# Anchored on the printed marker and cut from the list bullet, NOT by dropping the
+# trailing paragraph: the heading is sometimes set in the same paragraph as real speech
+# ("...quince años de su gobierno en Galicia. ― DEL GRUPO PARLAMENTARIO SOCIALISTA,
+# PARA EL APOYO..."), where dropping the paragraph would delete words that were spoken.
+#
+# Two things keep the cut from reaching into speech, so there is nothing to calibrate:
+# the title is matched UPPERCASE-only — the same guard ``SPEAKER_PATTERN`` relies on,
+# since spoken words carry lowercase — and it must end in the marker at end of text.
+# The bullet is ``-`` or ``―``: ``normalize_session_text`` unifies ‑ – — but not U+2015.
+AGENDA_ITEM_PATTERN = (
+    r"\s*[-―]\s*[^a-zß-ÿ\n]*\(Número\s+de\s+expediente\s+[^)\n]*\)\.?\s*$")
+
+# The section title the order of the day prints above such an item ("MOCIONES
+# CONSECUENCIA DE INTERPELACIONES URGENTES:"). Only ever removed together with an item,
+# so a speech that merely ends in capitals is never touched. It must START on a capital:
+# the uppercase class admits punctuation, so without that the run reaches back over the
+# full stop of the sentence before it and leaves "Muchas gracias" unterminated.
+AGENDA_SECTION_PATTERN = r"\s*[A-ZÁÀÉÈÍÏÓÒÚÜÇÑ][^a-zß-ÿ\n]{5,}:\s*$"
+
 # The margin apparatus pdfminer emits wherever a page break falls (possibly
 # mid-sentence): the "cve: DSCD-…" code printed vertically (one character per
 # line), then the running header down to the page number. Removed from the raw
@@ -270,7 +295,16 @@ def clean_speech(text):
     text = re.sub(r"[^\S\n]+", " ", text)
     text = re.sub(r" ?\n ?", "\n", text)
     text = re.sub(r"\n{2,}", "\n\n", text)
-    return text.strip()
+    return _strip_agenda_tail(text.strip())
+
+
+def _strip_agenda_tail(text):
+    """Drop the next order-of-the-day heading where it has run on past the end of the
+    last speech of a debate. The section title goes only when an item went with it."""
+    trimmed = re.sub(AGENDA_ITEM_PATTERN, "", text)
+    if trimmed == text:
+        return text
+    return re.sub(AGENDA_SECTION_PATTERN, "", trimmed).strip()
 
 
 class SpeechSegmenter:

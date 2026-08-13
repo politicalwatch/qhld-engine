@@ -217,6 +217,67 @@ def test_clean_speech_drops_paragraphs_emptied_by_removal():
     assert cleaned == "Primer párrafo.\n\nSegundo párrafo."
 
 
+# --- the order of the day running on past the last speech ------------------------
+
+def test_clean_speech_drops_a_trailing_agenda_item():
+    # 764046: the debate's last speech runs on into the next item of the order of
+    # the day, which the detector then reads as Galician.
+    cleaned = segmentation.clean_speech(
+        "Gracias.\n\n"
+        "- DECLARACIÓN INSTITUCIONAL CON MOTIVO DEL ANIVERSARIO DEL SUFRAGIO "
+        "FEMENINO EN ESPAÑA. (Número de expediente 140/000010).")
+    assert cleaned == "Gracias."
+
+
+def test_clean_speech_drops_the_section_title_with_the_item():
+    # 732189, where the order of the day prints a section heading above the item.
+    cleaned = segmentation.clean_speech(
+        "Muchas gracias.\n\n"
+        "MOCIONES CONSECUENCIA DE INTERPELACIONES URGENTES:\n\n"
+        "- DEL GRUPO PARLAMENTARIO MIXTO (SEÑORA VALIDO), SOBRE LA SOLUCIÓN. "
+        "(Número de expediente 173/000021).")
+    assert cleaned == "Muchas gracias."
+
+
+def test_clean_speech_keeps_speech_the_agenda_item_is_glued_to():
+    # 728157: the heading is set in the SAME paragraph as the closing words, so
+    # dropping the paragraph would delete what was actually said. Note the bullet is
+    # U+2015, which normalize_session_text does not unify away.
+    spoken = ("Termino. Esto lo explicó Marta Lois en el debate, y sacaremos a la "
+              "sanidad pública del coma profundo en la que lo han metido los quince "
+              "años de su gobierno en Galicia.")
+    cleaned = segmentation.clean_speech(
+        spoken + " ― DEL GRUPO PARLAMENTARIO SOCIALISTA, PARA EL APOYO A LA CADENA "
+        "DE VALOR DEL SECTOR DEL AUTOMÓVIL. (Número de expediente 162/000108).")
+    assert cleaned == spoken
+
+
+def test_clean_speech_keeps_the_full_stop_before_a_section_title():
+    # 759311, where the title follows the closing words inside one paragraph. The
+    # uppercase class admits punctuation, so an unguarded run swallows the full stop.
+    cleaned = segmentation.clean_speech(
+        "Muchas gracias. AVOCACIÓN DE INICIATIVAS LEGISLATIVAS:\n\n"
+        "- PROPOSICIÓN DE LEY DE MODIFICACIÓN DEL REAL DECRETO LEGISLATIVO 8/2015, "
+        "EN SUS DISPOSICIONES ADICIONALES 18.ª Y 19..ª "
+        "(Número de expediente 122/000143).")
+    assert cleaned == "Muchas gracias."
+
+
+def test_clean_speech_keeps_a_speech_that_merely_ends_in_capitals():
+    # The section title is only ever dropped together with an item, so an ordinary
+    # speech closing on capitals and a colon is left alone.
+    text = "Se lo repito, señorías: NO HAY DERECHO A ESTO:"
+    assert segmentation.clean_speech(text) == text
+
+
+def test_clean_speech_keeps_an_expediente_quoted_mid_speech():
+    # Only a heading at the very end is furniture; a speaker citing an expediente is
+    # speech. Measured: over 3034 speeches the marker never occurs mid-text.
+    text = ("Hablo de la proposición (Número de expediente 162/000108), que ustedes "
+            "votaron en contra.\n\nMuchas gracias.")
+    assert segmentation.clean_speech(text) == text
+
+
 # --- flatten_paragraphs ---------------------------------------------------------
 
 def test_flatten_blank_line_is_a_paragraph_break():
