@@ -47,10 +47,12 @@ from typing import NamedTuple
 from qhld_engine.domain.speeches.language_runs import (
     CO_LANGS,
     PARAGRAPH_BREAK,
+    co_official_spelling_spans,
     contesting_language,
     paragraph_spans,
     quotation_spans,
     sentence_spans,
+    spanish_spelling_spans,
 )
 
 
@@ -311,7 +313,7 @@ def _a_translated_speech(read, stripped, text, runs, co_lang, duration, detect):
     """Shape 1: a co-official speech the Diario published a Spanish rendering of."""
     if not _renders_whole_speech(read.coverage, read.co_chars, read.spoken, duration):
         return None
-    return _decided(co_lang, _rendered_blocks(stripped, read, co_lang),
+    return _decided(co_lang, _rendered_blocks(stripped, read, co_lang, co_lang),
                     duration is None, detect)
 
 
@@ -350,7 +352,7 @@ def _a_rendered_passage(read, stripped, text, runs, co_lang, duration, detect):
     if _fits(read.spoken, duration) is False:
         return None
     spoken_lang = _dominant(runs)
-    return _decided(spoken_lang, _rendered_blocks(stripped, read, spoken_lang),
+    return _decided(spoken_lang, _rendered_blocks(stripped, read, spoken_lang, co_lang),
                     duration is None, detect)
 
 
@@ -391,7 +393,7 @@ def _fits(chars, duration):
 
 
 
-def _rendered_blocks(stripped, read, lang):
+def _rendered_blocks(stripped, read, lang, co_lang):
     """The two blocks of a speech that has a rendering.
 
     ``lang`` names the as-delivered block: the co-official language of a speech given in
@@ -418,16 +420,34 @@ def _rendered_blocks(stripped, read, lang):
     work in runs: having no language of its own it attaches to the paragraph before it, and
     when that paragraph is accounted for on the other side it leaves along with it. So it
     is added back on both sides, by position.
+
+    A paragraph that spells a co-official language is put back the same way, but on **one
+    side only**. It has the same problem — too short to have a language, so it rides
+    whichever run absorbed it — and when that run is a rendering it takes a line the
+    speaker actually said out of the record. The asymmetry is the point: a word that cannot
+    be Spanish proves the line is not purely a rendering, so it belongs in the as-delivered
+    block; it says nothing about whether a translation of it exists, so the Spanish block is
+    left exactly as the subtraction found it. The rule can therefore only ever ADD to the
+    record of what was said.
     """
     quotations = quotation_spans(stripped)
     delivered = [(start, end) for _, start, end in
                  read.co_runs + [run for i, run in enumerate(read.es_runs)
                                  if i in read.delivered_es]]
     delivered += [span for span in quotations if not _within(span, delivered)]
+    delivered += [span for span in co_official_spelling_spans(stripped)
+                  if not _within(span, delivered)]
     spanish = [(start, end) for _, start, end in read.es_runs] + [
         (start, end) for i, (_, start, end) in enumerate(read.co_runs)
         if i not in read.rendered_co]
     spanish += [span for span in quotations if not _within(span, spanish)]
+    # And the mirror of it, on the Spanish side. `_within` is what makes the rule exact
+    # rather than generous: a short Spanish line is missing from this list ONLY when the run
+    # that absorbed it was a co-official original something rendered. Such a line sits inside
+    # the as-delivered stretch, so it was spoken — and delivered Spanish belongs in both
+    # blocks. Every other Spanish line is already here and is skipped.
+    spanish += [span for span in spanish_spelling_spans(stripped, co_lang)
+                if not _within(span, spanish)]
     return [Block(lang, _join(stripped, sorted(delivered)), True),
             Block("es", _join(stripped, sorted(spanish)), False,
                   read.coverage < COVERAGE_COMPLETE)]

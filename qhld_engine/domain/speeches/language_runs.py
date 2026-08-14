@@ -252,6 +252,181 @@ def quotation_spans(text):
     return spans
 
 
+# Words that exist in a co-official language and NOT in Spanish, accent-folded and lowercase.
+# Curated editorial data, like `qhld_ai`'s group-alias and stop-entity lists, kept as a
+# literal because nothing in this layer may read a file.
+#
+# THE ADMISSION RULE, and it is the point of the list rather than a note about it: an entry
+# must be part of a **thanks, greeting or farewell formula, or a form of address**. Nothing
+# else, ever. Two admissions are refused by that rule and were removed after measuring them:
+# `vull` ("I want") and `acabant` ("finishing") each rescued exactly ONE speech, which is
+# what patching a corpus one bug at a time looks like. Without the rule the list grows by a
+# word per failing speech and becomes an artifact of one legislature; with it the list is
+# closed, because a chamber has only so many ways to say thank you and to address a chair.
+# The cost is measured and accepted: phrasings outside the formulas are not rescued — 3 of
+# the 45 as-delivered cases and 11 of the 42 Spanish-side ones.
+#
+# Entries must be impossible in Spanish, which accent folding never breaks: `señor`/`señora`
+# fold to `senor`/`senora` and stay distinct from Catalan `senyor`/`senyora`. Refused for
+# that reason: `tarda` (Spanish third person of `tardar`), `dia` (Spanish `día` folds onto
+# it), `presidenta` and `acabo` (identical in Spanish), `bo` and `ez` (two letters match too
+# much to be evidence of anything).
+_CO_OFFICIAL_ONLY = frozenset({
+    # thanks, greetings and farewells
+    "eskerrik", "asko", "mila", "esker", "milesker", "agur", "arratsalde", "egun",  # eu
+    "gracies", "moltes", "merces", "bona", "bon", "adeu",                          # ca
+    "grazas", "moitas", "moito", "moitisimo", "obrigado", "obrigada", "boas",       # gl
+    # forms of address, the other half of the same formulas
+    "jauna", "andrea", "anderea", "presidentea", "guztioi",                         # eu
+    "president", "senyor", "senyora", "senyores", "senyories", "tothom",            # ca
+    "prezado",                                                                      # gl
+})
+
+
+def _folded_tokens(text):
+    """Lowercase alphabetic tokens with accents removed.
+
+    Folded because the Diario is inconsistent about accents and a lexicon should not have
+    to carry both spellings. **Do not reuse ``_TOKEN`` here**: it is ``[a-z0-9]+``, so it
+    splits ``"gràcies"`` into ``"gr"`` and ``"cies"`` and the lexicon silently never
+    matches. Folding first is what makes a plain ``[a-z]+`` correct.
+
+    Folding is safe for this test because it never collides a Spanish courtesy word with a
+    co-official one: ``"señor"`` folds to ``senor`` and stays distinct from ``senyor``.
+    """
+    folded = "".join(char for char in unicodedata.normalize("NFKD", text.lower())
+                     if not unicodedata.combining(char))
+    return set(re.findall(r"[a-z]+", folded))
+
+
+def carries_co_official_spelling(paragraph):
+    """Does this paragraph contain a word that exists in a co-official language and not in
+    Spanish — so that it cannot be purely a Spanish rendering?
+
+    Only asked of a paragraph too short to have a language of its own, which is where the
+    detector is least reliable and where no other evidence exists. Such a paragraph is
+    absorbed into a neighbouring run, and if that run turns out to be a rendering it is
+    subtracted along with it — so ``"Eskerrik asko."`` printed between two Spanish
+    paragraphs leaves the record of what was said. Spelling is the only signal that reaches
+    these lines: the sentence vote cannot, by construction.
+
+    **The reading of the paragraph is deliberately NOT consulted.** Keying on that is the
+    refuted approach — ``"Grazas, señor presidente."`` reads as Spanish however much of it
+    the detector is given, which is the very reason ``MIN_VOTING_CHARS`` exists.
+
+    The lexicon is a closed class and deliberately incomplete. Missing a word only means a
+    paragraph is not rescued, which is the state of affairs today; a wrong word would put a
+    rendering back into the as-delivered block, so entries are limited to ones that cannot
+    be Spanish at all.
+    """
+    return bool(_folded_tokens(_votable(paragraph)) & _CO_OFFICIAL_ONLY)
+
+
+def co_official_spelling_spans(text):
+    """The ``(start, end)`` span of every paragraph too short to have a language of its own
+    that nonetheless spells a co-official language.
+
+    Same shape as ``quotation_spans`` and for the same reason: a paragraph neither
+    subtraction can find, which has to be put back by position.
+    """
+    spans = []
+    position = 0
+    for paragraph in text.split(PARAGRAPH_BREAK):
+        end = position + len(paragraph)
+        if (len(_votable(paragraph)) < MIN_VOTING_CHARS
+                and carries_co_official_spelling(paragraph)):
+            spans.append((position, end))
+        position = end + len(PARAGRAPH_BREAK)
+    return spans
+
+
+# The mirror of the set above: closed-class courtesy words that exist in Spanish and NOT in
+# any co-official language, accent-folded. Same admission rule — an entry must be impossible
+# in ca/eu/gl, so `gracias` is in and `presidente` is in (Catalan has `president`) while
+# nothing shared is. The two sets are disjoint by construction; `test_the_two_lexicons_are_
+# disjoint` pins it, because a word in both would make each rule silently ignore it.
+# The mirror side, and it needs a different shape. "This word is Spanish" is NOT evidence
+# that a line is not co-official, because Spanish shares most of its courtesy vocabulary with
+# Galician and some with Catalan. A flat list of "Spanish-only" words pushed ten co-official
+# lines into the Spanish block — and SEVEN of the ten were one word, `acabo`, which is spelled
+# identically in Catalan and Galician and so says nothing at all.
+#
+# So the table records **how each language says the word**, and the rule derives from it: a
+# word is evidence only where the two spellings DIFFER. `acabo` is then excluded by the rule
+# rather than by a judgement call, `presidente` counts against Catalan (`president`) but not
+# against Galician, and `nada` counts against Catalan (`res`) but not Galician. Every row is a
+# fact about a language that can be checked in a dictionary, not an observation about this
+# corpus — which is what stops it drifting per legislature.
+#
+# Same admission rule as above: thanks/greeting/farewell formulas and forms of address only.
+# A language absent from a row has no cognate, so the word counts against it (nothing in
+# Basque resembles any of these).
+_SPANISH_COGNATES = {
+    # thanks, greetings and farewells
+    "gracias":    {"ca": "gracies", "gl": "grazas"},
+    "muchas":     {"ca": "moltes", "gl": "moitas"},
+    "muchisimas": {"ca": "moltissimes", "gl": "moitisimas"},
+    "buenas":     {"ca": "bones", "gl": "boas"},
+    "buenos":     {"ca": "bons", "gl": "bos"},
+    "dias":       {"ca": "dies", "gl": "dias"},
+    "salud":      {"ca": "salut", "gl": "saude"},
+    "nada":       {"ca": "res", "gl": "nada"},
+    # forms of address
+    "senor":      {"ca": "senyor", "gl": "senor"},
+    "senora":     {"ca": "senyora", "gl": "senora"},
+    "senores":    {"ca": "senyors", "gl": "senores"},
+    "senorias":   {"ca": "senyories", "gl": "senorias"},
+    "presidente": {"ca": "president", "gl": "presidente"},
+    "presidenta": {"ca": "presidenta", "gl": "presidenta"},
+    "ministro":   {"ca": "ministre", "gl": "ministro"},
+    "ministra":   {"ca": "ministra", "gl": "ministra"},
+    "diputados":  {"ca": "diputats", "gl": "deputados"},
+    "diputadas":  {"ca": "diputades", "gl": "deputadas"},
+    # kept as a row precisely BECAUSE it discriminates nowhere: it caused seven of the ten
+    # false positives, and the rule now refuses it without anyone having to remember why.
+    "acabo":      {"ca": "acabo", "gl": "acabo"},
+}
+
+
+def spanish_evidence(co_lang):
+    """The Spanish words that are evidence against ``co_lang`` — those it spells otherwise."""
+    return frozenset(word for word, forms in _SPANISH_COGNATES.items()
+                     if forms.get(co_lang, "") != word)
+
+
+def carries_spanish_spelling(paragraph, co_lang):
+    """Does this paragraph spell Spanish in a way ``co_lang`` does not — so that it cannot be
+    part of a co-official original?
+
+    The mirror of ``carries_co_official_spelling``, for the opposite loss. A short Spanish
+    line absorbed into a co-official run is subtracted from the **Spanish** block when that
+    run turns out to have been rendered, so delivered Spanish goes missing from the block
+    that is supposed to hold every Spanish word of the speech.
+
+    A paragraph carrying a co-official word too is refused rather than guessed at: it may be
+    a co-official courtesy line whose translation exists, and adding that to the Spanish
+    block would duplicate a line the Diario already rendered there. This is the undecidable
+    case, and refusing it is what keeps the rule one-sided.
+    """
+    tokens = _folded_tokens(_votable(paragraph))
+    return (bool(tokens & spanish_evidence(co_lang))
+            and not (tokens & _CO_OFFICIAL_ONLY))
+
+
+def spanish_spelling_spans(text, co_lang):
+    """The ``(start, end)`` span of every paragraph too short to have a language of its own
+    that spells Spanish in a way ``co_lang`` does not."""
+    spans = []
+    position = 0
+    for paragraph in text.split(PARAGRAPH_BREAK):
+        end = position + len(paragraph)
+        if (len(_votable(paragraph)) < MIN_VOTING_CHARS
+                and carries_spanish_spelling(paragraph, co_lang)):
+            spans.append((position, end))
+        position = end + len(PARAGRAPH_BREAK)
+    return spans
+
+
 def paragraph_language(paragraph, detect):
     """The language holding most of ``paragraph``, ignoring what it quotes and what the
     stenographer noted in it.

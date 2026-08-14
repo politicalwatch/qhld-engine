@@ -787,3 +787,89 @@ def test_a_rendering_disputed_by_some_other_language_is_left_alone():
     assert noisy in spanish.text
     # ...and the paragraph that would have rendered it is still a spoken one
     assert spoken_after in delivered.text
+
+
+# ---- a co-official courtesy line absorbed into a rendering ---------------------------
+
+# 726702's and 750415's shape: the Diario prints the original, then its Spanish rendering,
+# and then a co-official farewell. Too short to have a language, it joins the run before it
+# — which is the rendering — and leaves the record of what was said along with it.
+CO_FAREWELL = "Moltes gràcies."
+
+
+def test_a_co_official_closing_absorbed_into_a_rendering_stays_in_the_record():
+    text = f"{CATALAN}\n\n{SPANISH}\n\n{CO_FAREWELL}"
+    split = split_languages(
+        text, _fake_detect, _clip(CATALAN, CO_FAREWELL), similarity=_fake_similarity)
+
+    delivered, spanish = split.blocks
+    assert CO_FAREWELL in delivered.text, "spoken words left the as-delivered block"
+    # The rule is one-sided: it proves the line is not purely a rendering, which says
+    # nothing about whether a translation of it exists, so the Spanish block is left exactly
+    # as the subtraction found it. The line therefore stands in both — the documented signal
+    # for "the alignment found no partner here".
+    assert CO_FAREWELL in spanish.text
+    assert delivered.text.startswith("La veritat")
+    assert spanish.text.startswith("La verdad")
+
+
+def test_a_spanish_closing_absorbed_into_a_rendering_is_left_alone():
+    """The precision half, and the reason the rule keys on spelling rather than position.
+    "Muchas gracias." in exactly the same place IS the rendering of a co-official farewell
+    embedded in the paragraph before it — confirmed on 20 sampled corpus speeches — so
+    rescuing it would duplicate a line nobody said twice."""
+    spanish_farewell = "Muchas gracias."
+    text = f"{CATALAN}\n\n{SPANISH}\n\n{spanish_farewell}"
+    split = split_languages(
+        text, _fake_detect, _clip(CATALAN), similarity=_fake_similarity)
+
+    delivered, spanish = split.blocks
+    assert spanish_farewell not in delivered.text
+    assert spanish_farewell in spanish.text
+
+
+def test_a_co_official_closing_is_kept_in_the_fourth_shape_too():
+    """Half the corpus cases are this shape — a mostly-Spanish speech whose co-official
+    passage was rendered, so BOTH blocks are named `es` and the as-delivered one is the only
+    place the Catalan survives."""
+    text = f"{SPANISH_BODY}\n\n{CATALAN}\n\n{SPANISH}\n\n{CO_FAREWELL}"
+    split = split_languages(
+        text, _fake_detect, _clip(SPANISH_BODY, CATALAN, CO_FAREWELL),
+        similarity=_pairs((CATALAN[:30], SPANISH[:30])))
+    delivered, spanish = split.blocks
+
+    assert split.language == "es"
+    assert [(b.lang, b.original) for b in split.blocks] == [("es", True), ("es", False)]
+    assert CO_FAREWELL in delivered.text
+    assert delivered.langs == ("es", "ca")
+
+
+def test_delivered_spanish_absorbed_into_the_original_stays_in_the_spanish_block():
+    """751304's, 726204's and 742429's shape, and the defect that motivated this whole item:
+    the speaker opens in Spanish, switches to Catalan, and the Diario renders the Catalan. The
+    Spanish opening is too short to have a language, joins the Catalan run, and is subtracted
+    from the SPANISH block along with it — so the block that must hold every Spanish word of
+    the speech is missing the words actually delivered in Spanish."""
+    opening = "Gracias, presidente."
+    text = f"{opening}\n\n{CATALAN}\n\n{SPANISH}"
+    split = split_languages(
+        text, _fake_detect, _clip(opening, CATALAN), similarity=_fake_similarity)
+
+    delivered, spanish = split.blocks
+    assert opening in spanish.text, "delivered Spanish left the Spanish block"
+    # Mirror of the other rule, and equally one-sided: it was spoken, so it is in both.
+    assert opening in delivered.text
+    assert CATALAN in delivered.text and CATALAN not in spanish.text
+
+
+def test_a_co_official_opening_is_not_pushed_into_the_spanish_block():
+    """The precision half. A Catalan courtesy line may already have a rendering standing in
+    the Spanish block, and adding it would duplicate that line — so a paragraph spelling a
+    co-official language is refused here, whatever the detector makes of it."""
+    opening = "Moltes gràcies, president."
+    text = f"{opening}\n\n{CATALAN}\n\n{SPANISH}"
+    split = split_languages(
+        text, _fake_detect, _clip(opening, CATALAN), similarity=_fake_similarity)
+
+    assert opening not in split.blocks[1].text
+    assert opening in split.blocks[0].text
