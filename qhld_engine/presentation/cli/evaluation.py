@@ -8,6 +8,10 @@ One benchmark per task:
 - ``parse`` — the NL query parser across LLMs / rule-based (per-slot P/R/F1,
   cost + latency via LangSmith), over ``RunParseBenchmark``.
 - ``mentions`` — index-time mention extraction against its gold set.
+- ``fidelity`` — the retrieval layer against brute force (recall vs exact
+  search), over ``RunFidelityBenchmark``. Needs no labels, so unlike
+  ``retrieval`` it can be run at whatever n a question needs — which is what
+  lets it arbitrate a retrieval-layer knob that ``retrieval`` cannot.
 
 Run in-container (repo volume-mounted), where ``Settings`` already reaches
 Qdrant + ollama:
@@ -379,6 +383,169 @@ def bitext(
                 typer.echo(f"  {row['video_id']} [{row['lang']}] "
                            f"{row['source']}->{row['candidate']}: "
                            f"{'FALSE ALARM' if row['decision'] else 'MISSED'}")
+
+
+@app.command("fidelity")
+def fidelity(
+    k: str = typer.Option(
+        "10,50", "--k",
+        help="Comma-separated retrieval depths. 50 is the product-relevant one — "
+             "it is the reranker's candidate pool (hybrid_prefetch_limit)."),
+    arm: str = typer.Option(
+        "corpus", "--arm",
+        help="corpus (vectors sampled from the collection; deterministic, needs no "
+             "embedder) | real (the 45 labelled + 49 parser queries, embedded) | both."),
+    collection: str = typer.Option(
+        None, "--collection",
+        help="Override the derived collection name. Skips embedder-based name "
+             "resolution, so the corpus arm then needs nothing but Qdrant."),
+    graph_reference: bool = typer.Option(
+        False, "--graph-reference",
+        help="Also run the uncompressed reference collection, which isolates HNSW's "
+             "own error from quantization's."),
+    filters: bool = typer.Option(
+        False, "--filters",
+        help="Sweep the payload-filter cells, stratified by cardinality."),
+    sparse: bool = typer.Option(
+        False, "--sparse",
+        help="Measure the fused dense+sparse shape the product serves, instead of the "
+             "dense branch alone. Fusion dilutes whatever the dense branch loses, so "
+             "this is the product-facing figure, not the sensitive one."),
+    size: int = typer.Option(None, "--size", help="Override the frozen sample size."),
+    cache: str = typer.Option(
+        None, "--cache", help="Path to cache the real arm's query embeddings."),
+    json_out: str = typer.Option(None, "--json", help="Write per-cell results here."),
+):
+    """Measure how faithfully the retrieval layer finds what brute force would.
+
+    Ground truth is ``exact: true`` on the same collection, so no labels are
+    needed and the query set is unbounded — which is the point. ``qhld eval
+    retrieval`` was measured unable to arbitrate a retrieval-layer change
+    (saturated at MRR 1.0, n=4-6 per dimension, opposite signs across cells);
+    this can, because it measures what ENTERS the pipeline rather than what
+    leaves it.
+
+    Read the result as fidelity, never as relevance: it says whether a cell finds
+    what an exhaustive search would, not whether that is the right answer.
+    """
+    from qhld_engine.application.evaluation.fidelity_benchmark import (
+        RunFidelityBenchmark,
+    )
+
+    runner = RunFidelityBenchmark(collection=collection)
+    depths = [int(value) for value in _split(k)]
+    cells = runner.asset["cells"]["default"]
+    arms = ["corpus", "real"] if arm == "both" else [arm]
+
+    targets = [(runner.collection, "serving")]
+    if graph_reference:
+        targets.append((runner.asset["reference_collections"]["float32"], "graph reference"))
+
+    results = {}
+    for name, role in targets:
+        typer.echo(f"\n=== {name} ({role}) ===")
+        for arm_name in arms:
+            vectors, sparse_vectors, provenance = _fidelity_arm(
+                runner, arm_name, name, size, cache, sparse)
+            typer.echo(f"  arm={arm_name} n={len(vectors)} · {provenance}")
+            for filter_cell in (runner.filter_cells() if filters else [{"label": None, "filter": None}]):
+                if filter_cell["label"]:
+                    count = runner.count(filter_cell["filter"], name)
+                    typer.echo(
+                        f"\n  filter {filter_cell['label']} · {count} points "
+                        f"({count / max(runner.count(None, name), 1):.1%})")
+                rows = _run_fidelity_cells(
+                    runner, vectors, sparse_vectors, cells, depths, name,
+                    filter_cell["filter"])
+                _print_fidelity(rows, depths)
+                results.setdefault(name, {}).setdefault(arm_name, {})[
+                    filter_cell["label"] or "unfiltered"] = rows
+
+    if json_out:
+        import json
+
+        with open(json_out, "w", encoding="utf-8") as handle:
+            json.dump(results, handle, ensure_ascii=False, indent=2)
+        typer.echo(f"\nwrote {json_out}")
+
+
+def _fidelity_arm(runner, arm_name, collection, size, cache, sparse):
+    """Build one arm's query vectors, plus the sparse companions the fused shape
+    needs. Returns the provenance string too: a fidelity number is meaningless
+    without knowing which corpus state produced the queries."""
+    if arm_name == "corpus":
+        vectors, fingerprint = runner.sample_corpus_vectors(collection, size=size)
+        recorded = runner.asset["fingerprints"].get(collection)
+        if recorded and recorded != fingerprint:
+            drift = "CORPUS MOVED — not comparable to the recorded baseline"
+        elif recorded:
+            drift = "matches the recorded baseline"
+        else:
+            drift = "no baseline recorded yet"
+        provenance = f"seed={runner.asset['sample']['seed']} sha={fingerprint[:12]} ({drift})"
+        texts = None
+    else:
+        vectors = runner.real_query_vectors(cache_path=cache)
+        texts = runner.real_query_texts()
+        provenance = f"real queries, embedded with {runner.settings.embedding_model}"
+
+    sparse_vectors = None
+    if sparse:
+        if texts is None:
+            raise typer.BadParameter(
+                "--sparse needs query TEXT to build a lexical vector, which the "
+                "corpus arm does not have (it samples vectors, not documents). "
+                "Use --arm real with --sparse.")
+        from qhld_ai.infrastructure.sparse.factory import create_sparse_embedder_from_env
+
+        embedder = create_sparse_embedder_from_env(runner.settings)
+        sparse_vectors = [embedder.embed_query(text) for text in texts]
+    return vectors, sparse_vectors, provenance
+
+
+def _run_fidelity_cells(runner, vectors, sparse_vectors, cells, depths, collection,
+                        query_filter):
+    rows = []
+    for depth in depths:
+        for cell in cells:
+            row = runner.run_cell(
+                vectors, cell, depth, collection, query_filter, sparse_vectors)
+            row["k"] = depth
+            rows.append(row)
+    return rows
+
+
+def _print_fidelity(rows, depths):
+    """One block per depth, with a paired bootstrap against the first cell — the
+    arm that currently serves — so a difference is reported as real or as noise
+    rather than left for the reader to eyeball."""
+    from qhld_engine.domain.evaluation import fidelity_scoring
+
+    for depth in depths:
+        block = [row for row in rows if row["k"] == depth]
+        if not block:
+            continue
+        typer.echo(
+            f"\n    k={depth}  {'cell':<44}{'recall':>8}{'perfect':>10}"
+            f"{'worst':>8}{'1st miss':>10}   vs baseline")
+        baseline = block[0]
+        for row in block:
+            delta = ""
+            if row is not baseline:
+                test = fidelity_scoring.paired_bootstrap(
+                    baseline["per_query"], row["per_query"])
+                if test:
+                    delta = (
+                        f"{test['delta'] * 100:+.2f} pp "
+                        f"[{test['lo'] * 100:+.2f}, {test['hi'] * 100:+.2f}] "
+                        f"{'SIGNIFICANT' if test['significant'] else 'n.s.'}")
+            shallowest = row["shallowest"] if row["shallowest"] is not None else "-"
+            typer.echo(
+                f"    {'':6}{row['label']:<44}"
+                f"{fidelity_scoring.format_recall(row['mean']):>8}"
+                f"{str(row['perfect']) + '/' + str(row['n']):>10}"
+                f"{fidelity_scoring.format_recall(row['worst']):>8}"
+                f"{str(shallowest):>10}   {delta}")
 
 
 def _parse_models(value):

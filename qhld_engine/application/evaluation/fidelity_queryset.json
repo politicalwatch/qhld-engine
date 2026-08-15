@@ -1,0 +1,97 @@
+{
+  "_about": [
+    "Frozen configuration for `qhld eval fidelity`. Unlike the labelled query set",
+    "beside it, this asset carries no judgements: brute-force search is the ground",
+    "truth, so nothing here needs adjudicating and the sample can be any size.",
+    "",
+    "The sample itself is NOT stored. The corpus is re-extracted regularly, so a",
+    "stored id list would rot silently or force a migration on every re-extraction.",
+    "The seed plus a hash of the drawn ids identifies it instead: a re-run either",
+    "reproduces the fingerprint or it does not, and the report says which. Same",
+    "reasoning as the eval-XV-1 corpus dump, where the artifact of record is the",
+    "hash rather than the file."
+  ],
+  "sample": {
+    "seed": 20260815,
+    "size": 200
+  },
+  "fingerprints": {
+    "_about": [
+      "Recorded per collection at the corpus state the baseline was measured on.",
+      "A mismatch does not invalidate a run — it means the numbers are not",
+      "comparable to that baseline, which is exactly what needs saying out loud.",
+      "Recorded 2026-08-15 at 32,871 / 31,407 points respectively."
+    ],
+    "speeches__ollama__bge_m3_567m__1024__bm25__tq4": "16e566ef2cb98656e720726c0776e3b8b51ccc44b399a3329755a041691ba84a",
+    "speeches__ollama__bge_m3_567m__1024__bm25": "bf3a8d196fba16980e27d2c451f1d57f26b899d688bdf5682a7d40b677212a35"
+  },
+  "filters": [
+    {
+      "label": "lang=es",
+      "must": [{"key": "lang", "value": "es"}],
+      "expected_count": 28817,
+      "note": "~88% of the collection: the widest filter real traffic produces."
+    },
+    {
+      "label": "date>=2025",
+      "must": [{"key": "date", "range": {"gte": 20250101}}],
+      "expected_count": 19456,
+      "note": "Range rather than keyword — a different index type on the same question."
+    },
+    {
+      "label": "role=Diputada",
+      "must": [{"key": "role", "value": "Diputada"}],
+      "expected_count": 10892,
+      "note": "Third of the collection."
+    },
+    {
+      "label": "group=GS",
+      "must": [{"key": "group", "value": "GS"}],
+      "expected_count": 5605,
+      "note": "Largest parliamentary group."
+    },
+    {
+      "label": "constituency=Madrid",
+      "must": [{"key": "constituency", "value": "Madrid"}],
+      "expected_count": 5139,
+      "note": "Largest constituency."
+    },
+    {
+      "label": "group=GP+2025",
+      "must": [
+        {"key": "group", "value": "GP"},
+        {"key": "date", "range": {"gte": 20250101}}
+      ],
+      "expected_count": 2268,
+      "note": "Two conditions, and near the full_scan_threshold=10000KB boundary (~2500 points at 1024 float32 dims) where Qdrant switches between graph traversal and an exhaustive scan of the filtered subset."
+    },
+    {
+      "label": "constituency=Malaga",
+      "must": [{"key": "constituency", "value": "Málaga"}],
+      "expected_count": 575,
+      "note": "Under 2% — the regime where a restrictive filter is most likely to disconnect the graph, which is the whole reason payload_m and full_scan_threshold exist."
+    }
+  ],
+  "cells": {
+    "_about": [
+      "Default arms. `exact` is never listed: it is the ground truth every cell is",
+      "scored against, recomputed per filter and per collection."
+    ],
+    "default": [
+      {"hnsw_ef": 1024, "rescore": false},
+      {"hnsw_ef": 1024, "rescore": true},
+      {"hnsw_ef": 1024, "rescore": true, "oversampling": 2.0},
+      {"hnsw_ef": 128, "rescore": false}
+    ]
+  },
+  "reference_collections": {
+    "_about": [
+      "The uncompressed collection isolates the graph from quantization: measured",
+      "against it, HNSW's own error is the only thing left. It is deliberately kept",
+      "at a pre-Phase-3 corpus state (31,407 points vs the serving collection's",
+      "32,871) — graph navigability at 31K and at 33K points is the same question,",
+      "and re-indexing it would cost a full re-embed for no change in the answer."
+    ],
+    "float32": "speeches__ollama__bge_m3_567m__1024__bm25"
+  }
+}
