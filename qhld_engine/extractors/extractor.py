@@ -108,8 +108,56 @@ class ExtractorTask():
         self.initiatives_extractor.all_references = [reference]
         self.initiatives_extractor.extract_videos()
 
-    def single_speeches(self, reference):
-        self._extract_speeches([reference])
+    def single_speeches(self, reference=None, video_ids=None):
+        """Extract one initiative's speeches, optionally saving only some of them.
+
+        ``video_ids`` are Congress intervention ids (``video_intervencion.id01``). With
+        a reference, that reference is processed and only those speeches are saved; with
+        no reference, each id's own reference is looked up and the ids are grouped so a
+        sitting is downloaded and segmented once however many speeches are targeted.
+
+        Which reference is used does not change the text: a speech carrying several is
+        an accumulated debate, and the Diario prints their expediente numbers as
+        consecutive headings, so the windows differ but converge on the same first
+        speaker line — measured byte-identical over four sittings. Hence the first of
+        the roster, with the reference argument there to override it.
+
+        Deliberately a debugging and gold-set tool. Saving only the targets leaves their
+        neighbours holding blocks produced by older code, so the corpus quietly drifts
+        out of step with the classifier — anything corpus-wide stays per-reference."""
+        if not video_ids:
+            if reference is None:
+                raise ValueError("single_speeches needs a reference or a video id")
+            return self._extract_speeches([reference])
+        if reference is not None:
+            return self._extract_speeches([reference], only=set(video_ids))
+        saved = 0
+        for resolved, targets in self._references_of(video_ids).items():
+            print(f"{', '.join(sorted(targets))} -> {resolved}")
+            saved += self._extract_speeches([resolved], only=targets)
+        return saved
+
+    @staticmethod
+    def _references_of(video_ids):
+        """Group the given intervention ids by the reference each one is extracted
+        under. A speech that has never been extracted has no reference to find, so it
+        has to be named explicitly."""
+        from tipi_data import DoesNotExist
+        from tipi_data.repositories.speeches import Speeches
+
+        grouped = {}
+        for video_id in video_ids:
+            try:
+                speech = Speeches.get_by_video_id(video_id)
+            except DoesNotExist:
+                raise ValueError(
+                    f"No stored speech for video id {video_id}; pass the reference "
+                    f"explicitly to extract it for the first time") from None
+            if not speech.references:
+                raise ValueError(
+                    f"Speech {video_id} carries no reference; pass one explicitly")
+            grouped.setdefault(speech.references[0], set()).add(video_id)
+        return grouped
 
     def single_votes(self, reference):
         self.initiatives_extractor.all_references = [reference]
@@ -151,9 +199,9 @@ class ExtractorTask():
         self.initiatives_extractor.extract_all_references_from_type(type_code)
         self._extract_speeches(self.initiatives_extractor.all_references)
 
-    def _extract_speeches(self, references):
+    def _extract_speeches(self, references, only=None):
         from qhld_engine.application.speeches.extract_speeches import ExtractSpeeches
-        ExtractSpeeches().execute(references)
+        return ExtractSpeeches().execute(references, only)
 
     def _extract_speeches_incremental(self, references):
         from qhld_engine.application.speeches.extract_speeches import ExtractSpeeches

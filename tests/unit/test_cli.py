@@ -84,6 +84,67 @@ def test_extractor_failure_exits_non_zero(monkeypatch):
     assert result.exit_code != 0
 
 
+def test_single_speech_extracts_a_whole_reference(monkeypatch):
+    task = _patch_class(monkeypatch, "qhld_engine.extractors.extractor.ExtractorTask")
+
+    result = runner.invoke(app, ["extractor", "single-speech", "REF"])
+
+    assert result.exit_code == 0, result.output
+    task.single_speeches.assert_called_once_with("REF", [])
+
+
+def test_single_speech_can_save_only_some_of_a_reference(monkeypatch):
+    task = _patch_class(monkeypatch, "qhld_engine.extractors.extractor.ExtractorTask")
+
+    result = runner.invoke(app, [
+        "extractor", "single-speech", "REF", "--video-id", "1", "--video-id", "2"])
+
+    assert result.exit_code == 0, result.output
+    task.single_speeches.assert_called_once_with("REF", ["1", "2"])
+
+
+def test_single_speech_takes_video_ids_without_a_reference(monkeypatch):
+    """The reference is looked up from the stored speech, so a debugging pass only
+    needs the id it already has in front of it."""
+    task = _patch_class(monkeypatch, "qhld_engine.extractors.extractor.ExtractorTask")
+
+    result = runner.invoke(app, ["extractor", "single-speech", "--video-id", "776209"])
+
+    assert result.exit_code == 0, result.output
+    task.single_speeches.assert_called_once_with(None, ["776209"])
+
+
+def test_single_speech_needs_a_reference_or_a_video_id(monkeypatch):
+    _patch_class(monkeypatch, "qhld_engine.extractors.extractor.ExtractorTask")
+
+    result = runner.invoke(app, ["extractor", "single-speech"])
+
+    assert result.exit_code != 0
+
+
+def test_single_speech_exits_non_zero_when_no_target_matched(monkeypatch):
+    """A mistyped id must not read as a successful re-extraction — the whole point of
+    the command is that the caller believes one specific speech was rewritten."""
+    task = _patch_class(monkeypatch, "qhld_engine.extractors.extractor.ExtractorTask")
+    task.single_speeches.return_value = 0
+
+    result = runner.invoke(app, ["extractor", "single-speech", "REF",
+                                 "--video-id", "nope"])
+
+    assert result.exit_code != 0
+    assert "nothing was saved" in result.output
+
+
+def test_single_speech_reports_an_unresolvable_video_id(monkeypatch):
+    task = _patch_class(monkeypatch, "qhld_engine.extractors.extractor.ExtractorTask")
+    task.single_speeches.side_effect = ValueError("No stored speech for video id 9")
+
+    result = runner.invoke(app, ["extractor", "single-speech", "--video-id", "9"])
+
+    assert result.exit_code != 0
+    assert "No stored speech for video id 9" in result.output
+
+
 def test_extractor_mark_complete_stamps_the_run(monkeypatch):
     stamped = []
     monkeypatch.setattr(

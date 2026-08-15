@@ -165,9 +165,16 @@ class ExtractSpeeches:
                 f"split across both. Add it to deputy_profiles.json "
                 f"'speaker_variants' and re-extract.")
 
-    def execute(self, references):
-        for reference in references:
-            self._extract_reference(reference)
+    def execute(self, references, only=None):
+        """Extract and save every speech of each reference. Returns how many were saved.
+
+        ``only`` narrows what is *saved* to a set of Congress intervention ids
+        (``video_intervencion.id01``). It does NOT narrow the work: each reference is
+        still fetched, downloaded and segmented in full, because placing one speech
+        needs its neighbours — see ``_extract_one``. What it buys is blast radius, so
+        a targeted fix stops rewriting documents it has no business touching."""
+        return sum(self._extract_reference(reference, only)
+                   for reference in references)
 
     def execute_incremental(self, references):
         """Extract only the references whose stored speeches are incomplete.
@@ -189,18 +196,19 @@ class ExtractSpeeches:
                 f"{reference}: {stored}/{len(interventions)} speeches stored, extracting")
             self._process_interventions(reference, interventions)
 
-    def _extract_reference(self, reference):
+    def _extract_reference(self, reference, only=None):
         log.info(f"Getting speeches from {reference}")
         interventions = self._retrieve_all_interventions(reference)
         if not interventions:
-            return
-        self._process_interventions(reference, interventions)
+            return 0
+        return self._process_interventions(reference, interventions, only)
 
-    def _process_interventions(self, reference, interventions):
+    def _process_interventions(self, reference, interventions, only=None):
         surnames = [
             segmentation.speaker_surname_upper(i["orador"]) for i in interventions
         ]
 
+        saved = 0
         for session_link, items in self._group_by_session(interventions).items():
             raw = self._session_text(session_link)
             if not raw:
@@ -217,9 +225,10 @@ class ExtractSpeeches:
             segmenter = segmentation.SpeechSegmenter(text)
             for intervention, regex, upcoming in zip(
                     items, speaker_regexes, speaker_regexes[1:] + [None]):
-                self._extract_one(
+                saved += self._extract_one(
                     intervention, session_link, session_id, segmenter,
-                    reference, regex, upcoming)
+                    reference, regex, upcoming, only)
+        return saved
 
     def _session_text(self, session_link):
         """The sitting's raw Diario text, LRU-cached per run. A failed download
@@ -269,12 +278,13 @@ class ExtractSpeeches:
         return str(get_settings().id_legislatura)
 
     def _extract_one(self, intervention, session_link, session_id, segmenter,
-                     reference, speaker_regex, upcoming_regex):
+                     reference, speaker_regex, upcoming_regex, only=None):
+        """Segment one intervention and save it. Returns 1 if it was saved, else 0."""
         speaker, group, surname = segmentation.parse_speaker(intervention["orador"])
         if speaker is None:
             log.warning(
                 f"Unparseable speaker {intervention.get('orador')!r} for {reference}")
-            return
+            return 0
         speaker = self._canonical_speaker(speaker)
         surname = speaker.split(",")[0].strip()
 
@@ -288,12 +298,23 @@ class ExtractSpeeches:
             role_regex = segmentation.build_role_regex(
                 intervention.get("cargo_orador"))
             text = segmenter.next_speech(role_regex, upcoming_regex)
+        video = intervention.get("video_intervencion") or {}
+        video_id = video.get("id01")
+        if only is not None and video_id not in only:
+            # Everything above this line still had to run. ``next_speech`` is what
+            # advances the segmenter's cursor, and the cursor is what places the
+            # speeches that follow: skipping a neighbour outright would leave it at
+            # the previous position, so a speaker who takes the floor twice would be
+            # found at their FIRST heading and saved under the second one's id. So the
+            # SAVE is what gets narrowed, never the loop — which is why the tooling
+            # that did this before stubbed ``Speeches.save``. An intervention whose
+            # sitting has no published video yet carries no id and cannot be targeted.
+            return 0
+
         # The clip comes first: how long it runs is evidence about the text, so the
         # split needs it, and reading it needs the video and whatever is already
         # stored. Only where there is no video does identity depend on the blocks.
-        video = intervention.get("video_intervencion") or {}
         order = int(intervention["doc"])
-        video_id = video.get("id01")
         video_link = video.get("enlace_descarga02")
         existing = self._stored(generate_id(video_id)) if video_id else None
         duration = self._duration(video_link, existing)
@@ -346,6 +367,7 @@ class ExtractSpeeches:
             entities=entities,
         )
         Speeches.save(speech)
+        return 1
 
     @staticmethod
     def _content_id(session_link, orador, order, blocks):

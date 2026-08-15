@@ -345,6 +345,121 @@ def test_a_new_video_link_is_reprobed(monkeypatch):
     assert saved[0].duration == 61.5
 
 
+# --- saving only some of a reference's speeches -----------------------------
+
+def _multi_page(*interventions):
+    """A page of several interventions, given as ``(orador, video_id)`` in the order
+    they took the floor."""
+    return {
+        "intervenciones_encontradas": str(len(interventions)),
+        "lista_intervenciones": {
+            f"k{i}": {
+                "orador": orador,
+                "cargo_orador": "Diputado",
+                "doc": str(i + 1),
+                "video_intervencion": {
+                    "legislatura": 15,
+                    "id01": video_id,
+                    "enlace_descarga02": f"http://v/{video_id}.mp4",
+                },
+                "pdia": "CONG-1#anchor",
+                "fecha": 20240115,
+                "sesion": {
+                    "nombre_sesion": "Pleno",
+                    "idsesion": "12",
+                    "videos_fase": {"enlace_descarga": "http://v/full.mp4"},
+                },
+            }
+            for i, (orador, video_id) in enumerate(interventions)
+        },
+    }
+
+
+def _diario(monkeypatch, text):
+    """Replace the stubbed Diario with a specific sitting's text."""
+    class _PDF:
+        def __init__(self, link, format_output=True):
+            pass
+
+        def retrieve(self):
+            return text
+
+    monkeypatch.setattr(mod, "PDFExtractor", _PDF)
+
+
+def test_only_the_targeted_speech_is_saved(monkeypatch):
+    page = _multi_page(("Perez, Juan (GP Socialista)", "776209"),
+                       ("Garcia, Ana (GP Popular)", "776210"))
+    saved = []
+    _stub_environment(monkeypatch, page, saved, [])
+    _diario(monkeypatch, "El señor PEREZ: Hola. La señora GARCIA: Adiós.")
+
+    count = mod.ExtractSpeeches().execute(["161/000123"], only={"776210"})
+
+    assert count == 1
+    assert [s.video_id for s in saved] == ["776210"]
+    assert [(b.lang, b.text) for b in saved[0].speech] == [("es", "Adiós.")]
+
+
+def test_a_skipped_neighbour_still_places_the_speech_that_follows_it(monkeypatch):
+    # The segmenter's cursor only advances inside next_speech, so a skipped
+    # intervention must still be segmented. Were the loop narrowed instead of the
+    # save, a speaker who takes the floor twice would be found at their FIRST
+    # heading and stored under the second one's id.
+    page = _multi_page(("Perez, Juan (GP Socialista)", "776209"),
+                       ("Garcia, Ana (GP Popular)", "776210"),
+                       ("Perez, Juan (GP Socialista)", "776211"))
+    saved = []
+    _stub_environment(monkeypatch, page, saved, [])
+    _diario(monkeypatch,
+            "El señor PEREZ: Primera. La señora GARCIA: Media. "
+            "El señor PEREZ: Segunda.")
+
+    mod.ExtractSpeeches().execute(["161/000123"], only={"776211"})
+
+    assert [s.video_id for s in saved] == ["776211"]
+    assert [(b.lang, b.text) for b in saved[0].speech] == [("es", "Segunda.")]
+
+
+def test_a_skipped_speech_is_neither_deleted_nor_probed(monkeypatch):
+    # What targeting buys is blast radius: no write and no CDN read for a
+    # speech nobody asked for.
+    page = _multi_page(("Perez, Juan (GP Socialista)", "776209"),
+                       ("Garcia, Ana (GP Popular)", "776210"))
+    saved, deleted, probed = [], [], []
+    _stub_environment(monkeypatch, page, saved, [], deleted=deleted, probed=probed)
+    _diario(monkeypatch, "El señor PEREZ: Hola. La señora GARCIA: Adiós.")
+
+    mod.ExtractSpeeches().execute(["161/000123"], only={"776210"})
+
+    assert probed == ["http://v/776210.mp4"]
+    # one provisional-twin cleanup, the target's — the skipped speech is not touched
+    assert len(deleted) == 1
+
+
+def test_a_speech_with_no_video_id_cannot_be_targeted(monkeypatch):
+    # Until the sitting's video is published the intervention has no id to key on.
+    page = _multi_page(("Perez, Juan (GP Socialista)", "776209"))
+    page["lista_intervenciones"]["k0"]["video_intervencion"] = {"legislatura": 15}
+    saved = []
+    _stub_environment(monkeypatch, page, saved, [])
+    _diario(monkeypatch, "El señor PEREZ: Hola.")
+
+    assert mod.ExtractSpeeches().execute(["161/000123"], only={"776209"}) == 0
+    assert saved == []
+
+
+def test_no_targeting_saves_every_speech_of_the_reference(monkeypatch):
+    page = _multi_page(("Perez, Juan (GP Socialista)", "776209"),
+                       ("Garcia, Ana (GP Popular)", "776210"))
+    saved = []
+    _stub_environment(monkeypatch, page, saved, [])
+    _diario(monkeypatch, "El señor PEREZ: Hola. La señora GARCIA: Adiós.")
+
+    assert mod.ExtractSpeeches().execute(["161/000123"]) == 2
+    assert [s.video_id for s in saved] == ["776209", "776210"]
+
+
 # --- how the shape was decided ---------------------------------------------
 
 def _blocks(*texts):
