@@ -25,7 +25,8 @@ def test_score_run_keeps_the_two_sites_apart():
     rows = [_row("L1", REFUSED_FLAG), _row("L2", REFUSED_FLAG),
             _row("L3", REFUSED_EMPTY), _row("L4")]
     report = gate_scoring.score_run(rows)
-    assert report["by_site"] == {REFUSED_FLAG: 2, REFUSED_EMPTY: 1}
+    assert report["by_site"] == {
+        REFUSED_FLAG: 2, REFUSED_EMPTY: 1, gate_scoring.REFUSED_LANGUAGE: 0}
     assert report["by_site_rate"][REFUSED_FLAG] == 0.5
 
 
@@ -134,3 +135,32 @@ def test_is_refusal_treats_only_pass_as_a_pass():
     assert not gate_scoring.is_refusal(PASS)
     assert gate_scoring.is_refusal(REFUSED_FLAG)
     assert gate_scoring.is_refusal(REFUSED_EMPTY)
+    assert gate_scoring.is_refusal(gate_scoring.REFUSED_LANGUAGE)
+
+
+def test_a_refusal_for_the_wrong_reason_is_counted_separately():
+    """Refusing a French query as 'not a speech search' is a correct verdict with a
+    useless explanation. Refused/passed counts cannot see it."""
+    rows = [
+        {**_row("U1", gate_scoring.REFUSED_FLAG), "expected_reason": "unsupported_language"},
+        {**_row("U2", gate_scoring.REFUSED_LANGUAGE), "expected_reason": "unsupported_language"},
+    ]
+    report = gate_scoring.score_run(rows)
+    assert report["refused"] == 2          # both refused...
+    assert report["wrong_reason"] == 1     # ...but one with the wrong message
+    assert report["wrong_reason_ids"] == ["U1"]
+
+
+def test_either_intent_site_satisfies_a_not_a_speech_search_expectation():
+    rows = [
+        {**_row("N1", REFUSED_FLAG), "expected_reason": "not_a_speech_search"},
+        {**_row("N2", REFUSED_EMPTY), "expected_reason": "not_a_speech_search"},
+    ]
+    assert gate_scoring.score_run(rows)["wrong_reason"] == 0
+
+
+def test_rows_without_an_expected_reason_are_never_judged_on_reason():
+    """The legitimate arm states no reason — nothing there should be refused at
+    all, and a refusal is already counted as a false positive."""
+    rows = [_row("L1", REFUSED_FLAG)]
+    assert gate_scoring.score_run(rows)["wrong_reason"] == 0

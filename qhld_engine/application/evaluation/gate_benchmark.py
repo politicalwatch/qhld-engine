@@ -52,7 +52,8 @@ import time
 from datetime import date
 
 from qhld_engine.domain.evaluation.gate_scoring import (
-    ARMS, JUNK, LEGITIMATE, NON_SEARCH, PASS, REFUSED_EMPTY, REFUSED_FLAG)
+    ARMS, JUNK, LEGITIMATE, NON_SEARCH, PASS, REFUSED_EMPTY, REFUSED_FLAG,
+    REFUSED_LANGUAGE, UNSUPPORTED_LANGUAGE)
 
 DEFAULT_QUERYSET = os.path.join(os.path.dirname(__file__), "gate_queryset.json")
 JUNK_QUERYSET = os.path.join(os.path.dirname(__file__), "queryset.json")
@@ -119,7 +120,10 @@ class RunGateBenchmark:
         self.today = _parse_date(data["today"])
         rows = data["queries"]
         self.legitimate = [row for row in rows if row["expected"] == "pass"]
-        self.non_search = [row for row in rows if row["expected"] == "refuse"]
+        self.non_search = [row for row in rows if row.get("expected_reason")
+                           == "not_a_speech_search"]
+        self.unsupported_language = [row for row in rows if row.get("expected_reason")
+                                     == "unsupported_language"]
         self.junk = load_junk(junk_path)
         base = settings or get_settings()
         # Nothing is ever retrieved, so the reranker is irrelevant — and pinning it
@@ -175,6 +179,7 @@ class RunGateBenchmark:
     def entries(self, arm):
         try:
             return {LEGITIMATE: self.legitimate, NON_SEARCH: self.non_search,
+                    UNSUPPORTED_LANGUAGE: self.unsupported_language,
                     JUNK: self.junk}[arm]
         except KeyError:
             raise ValueError(f"unknown arm {arm!r}; expected one of {ARMS}") from None
@@ -182,7 +187,7 @@ class RunGateBenchmark:
     def run(self, arm=LEGITIMATE, llm_provider=None, llm_model=None,
             reasoning_effort=None):
         """One pass over one arm; a row per query carrying the gate's outcome."""
-        from qhld_ai.domain.errors import NotASpeechQuery
+        from qhld_ai.domain.errors import NotASpeechQuery, UnsupportedLanguage
         from qhld_ai.domain.ports.query_parser import ParsedQuery
 
         service = self.service()
@@ -208,10 +213,18 @@ class RunGateBenchmark:
                 # no topic left browses instead of searching. Not a refusal, but
                 # not the same answer either.
                 route = "search" if semantic else "browse"
+            except UnsupportedLanguage:
+                # Caught BEFORE NotASpeechQuery: both descend from SearchRefused,
+                # and an ordering mistake here would silently file every language
+                # refusal under the intent gate.
+                outcome = REFUSED_LANGUAGE
+                route = None
+                filters = None
             except NotASpeechQuery:
-                # Both raise sites throw the same error, so the site is read off
-                # the parse: the flag is the parser's own verdict, and anything
-                # else that raises got through the flag and died on an empty parse.
+                # Both intent-gate raise sites throw the same error, so the site is
+                # read off the parse: the flag is the parser's own verdict, and
+                # anything else that raises got through the flag and died on an
+                # empty parse.
                 outcome = REFUSED_FLAG if not parsed.is_speech_search else REFUSED_EMPTY
                 route = None
                 filters = None

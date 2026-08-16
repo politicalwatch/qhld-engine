@@ -33,7 +33,17 @@ from collections import defaultdict
 PASS = "pass"
 REFUSED_FLAG = "refused:flag"
 REFUSED_EMPTY = "refused:empty"
-OUTCOMES = (PASS, REFUSED_FLAG, REFUSED_EMPTY)
+REFUSED_LANGUAGE = "refused:language"
+OUTCOMES = (PASS, REFUSED_FLAG, REFUSED_EMPTY, REFUSED_LANGUAGE)
+
+# Which outcome a probe that SHOULD be refused deserves. A refusal delivered with
+# the wrong explanation is its own defect: telling someone who searched in French
+# that their query "is not a parliamentary speech search" is both true-ish and
+# useless, and the plain refused/passed counts cannot see it.
+REASON_OUTCOMES = {
+    "not_a_speech_search": (REFUSED_FLAG, REFUSED_EMPTY),
+    "unsupported_language": (REFUSED_LANGUAGE,),
+}
 
 # How an arm reads its refusals. The scoring is identical; only the name of the
 # headline rate changes, and getting that backwards is the easiest way to publish
@@ -47,8 +57,9 @@ OUTCOMES = (PASS, REFUSED_FLAG, REFUSED_EMPTY)
 # different blast radius.
 LEGITIMATE = "legitimate"
 NON_SEARCH = "non-search"
+UNSUPPORTED_LANGUAGE = "unsupported-language"
 JUNK = "junk"
-ARMS = (LEGITIMATE, NON_SEARCH, JUNK)
+ARMS = (LEGITIMATE, NON_SEARCH, UNSUPPORTED_LANGUAGE, JUNK)
 
 
 def is_refusal(outcome: str) -> bool:
@@ -67,7 +78,14 @@ def score_run(rows: list[dict]) -> dict:
     total = len(rows)
     refused = [r for r in rows if is_refusal(r["outcome"])]
     by_site = {site: sum(1 for r in refused if r["outcome"] == site)
-               for site in (REFUSED_FLAG, REFUSED_EMPTY)}
+               for site in (REFUSED_FLAG, REFUSED_EMPTY, REFUSED_LANGUAGE)}
+    # Refused, but for a reason the probe did not expect — right verdict, wrong
+    # words. Only rows that state an expected reason can be judged this way.
+    wrong_reason = [
+        r for r in refused
+        if r.get("expected_reason")
+        and r["outcome"] not in REASON_OUTCOMES.get(r["expected_reason"], ())
+    ]
     by_class = defaultdict(lambda: {"n": 0, "refused": 0})
     for row in rows:
         bucket = by_class[row.get("class", "?")]
@@ -82,6 +100,8 @@ def score_run(rows: list[dict]) -> dict:
         "by_site": by_site,
         "by_site_rate": {site: _rate(count, total) for site, count in by_site.items()},
         "by_class": dict(by_class),
+        "wrong_reason": len(wrong_reason),
+        "wrong_reason_ids": sorted(r["id"] for r in wrong_reason),
     }
 
 

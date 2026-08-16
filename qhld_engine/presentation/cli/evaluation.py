@@ -487,10 +487,10 @@ def gate(
         None, "--reasoning",
         help="Comma-separated reasoning-effort levels to sweep each model over."),
     arms: str = typer.Option(
-        "legitimate,non-search,junk", "--arms",
-        help="Which arms to run. 'legitimate' measures false positives; 'non-search' "
-             "and 'junk' both measure misses, but only the junk one has the relevance "
-             "floor behind it, so they are reported separately and never merged."),
+        "legitimate,non-search,unsupported-language,junk", "--arms",
+        help="Which arms to run. 'legitimate' measures false positives; the other "
+             "three measure misses, but only 'junk' has the relevance floor behind "
+             "it, so they are reported separately and never merged."),
     queryset: str = typer.Option(None, "--queryset", help="Path to a gate query-set JSON."),
     verbose: bool = typer.Option(
         False, "--verbose", help="Dump every query with its outcome and parse."),
@@ -521,7 +521,9 @@ def gate(
     efforts = _split(reasoning) if reasoning else [None]
     typer.echo(
         f"Intent gate · legitimate={len(runner.legitimate)} "
-        f"non-search={len(runner.non_search)} junk={len(runner.junk)} "
+        f"non-search={len(runner.non_search)} "
+        f"unsupported-language={len(runner.unsupported_language)} "
+        f"junk={len(runner.junk)} "
         f"· repeats={repeats} · today={runner.today.isoformat()}\n"
         f"  collection={collection} ({vocabulary} distinct speakers) · arms={wanted}")
 
@@ -539,18 +541,20 @@ def gate(
                 _print_gate_arm(cell, arm, scored[arm], verbose)
             # One matrix per refuse-arm. Merging them would average an
             # unbackstopped failure with a backstopped one.
-            for arm in ("non-search", "junk"):
+            for arm in ("non-search", "unsupported-language", "junk"):
                 if "legitimate" in scored and arm in scored:
                     _print_gate_confusion(cell, scored["legitimate"], scored[arm], arm,
                                           repeats)
 
 
 def _print_gate_arm(cell, arm, report, verbose):
-    from qhld_engine.domain.evaluation.gate_scoring import REFUSED_EMPTY, REFUSED_FLAG
+    from qhld_engine.domain.evaluation.gate_scoring import (
+        REFUSED_EMPTY, REFUSED_FLAG, REFUSED_LANGUAGE)
 
     reading = {
         "legitimate": "refusing these is a FALSE POSITIVE",
         "non-search": "passing these is a MISS — nothing downstream catches them",
+        "unsupported-language": "passing these serves a language we do not support",
         "junk": "passing these is a MISS, but the relevance floor is a backstop",
     }.get(arm, arm)
     band = report["band"]
@@ -566,10 +570,16 @@ def _print_gate_arm(cell, arm, report, verbose):
             f"  NOT a measured zero — no refusal in {report['n']} probes bounds the "
             f"true rate at {report['ceiling_95']} (95%, rule of three). Widen the set "
             "to tighten it.")
-    sites = report["per_run"][0]["by_site"]
+    first = report["per_run"][0]
+    sites = first["by_site"]
     typer.echo(
         f"  by site       flag={sites[REFUSED_FLAG]}  empty-parse={sites[REFUSED_EMPTY]}"
-        "   (first pass)")
+        f"  language={sites[REFUSED_LANGUAGE]}   (first pass)")
+    if first["wrong_reason"]:
+        typer.echo(
+            f"  WRONG REASON  {first['wrong_reason']} refused, but not the way the probe "
+            f"expects — right verdict, wrong message: "
+            f"{', '.join(first['wrong_reason_ids'])}")
     typer.echo(f"  {'class':<16}{'n':>4}{'refused':>9}{'rate':>8}")
     for name, bucket in sorted(report["per_run"][0]["by_class"].items()):
         typer.echo(

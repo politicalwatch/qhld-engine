@@ -50,12 +50,24 @@ def test_an_unrecognised_note_falls_back_to_the_dimension_rather_than_vanishing(
     assert gate_benchmark._junk_class("") == "offdomain"
 
 
-def test_the_probe_set_carries_both_classes_split_by_expected():
+def test_the_probe_set_carries_three_classes_split_by_expected_reason():
     runner = gate_benchmark.RunGateBenchmark(settings=Settings(_env_file=None))
-    assert len(runner.legitimate) == 24
+    assert len(runner.legitimate) == 23
     assert all(row["expected"] == "pass" for row in runner.legitimate)
     assert len(runner.non_search) == 10
-    assert all(row["expected"] == "refuse" for row in runner.non_search)
+    assert len(runner.unsupported_language) == 5
+    for row in runner.non_search + runner.unsupported_language:
+        assert row["expected"] == "refuse"
+
+
+def test_every_refuse_row_states_which_refusal_it_deserves():
+    """Without a reason a row can only be scored as refused/not, which cannot see
+    a correct verdict delivered with the wrong explanation."""
+    rows = gate_benchmark.load_queryset()["queries"]
+    assert all(row.get("expected_reason")
+               for row in rows if row["expected"] == "refuse")
+    assert all(row.get("expected_reason") is None
+               for row in rows if row["expected"] == "pass")
 
 
 def test_every_probe_names_a_distinct_hazard():
@@ -78,9 +90,29 @@ def test_arms_resolve_to_their_own_rows_and_an_unknown_arm_is_an_error():
     runner = gate_benchmark.RunGateBenchmark(settings=Settings(_env_file=None))
     assert runner.entries("legitimate") is runner.legitimate
     assert runner.entries("non-search") is runner.non_search
+    assert runner.entries("unsupported-language") is runner.unsupported_language
     assert runner.entries("junk") is runner.junk
     with pytest.raises(ValueError):
         runner.entries("offdomain")
+
+
+def test_a_language_refusal_is_not_filed_under_the_intent_gate(monkeypatch):
+    """UnsupportedLanguage and NotASpeechQuery share a base class, so catching them
+    in the wrong order would silently score every language refusal as an intent
+    refusal — and the arms would still look healthy."""
+    from qhld_ai.domain.errors import UnsupportedLanguage
+
+    class _RefusesLanguage:
+        def _prepare(self, query, parsed):
+            raise UnsupportedLanguage(query, "en")
+
+    runner = gate_benchmark.RunGateBenchmark(settings=Settings(_env_file=None))
+    runner._service = _RefusesLanguage()
+    monkeypatch.setattr(
+        runner, "_parser",
+        lambda *a, **k: _StubParser(ParsedQuery(semantic_query="x", query_language="en")))
+    runner.legitimate = [{"id": "U1", "class": "language", "query": "what did they say"}]
+    assert runner.run()[0]["outcome"] == gate_benchmark.REFUSED_LANGUAGE
 
 
 def test_ids_cannot_collide_across_arms():

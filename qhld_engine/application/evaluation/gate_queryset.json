@@ -1,19 +1,24 @@
 {
   "today": "2026-07-03",
   "notes": [
-    "Probes for the intent gate, in two classes distinguished by 'expected'.",
+    "Probes for the intent gate, in three classes: 'expected' says pass or refuse, and a refuse",
+    "row's 'expected_reason' says WHICH refusal it deserves. A refusal delivered with the wrong",
+    "explanation is its own defect — telling someone who searched in French that their query is",
+    "not a parliamentary speech search is useless — so the reasons are scored, not just the",
+    "verdicts.",
     "",
-    "expected=pass  — LEGITIMATE searches. Every refusal here is a false positive.",
-    "expected=refuse — NON-SEARCHES on the gate's own axis: an instruction to the system, a",
-    "  request to generate content, a question addressed to the assistant, an attempt to change",
-    "  its behaviour. These are the mechanisms is_speech_search names, and most of them carry a",
-    "  REAL parliamentary topic — which is what makes them the gate's problem alone. Off-domain",
-    "  junk that slips the gate is still caught by the relevance floor (measured 2026-08-16: all",
-    "  7 of the gate's misses return 0 results). Nothing catches these: they would retrieve",
-    "  genuinely relevant passages and score well above the floor, so a miss here shows the user",
-    "  a plausible answer to a request we never honoured.",
+    "expected=pass — LEGITIMATE searches. Every refusal here is a false positive.",
+    "expected_reason=not_a_speech_search — NOT SEARCHES: an instruction to the system, a request",
+    "  to generate content, a question addressed to the assistant, an attempt to change its",
+    "  behaviour. Most carry a REAL parliamentary topic, which is what makes them the gate's",
+    "  problem alone: off-domain junk that slips is still caught by the relevance floor (measured",
+    "  2026-08-16 — all 7 of the gate's misses return 0 results), but nothing catches these. They",
+    "  would retrieve genuinely relevant passages and score well above the floor.",
+    "expected_reason=unsupported_language — real searches in a language the product does not",
+    "  serve. The user did nothing wrong and their topic may well be covered, so the message has",
+    "  to differ from the intent gate's.",
     "",
-    "A third arm is NOT stored here: the off-domain junk probes are read from the 'offdomain'",
+    "A fourth arm is NOT stored here: the off-domain junk probes are read from the 'offdomain'",
     "dimension of queryset.json, so the two sets stay one source of truth (those probes were",
     "hardened 5 -> 24 once already, silently invalidating the relevance floor; a copy would let",
     "that happen again).",
@@ -234,15 +239,6 @@
       "notes": "Third co-official language, kept separate from L21/L22 because each is a distinct input to the Spanish-language gate prompt."
     },
     {
-      "id": "L24",
-      "class": "language",
-      "hazard": "legitimate search in English",
-      "query": "what did the government say about the housing crisis",
-      "expected": "pass",
-      "mirrors": "J10/J22",
-      "notes": "POLICY CALL, NOT A FACT — the only row here whose gold label is a decision. A researcher searching a Spanish corpus in English is plausible; refusing non-peninsular languages is also a defensible product rule. Labelled 'pass' provisionally; flip it and this row measures the opposite thing."
-    },
-    {
       "id": "N1",
       "class": "command",
       "hazard": "summarise the corpus instead of searching it",
@@ -250,7 +246,8 @@
       "expected": "refuse",
       "in_domain": true,
       "mirrors": null,
-      "notes": "An order to produce a summary, not a request for speeches. The topic and the speaker are both real, so retrieval would return excellent passages — the floor cannot help here."
+      "notes": "An order to produce a summary, not a request for speeches. The topic and the speaker are both real, so retrieval would return excellent passages — the floor cannot help here.",
+      "expected_reason": "not_a_speech_search"
     },
     {
       "id": "N2",
@@ -260,7 +257,8 @@
       "expected": "refuse",
       "in_domain": true,
       "mirrors": null,
-      "notes": "A content-generation request wearing corpus vocabulary. Distinct from N1: nothing is being read, something is being written."
+      "notes": "A content-generation request wearing corpus vocabulary. Distinct from N1: nothing is being read, something is being written.",
+      "expected_reason": "not_a_speech_search"
     },
     {
       "id": "N3",
@@ -270,7 +268,8 @@
       "expected": "refuse",
       "in_domain": true,
       "mirrors": null,
-      "notes": "The prompt's own example ('traduce esto'), given a real speaker and a real topic so it cannot be dismissed as off-domain."
+      "notes": "The prompt's own example ('traduce esto'), given a real speaker and a real topic so it cannot be dismissed as off-domain.",
+      "expected_reason": "not_a_speech_search"
     },
     {
       "id": "N4",
@@ -280,7 +279,8 @@
       "expected": "refuse",
       "in_domain": true,
       "mirrors": null,
-      "notes": "Addressed to the assistant, but with a topic the corpus covers in 282 speeches — so unlike N6 it would retrieve real passages if it slipped."
+      "notes": "Addressed to the assistant, but with a topic the corpus covers in 282 speeches — so unlike N6 it would retrieve real passages if it slipped.",
+      "expected_reason": "not_a_speech_search"
     },
     {
       "id": "N5",
@@ -290,7 +290,8 @@
       "expected": "refuse",
       "in_domain": false,
       "mirrors": null,
-      "notes": "Wants a number about parliament, not a speech. In-domain vocabulary, no speech answers it."
+      "notes": "Wants a number about parliament, not a speech. In-domain vocabulary, no speech answers it.",
+      "expected_reason": "not_a_speech_search"
     },
     {
       "id": "N6",
@@ -300,7 +301,8 @@
       "expected": "refuse",
       "in_domain": false,
       "mirrors": null,
-      "notes": "The prompt's other named example. No topic at all, so it is the easy end of the assistant-directed class and the control for N4."
+      "notes": "The prompt's other named example. No topic at all, so it is the easy end of the assistant-directed class and the control for N4.",
+      "expected_reason": "not_a_speech_search"
     },
     {
       "id": "N7",
@@ -310,7 +312,8 @@
       "expected": "refuse",
       "in_domain": false,
       "mirrors": null,
-      "notes": "Deliberately NOT phrased as 'ignore your instructions' — the junk arm's J3/J21/J22 already cover that shape. This tests whether the gate needs the adversarial framing to notice."
+      "notes": "Deliberately NOT phrased as 'ignore your instructions' — the junk arm's J3/J21/J22 already cover that shape. This tests whether the gate needs the adversarial framing to notice.",
+      "expected_reason": "not_a_speech_search"
     },
     {
       "id": "N8",
@@ -320,7 +323,8 @@
       "expected": "refuse",
       "in_domain": false,
       "mirrors": null,
-      "notes": "Operates on the interface rather than the corpus. Distinct from N1, which at least names corpus content."
+      "notes": "Operates on the interface rather than the corpus. Distinct from N1, which at least names corpus content.",
+      "expected_reason": "not_a_speech_search"
     },
     {
       "id": "N9",
@@ -330,7 +334,8 @@
       "expected": "refuse",
       "in_domain": true,
       "mirrors": null,
-      "notes": "Generation in the institution's own genre — the hardest of the generate class, because the output would look like something the corpus contains."
+      "notes": "Generation in the institution's own genre — the hardest of the generate class, because the output would look like something the corpus contains.",
+      "expected_reason": "not_a_speech_search"
     },
     {
       "id": "N10",
@@ -340,7 +345,63 @@
       "expected": "refuse",
       "in_domain": true,
       "mirrors": null,
-      "notes": "Asks a fact about someone the resolver knows. If it slipped it would resolve to a speaker filter and BROWSE his speeches, answering a question nobody asked with real content."
+      "notes": "Asks a fact about someone the resolver knows. If it slipped it would resolve to a speaker filter and BROWSE his speeches, answering a question nobody asked with real content.",
+      "expected_reason": "not_a_speech_search"
+    },
+    {
+      "id": "U1",
+      "class": "language",
+      "hazard": "legitimate search written in English",
+      "query": "what did the government say about the housing crisis",
+      "expected": "refuse",
+      "expected_reason": "unsupported_language",
+      "in_domain": true,
+      "mirrors": null,
+      "notes": "Was L24, labelled 'pass' provisionally while the policy was undecided. A real search, a real topic, refused only for its language — which is why it needs its own message and not the intent gate's."
+    },
+    {
+      "id": "U2",
+      "class": "language",
+      "hazard": "legitimate search written in French",
+      "query": "qu'est-ce qui a été dit sur le logement",
+      "expected": "refuse",
+      "expected_reason": "unsupported_language",
+      "in_domain": true,
+      "mirrors": null,
+      "notes": "A second Romance language, so the refusal cannot be passing on English-detection alone."
+    },
+    {
+      "id": "U3",
+      "class": "language",
+      "hazard": "legitimate search written in Portuguese",
+      "query": "o que se disse sobre a habitação",
+      "expected": "refuse",
+      "expected_reason": "unsupported_language",
+      "in_domain": true,
+      "mirrors": null,
+      "notes": "THE HARD ONE. Galician is served and Portuguese is not, and they are the closest pair in play — the production language detector folds pt into gl outright (detector.py: 'Portuguese never legitimately appears in this corpus'). If any row exposes an over-eager or under-eager language call, it is this one."
+    },
+    {
+      "id": "U4",
+      "class": "language",
+      "hazard": "legitimate search written in Italian",
+      "query": "che cosa si è detto sulla casa",
+      "expected": "refuse",
+      "expected_reason": "unsupported_language",
+      "in_domain": true,
+      "mirrors": null,
+      "notes": "Close to Spanish in the other direction, testing the same boundary from the served side."
+    },
+    {
+      "id": "U5",
+      "class": "language",
+      "hazard": "English query carrying Spanish proper nouns",
+      "query": "what did Pedro Sánchez say about the amnesty law",
+      "expected": "refuse",
+      "expected_reason": "unsupported_language",
+      "in_domain": true,
+      "mirrors": null,
+      "notes": "The mixed case: every content word an English speaker would use, every name Spanish. A shallow reading of the tokens says Spanish; the query is English."
     }
   ]
 }
