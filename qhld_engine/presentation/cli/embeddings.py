@@ -35,3 +35,25 @@ def index(
     re-index, or ``--reference`` to (re)index a single initiative's speeches.
     """
     _service().execute([reference] if reference else None, incremental=not index_all)
+
+
+@app.command("backfill-siblings")
+def backfill_siblings(
+    dry_run: bool = typer.Option(
+        False, "--dry-run",
+        help="Report what would be written without touching the collection."),
+):
+    """Pair each co-official passage with its Spanish interpretation.
+
+    Search scores a passage against its Spanish sibling as well as itself, since
+    a cross-encoder reads a language-mismatched pair as junk however relevant it
+    is. Indexing writes the pairing as it goes, so this is only needed for
+    speeches indexed before that existed.
+
+    Reads the vectors already in Qdrant and writes back one payload key: no
+    re-embedding, no re-extraction and no change to any block text, so it is
+    safe to run beside jobs that fingerprint that text.
+    """
+    from qhld_engine.application.speeches.backfill_siblings import BackfillSiblings
+
+    BackfillSiblings().execute(dry_run=dry_run)
