@@ -70,12 +70,19 @@ class AlignSpeech:
 
         return create_aligner_from_env(self.settings)
 
-    def execute(self, speech_id, force=False, persist=True):
+    def execute(self, speech_id, force=False, persist=True, samples=None):
         """Align every language block of the speech and return one record each.
 
         ``force`` re-aligns languages that already have a track; without it those are
         returned untouched and only the missing ones are timed. When nothing is missing
         the video is never fetched at all, which is the expensive part.
+
+        ``samples`` is that download already done. A corpus run fetches the next clips
+        while this one is still in the acoustic model, so it arrives holding the audio;
+        passing it here is what lets the two overlap. It is only ever an optimisation —
+        the decode is identical either way, so a caller that omits it gets the same
+        cues, and the "never fetch when nothing is missing" property above is preserved
+        because a caller that prefetches has already decided the speech has work.
         """
         speech = Speeches.get(speech_id)
         blocks = self._alignable_blocks(speech)
@@ -96,14 +103,15 @@ class AlignSpeech:
             log.info(f"{speech.id} is already aligned in "
                      f"{', '.join(a.lang for a in stored)} (pass --force to redo it)")
             return stored
-        if not speech.video_link:
+        if samples is None and not speech.video_link:
             raise NotAlignable(
                 f"{speech.id} has no video; the Congress has not published it yet")
 
         log.info(f"aligning {speech.id} in "
                  + ", ".join(f"{block.lang} ({len(words)} words)"
                              for _, block, words, _ in pending))
-        samples = self.decode(speech.video_link)
+        if samples is None:
+            samples = self.decode(speech.video_link)
         # One call, so the clip goes through the acoustic model once however many blocks
         # it carries: what a second track costs is the search that places its words.
         alignments = self.aligner.align_all(

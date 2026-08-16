@@ -81,6 +81,51 @@ def align(
                    f"{'as delivered' if chosen.original else 'translation'})")
 
 
+@app.command("backfill")
+def backfill(
+    reference: str | None = typer.Option(
+        None, "--reference", "-r",
+        help="Align only this initiative's speeches; omit for the whole corpus."),
+    align_all: bool = typer.Option(
+        False, "--all",
+        help="Re-align every speech, not just those with a block that has no cues. "
+             "Needed after a cue-segmentation or acoustic-model change; costs a fresh "
+             "download of every video. By default only missing blocks are timed."),
+    limit: int | None = typer.Option(
+        None, "--limit",
+        help="Stop after this many speeches. For sampling the run before committing "
+             "the machine to all of it."),
+    dry_run: bool = typer.Option(
+        False, "--dry-run",
+        help="Report what would be aligned and what it would cost, then stop. Loads "
+             "no acoustic model and downloads nothing."),
+):
+    """Time every speech's transcript against its video, filling in the corpus.
+
+    Incremental by default and safe to interrupt: a stored track is what marks a block
+    done, so re-running picks up where it stopped without re-downloading anything it
+    already has.
+    """
+    from qhld_engine.application.speeches.align_corpus import AlignCorpus
+
+    service = AlignCorpus()
+    if not dry_run:
+        service.execute([reference] if reference else None,
+                        incremental=not align_all, limit=limit)
+        return
+
+    speeches = service.pending([reference] if reference else None,
+                               incremental=not align_all)
+    if limit is not None:
+        speeches = speeches[:limit]
+    blocks = sum(len(s.speech) for s in speeches)
+    audio = sum(s.duration or 0.0 for s in speeches) / 3600
+    # The rate is this machine's, measured warm; it is a projection, so it is named as
+    # one rather than printed as a deadline.
+    typer.echo(f"{len(speeches)} speeches, {blocks} blocks, {audio:.1f} h of audio "
+               f"— roughly {audio * 2.19 / 60:.1f} h at 2.19 s per audio-minute")
+
+
 def _track(alignments, lang, original=None):
     """The alignment ``--vtt`` should render.
 

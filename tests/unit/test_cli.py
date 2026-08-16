@@ -533,6 +533,45 @@ def test_subtitles_align_failure_exits_non_zero(monkeypatch):
     assert result.exit_code != 0
 
 
+def test_subtitles_backfill_dispatches_to_the_service(monkeypatch):
+    svc = _patch_class(
+        monkeypatch,
+        "qhld_engine.application.speeches.align_corpus.AlignCorpus")
+
+    result = runner.invoke(app, ["subtitles", "backfill"])
+
+    assert result.exit_code == 0, result.output
+    svc.execute.assert_called_once_with(None, incremental=True, limit=None)
+
+
+def test_subtitles_backfill_flags_are_forwarded(monkeypatch):
+    svc = _patch_class(
+        monkeypatch,
+        "qhld_engine.application.speeches.align_corpus.AlignCorpus")
+
+    result = runner.invoke(
+        app, ["subtitles", "backfill", "-r", "210/000151", "--all", "--limit", "5"])
+
+    assert result.exit_code == 0, result.output
+    svc.execute.assert_called_once_with(
+        ["210/000151"], incremental=False, limit=5)
+
+
+def test_subtitles_backfill_dry_run_reports_without_aligning(monkeypatch):
+    svc = _patch_class(
+        monkeypatch,
+        "qhld_engine.application.speeches.align_corpus.AlignCorpus")
+    speech = MagicMock(duration=600.0)
+    speech.speech = [MagicMock()]
+    svc.pending.return_value = [speech, speech]
+
+    result = runner.invoke(app, ["subtitles", "backfill", "--dry-run"])
+
+    assert result.exit_code == 0, result.output
+    svc.execute.assert_not_called()
+    assert "2 speeches" in result.output
+
+
 # --- debug -----------------------------------------------------------------
 
 def test_debug_generate_alert(monkeypatch):
