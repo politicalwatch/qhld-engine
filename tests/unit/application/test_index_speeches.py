@@ -310,3 +310,21 @@ def test_hybrid_indexing_attaches_sparse_vectors(monkeypatch):
     for point in points:
         assert point.sparse == SparseVector(
             indices=[len(point.payload["text"])], values=[1.0])
+
+
+def test_co_official_points_carry_their_spanish_sibling(monkeypatch):
+    """Search scores a co-official passage against its Spanish interpretation as
+    well as itself, so the indexer has to write the pairing as it embeds — the
+    vectors are already in hand there, making it free."""
+    store = _FakeStore()
+    monkeypatch.setattr(
+        mod.Speeches, "by_references", lambda refs: [_bilingual_speech()],
+        raising=False)
+
+    service = IndexSpeeches(settings=_settings(), embedder=_FakeEmbedder(), store=store)
+    service.execute(["172/000001"])
+
+    by_lang = {p.payload["lang"]: p for p in store.upserts[0][1]}
+    assert by_lang["gl"].payload["sibling_texts"] == ["Buenas tardes a todas y todos."]
+    # The Spanish block is already in the query's language — nothing to pair.
+    assert "sibling_texts" not in by_lang["es"].payload

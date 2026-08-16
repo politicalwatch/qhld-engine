@@ -20,6 +20,7 @@ from uuid import NAMESPACE_DNS, uuid5
 
 from tqdm import tqdm
 
+from qhld_engine.application.speeches.sibling_texts import attach_siblings
 from qhld_engine.logger import get_logger
 from qhld_ai.domain.chunking import chunk_text
 from qhld_ai.domain.ports.vector_store import VectorPoint
@@ -106,6 +107,7 @@ class IndexSpeeches:
             for (point_id, payload, _text), vector, sparse in zip(
                 chunks, vectors, sparse_vectors)
         ]
+        attach_siblings(points)
         self.store.upsert(self.collection, points)
         log.debug(f"Indexed {len(points)} passages for speech {speech.id}")
 
