@@ -12,6 +12,9 @@ One benchmark per task:
   search), over ``RunFidelityBenchmark``. Needs no labels, so unlike
   ``retrieval`` it can be run at whatever n a question needs — which is what
   lets it arbitrate a retrieval-layer knob that ``retrieval`` cannot.
+- ``gate`` — the intent gate, over ``RunGateBenchmark``: how much junk it
+  refuses AND how many legitimate searches it refuses with it. The second half
+  is the number the gate has never had.
 
 Run in-container (repo volume-mounted), where ``Settings`` already reaches
 Qdrant + ollama:
@@ -467,6 +470,154 @@ def fidelity(
         with open(json_out, "w", encoding="utf-8") as handle:
             json.dump(results, handle, ensure_ascii=False, indent=2)
         typer.echo(f"\nwrote {json_out}")
+
+
+@app.command("gate")
+def gate(
+    repeats: int = typer.Option(
+        5, "--repeats", min=1,
+        help="Passes over each arm. The gate runs on an LLM call, so its verdict is "
+             "not stable per query; the report is a BAND across passes plus a "
+             "per-query refusal frequency, never a point estimate."),
+    models: str = typer.Option(
+        None, "--models",
+        help="Comma-separated 'provider:model' specs to sweep the parser over "
+             "(same form as `eval parse`). Omit to measure the production cell."),
+    reasoning: str = typer.Option(
+        None, "--reasoning",
+        help="Comma-separated reasoning-effort levels to sweep each model over."),
+    arms: str = typer.Option(
+        "legitimate,non-search,junk", "--arms",
+        help="Which arms to run. 'legitimate' measures false positives; 'non-search' "
+             "and 'junk' both measure misses, but only the junk one has the relevance "
+             "floor behind it, so they are reported separately and never merged."),
+    queryset: str = typer.Option(None, "--queryset", help="Path to a gate query-set JSON."),
+    verbose: bool = typer.Option(
+        False, "--verbose", help="Dump every query with its outcome and parse."),
+):
+    """Measure the intent gate in both directions: the junk it refuses, and the
+    legitimate searches it refuses with it.
+
+    The second half is the gap this command exists to close. The gate's only
+    number on record — 23/24 junk probes suppressed — was measured on the
+    RELEVANCE FLOOR, by a harness that runs no parse and no gate at all, over a
+    set containing nothing but junk. So it says nothing about how often a real
+    search is turned away, and a refusal fails closed: the user is told this is
+    not a speech search, which they cannot tell from the product being broken.
+    """
+    from qhld_engine.application.evaluation.gate_benchmark import (
+        RunGateBenchmark, VocabularyError)
+    from qhld_engine.domain.evaluation import gate_scoring
+
+    runner = RunGateBenchmark(queryset) if queryset else RunGateBenchmark()
+    try:
+        collection, vocabulary = runner.check_vocabulary()
+    except VocabularyError as exc:
+        typer.echo(f"ABORTED: {exc}")
+        raise typer.Exit(code=1)
+
+    wanted = _split(arms)
+    specs = _parse_models(models) if models else [(None, None, runner.model_label())]
+    efforts = _split(reasoning) if reasoning else [None]
+    typer.echo(
+        f"Intent gate · legitimate={len(runner.legitimate)} "
+        f"non-search={len(runner.non_search)} junk={len(runner.junk)} "
+        f"· repeats={repeats} · today={runner.today.isoformat()}\n"
+        f"  collection={collection} ({vocabulary} distinct speakers) · arms={wanted}")
+
+    for provider, model, label in specs:
+        for effort in efforts:
+            cell = f"{label} · effort={effort}" if effort else label
+            scored = {}
+            for arm in wanted:
+                runs = [
+                    runner.run(arm, llm_provider=provider, llm_model=model,
+                               reasoning_effort=effort)
+                    for _ in range(repeats)
+                ]
+                scored[arm] = gate_scoring.score_arm(runs)
+                _print_gate_arm(cell, arm, scored[arm], verbose)
+            # One matrix per refuse-arm. Merging them would average an
+            # unbackstopped failure with a backstopped one.
+            for arm in ("non-search", "junk"):
+                if "legitimate" in scored and arm in scored:
+                    _print_gate_confusion(cell, scored["legitimate"], scored[arm], arm,
+                                          repeats)
+
+
+def _print_gate_arm(cell, arm, report, verbose):
+    from qhld_engine.domain.evaluation.gate_scoring import REFUSED_EMPTY, REFUSED_FLAG
+
+    reading = {
+        "legitimate": "refusing these is a FALSE POSITIVE",
+        "non-search": "passing these is a MISS — nothing downstream catches them",
+        "junk": "passing these is a MISS, but the relevance floor is a backstop",
+    }.get(arm, arm)
+    band = report["band"]
+    typer.echo(f"\n=== {cell} · arm={arm} · n={report['n']} ===")
+    typer.echo(f"  {reading}")
+    typer.echo(
+        f"  refusal rate  band {band['min']}–{band['max']}  median {band['median']}")
+    typer.echo(
+        f"  ever refused  {report['ever']}/{report['n']} ({report['ever_rate']})   "
+        f"always {report['always']}/{report['n']} ({report['always_rate']})")
+    if report["ceiling_95"] is not None:
+        typer.echo(
+            f"  NOT a measured zero — no refusal in {report['n']} probes bounds the "
+            f"true rate at {report['ceiling_95']} (95%, rule of three). Widen the set "
+            "to tighten it.")
+    sites = report["per_run"][0]["by_site"]
+    typer.echo(
+        f"  by site       flag={sites[REFUSED_FLAG]}  empty-parse={sites[REFUSED_EMPTY]}"
+        "   (first pass)")
+    typer.echo(f"  {'class':<16}{'n':>4}{'refused':>9}{'rate':>8}")
+    for name, bucket in sorted(report["per_run"][0]["by_class"].items()):
+        typer.echo(
+            f"  {name:<16}{bucket['n']:>4}{bucket['refused']:>9}{bucket['rate']:>8}")
+    if report["unstable"]:
+        typer.echo(
+            f"  UNSTABLE — refused on some passes and not others "
+            f"({len(report['unstable'])}):")
+        for entry in report["unstable"]:
+            typer.echo(
+                f"    {entry['id']:<5}{entry['refused']}/{entry['repeats']} "
+                f"{','.join(entry['sites']):<14} {entry['query']!r}")
+    refused = [e for e in report["queries"] if e["refused"]]
+    if refused and not verbose:
+        typer.echo("  refused at least once:")
+        for entry in refused:
+            typer.echo(
+                f"    {entry['id']:<5}{entry['refused']}/{entry['repeats']} "
+                f"[{entry['class']}] {entry['query']!r}")
+    if verbose:
+        for entry in report["queries"]:
+            mark = "✓" if not entry["refused"] else "✗"
+            routes = "/".join(entry["routes"]) or "-"
+            typer.echo(
+                f"  {mark} {entry['id']:<5}{entry['refused']}/{entry['repeats']} "
+                f"[{entry['class']}] route={routes} {entry['query']!r}")
+
+
+def _print_gate_confusion(cell, legitimate, positives, arm, repeats):
+    from qhld_engine.domain.evaluation import gate_scoring
+
+    matrix = gate_scoring.confusion(legitimate, positives)
+    typer.echo(
+        f"\n=== {cell} · gate vs {arm} (median pass of {repeats}) ===")
+    typer.echo("  positive = 'refuse the query'")
+    typer.echo(
+        f"  {arm} refused (TP) {matrix['tp']:>3}   {arm} passed (FN)  {matrix['fn']:>3}")
+    typer.echo(
+        f"  legit refused (FP){matrix['fp']:>4}   legit passed (TN) {matrix['tn']:>4}")
+    typer.echo(
+        f"  FALSE-POSITIVE RATE {matrix['false_positive_rate']}   "
+        f"suppression {matrix['suppression']}")
+    typer.echo(
+        f"  precision {matrix['precision']}   recall {matrix['recall']}   "
+        f"F1 {matrix['f1']}")
+    typer.echo(
+        "  Cite as a band with n, repeats, date and model — the gate is an LLM call, "
+        "so a point estimate would claim a stability it does not have.")
 
 
 def _fidelity_arm(runner, arm_name, collection, size, cache, sparse):
