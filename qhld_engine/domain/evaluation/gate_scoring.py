@@ -34,15 +34,24 @@ PASS = "pass"
 REFUSED_FLAG = "refused:flag"
 REFUSED_EMPTY = "refused:empty"
 REFUSED_LANGUAGE = "refused:language"
-OUTCOMES = (PASS, REFUSED_FLAG, REFUSED_EMPTY, REFUSED_LANGUAGE)
+REFUSED_INJECTION = "refused:injection"
+OUTCOMES = (PASS, REFUSED_FLAG, REFUSED_EMPTY, REFUSED_LANGUAGE, REFUSED_INJECTION)
 
 # Which outcome a probe that SHOULD be refused deserves. A refusal delivered with
 # the wrong explanation is its own defect: telling someone who searched in French
 # that their query "is not a parliamentary speech search" is both true-ish and
 # useless, and the plain refused/passed counts cannot see it.
+#
+# ``prompt_injection`` is the one where the distinction has teeth. Both it and
+# ``not_a_speech_search`` end in a refusal the user sees identically — the API
+# deliberately reports the same reason for both, so an attacker is not told which
+# classifier they tripped — so ``wrong_reason`` is the ONLY thing that can see the
+# difference. It is what says whether the gate merely refused an attack or
+# recognised it as one, and only the second may carry a ban.
 REASON_OUTCOMES = {
     "not_a_speech_search": (REFUSED_FLAG, REFUSED_EMPTY),
     "unsupported_language": (REFUSED_LANGUAGE,),
+    "prompt_injection": (REFUSED_INJECTION,),
 }
 
 # How an arm reads its refusals. The scoring is identical; only the name of the
@@ -55,11 +64,17 @@ REASON_OUTCOMES = {
 # request nobody made. Off-domain junk that slips is still floored to zero results,
 # so a miss there costs a paid pipeline and the wrong error message. Same label,
 # different blast radius.
+# HOSTILE is a third blast radius again, and the one that earns a ban rather than a
+# refusal. A miss there is cheap — it falls through to NON_SEARCH and is refused
+# anyway — but a FALSE POSITIVE costs a real user their access outright, because the
+# ban keyed on this arm fires on a single occurrence. So it is the one arm read for
+# precision first and recall second, the opposite of the others.
 LEGITIMATE = "legitimate"
 NON_SEARCH = "non-search"
 UNSUPPORTED_LANGUAGE = "unsupported-language"
+HOSTILE = "hostile"
 JUNK = "junk"
-ARMS = (LEGITIMATE, NON_SEARCH, UNSUPPORTED_LANGUAGE, JUNK)
+ARMS = (LEGITIMATE, NON_SEARCH, UNSUPPORTED_LANGUAGE, HOSTILE, JUNK)
 
 
 def is_refusal(outcome: str) -> bool:
@@ -78,7 +93,8 @@ def score_run(rows: list[dict]) -> dict:
     total = len(rows)
     refused = [r for r in rows if is_refusal(r["outcome"])]
     by_site = {site: sum(1 for r in refused if r["outcome"] == site)
-               for site in (REFUSED_FLAG, REFUSED_EMPTY, REFUSED_LANGUAGE)}
+               for site in (REFUSED_FLAG, REFUSED_EMPTY, REFUSED_LANGUAGE,
+                            REFUSED_INJECTION)}
     # Refused, but for a reason the probe did not expect — right verdict, wrong
     # words. Only rows that state an expected reason can be judged this way.
     wrong_reason = [

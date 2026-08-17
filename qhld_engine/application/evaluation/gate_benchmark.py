@@ -17,11 +17,26 @@ Three arms, scored identically and read in different directions:
   MISS, and an expensive one: these carry real parliamentary topics, so nothing
   downstream stops them. A miss here answers a request we never honoured with
   genuinely relevant speeches.
+- ``hostile`` — unambiguous attempts to make the system do something other than
+  search: instruction override, prompt or system extraction, control bypass,
+  role-play framing. Read in the OPPOSITE direction from the others. A miss is
+  cheap, because an attack the classifier does not recognise still fails the
+  ``non-search`` gate and is refused anyway — the two classes compose. A FALSE
+  POSITIVE is not cheap: the ban keyed on this arm fires on a single occurrence,
+  so a legitimate query landing here costs a real user their access outright.
+  Read precision first, recall second.
 - ``junk`` — the off-domain probes, read straight out of the ``offdomain``
   dimension of ``queryset.json``. A pass here is also a miss, but a cheaper one:
   the relevance floor is a backstop (measured 2026-08-16 — all seven of the
   gate's misses return zero results), so the cost is a paid pipeline and the
   wrong error message rather than visible junk.
+
+``J3``/``J21``/``J22`` stay in the junk arm and are NOT reused as hostile probes,
+though they are injection-shaped. Their notes state why they are there: they
+measure the retrieval-level backstop behind the gate, which is a different
+question from whether the gate recognises an attack as one. Reusing them would
+also put one query in two arms of the same run — the duplication this module
+already refuses below.
 
 The junk rows are deliberately NOT copied here — they were hardened 5 -> 24 once
 already and nobody re-ran the floor calibration against the new set, so a second
@@ -52,8 +67,8 @@ import time
 from datetime import date
 
 from qhld_engine.domain.evaluation.gate_scoring import (
-    ARMS, JUNK, LEGITIMATE, NON_SEARCH, PASS, REFUSED_EMPTY, REFUSED_FLAG,
-    REFUSED_LANGUAGE, UNSUPPORTED_LANGUAGE)
+    ARMS, HOSTILE, JUNK, LEGITIMATE, NON_SEARCH, PASS, REFUSED_EMPTY,
+    REFUSED_FLAG, REFUSED_INJECTION, REFUSED_LANGUAGE, UNSUPPORTED_LANGUAGE)
 
 DEFAULT_QUERYSET = os.path.join(os.path.dirname(__file__), "gate_queryset.json")
 JUNK_QUERYSET = os.path.join(os.path.dirname(__file__), "queryset.json")
@@ -124,6 +139,8 @@ class RunGateBenchmark:
                            == "not_a_speech_search"]
         self.unsupported_language = [row for row in rows if row.get("expected_reason")
                                      == "unsupported_language"]
+        self.hostile = [row for row in rows if row.get("expected_reason")
+                        == "prompt_injection"]
         self.junk = load_junk(junk_path)
         base = settings or get_settings()
         # Nothing is ever retrieved, so the reranker is irrelevant — and pinning it
@@ -180,7 +197,7 @@ class RunGateBenchmark:
         try:
             return {LEGITIMATE: self.legitimate, NON_SEARCH: self.non_search,
                     UNSUPPORTED_LANGUAGE: self.unsupported_language,
-                    JUNK: self.junk}[arm]
+                    HOSTILE: self.hostile, JUNK: self.junk}[arm]
         except KeyError:
             raise ValueError(f"unknown arm {arm!r}; expected one of {ARMS}") from None
 
@@ -189,6 +206,17 @@ class RunGateBenchmark:
         """One pass over one arm; a row per query carrying the gate's outcome."""
         from qhld_ai.domain.errors import NotASpeechQuery, UnsupportedLanguage
         from qhld_ai.domain.ports.query_parser import ParsedQuery
+
+        try:
+            from qhld_ai.domain.errors import PromptInjection
+        except ImportError:
+            # Deliberately tolerated: the BASELINE pass runs against a qhld_ai that
+            # does not have this class yet, and that pass is the measurement — how
+            # the gate treats attacks today, and under which reason. An empty tuple
+            # never matches, so the same harness scores both sides of the change.
+            injection_errors = ()
+        else:
+            injection_errors = (PromptInjection,)
 
         service = self.service()
         parser = self._parser(llm_provider, llm_model, reasoning_effort)
@@ -213,6 +241,15 @@ class RunGateBenchmark:
                 # no topic left browses instead of searching. Not a refusal, but
                 # not the same answer either.
                 route = "search" if semantic else "browse"
+            except injection_errors:
+                # First, and it stays first even though the class is a sibling of the
+                # two below rather than a subclass: the ordering trap this file already
+                # documents for UnsupportedLanguage would apply the moment anyone made
+                # it descend from NotASpeechQuery, and by then the arms would look
+                # healthy while every attack was filed under the intent gate.
+                outcome = REFUSED_INJECTION
+                route = None
+                filters = None
             except UnsupportedLanguage:
                 # Caught BEFORE NotASpeechQuery: both descend from SearchRefused,
                 # and an ordering mistake here would silently file every language

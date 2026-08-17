@@ -487,10 +487,13 @@ def gate(
         None, "--reasoning",
         help="Comma-separated reasoning-effort levels to sweep each model over."),
     arms: str = typer.Option(
-        "legitimate,non-search,unsupported-language,junk", "--arms",
-        help="Which arms to run. 'legitimate' measures false positives; the other "
-             "three measure misses, but only 'junk' has the relevance floor behind "
-             "it, so they are reported separately and never merged."),
+        "legitimate,non-search,unsupported-language,hostile,junk", "--arms",
+        help="Which arms to run. 'legitimate' measures false positives; the rest "
+             "measure misses, but they are not equivalent — only 'junk' has the "
+             "relevance floor behind it, and a miss on 'hostile' is caught by "
+             "'non-search' anyway, so they are reported separately and never "
+             "merged. Read 'hostile' for precision before recall: it is the only "
+             "arm a ban is keyed on."),
     queryset: str = typer.Option(None, "--queryset", help="Path to a gate query-set JSON."),
     verbose: bool = typer.Option(
         False, "--verbose", help="Dump every query with its outcome and parse."),

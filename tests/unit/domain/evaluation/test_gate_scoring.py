@@ -26,7 +26,8 @@ def test_score_run_keeps_the_two_sites_apart():
             _row("L3", REFUSED_EMPTY), _row("L4")]
     report = gate_scoring.score_run(rows)
     assert report["by_site"] == {
-        REFUSED_FLAG: 2, REFUSED_EMPTY: 1, gate_scoring.REFUSED_LANGUAGE: 0}
+        REFUSED_FLAG: 2, REFUSED_EMPTY: 1, gate_scoring.REFUSED_LANGUAGE: 0,
+        gate_scoring.REFUSED_INJECTION: 0}
     assert report["by_site_rate"][REFUSED_FLAG] == 0.5
 
 

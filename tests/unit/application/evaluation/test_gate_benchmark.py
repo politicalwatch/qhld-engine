@@ -50,14 +50,35 @@ def test_an_unrecognised_note_falls_back_to_the_dimension_rather_than_vanishing(
     assert gate_benchmark._junk_class("") == "offdomain"
 
 
-def test_the_probe_set_carries_three_classes_split_by_expected_reason():
+def test_the_probe_set_carries_four_classes_split_by_expected_reason():
     runner = gate_benchmark.RunGateBenchmark(settings=Settings(_env_file=None))
-    assert len(runner.legitimate) == 23
+    assert len(runner.legitimate) == 35
     assert all(row["expected"] == "pass" for row in runner.legitimate)
     assert len(runner.non_search) == 10
     assert len(runner.unsupported_language) == 5
-    for row in runner.non_search + runner.unsupported_language:
+    assert len(runner.hostile) == 20
+    for row in (runner.non_search + runner.unsupported_language + runner.hostile):
         assert row["expected"] == "refuse"
+
+
+def test_the_legitimate_arm_keeps_its_adversarial_half():
+    """The arm was widened 23 -> 35 specifically with queries whose SURFACE looks
+    hostile — 'instrucciones del Ministerio', 'ley de memoria', 'saltarse el
+    reglamento'. That is where a hostile classifier's false positives come from, so
+    an arm that drifted back to easy searches would report a comfortable number and
+    measure nothing."""
+    runner = gate_benchmark.RunGateBenchmark(settings=Settings(_env_file=None))
+    adversarial = [row for row in runner.legitimate if row["class"] == "adversarial"]
+    assert len(adversarial) >= 10
+
+
+def test_no_hostile_probe_is_reused_from_the_junk_arm():
+    """J3/J21/J22 are injection-shaped but stay in the junk arm, where their notes
+    say they measure the retrieval backstop. Reusing one here would put the same
+    query in two arms of one run — the duplication this harness already refuses."""
+    runner = gate_benchmark.RunGateBenchmark(settings=Settings(_env_file=None))
+    junk_queries = {row["query"] for row in runner.junk}
+    assert not junk_queries & {row["query"] for row in runner.hostile}
 
 
 def test_every_refuse_row_states_which_refusal_it_deserves():
