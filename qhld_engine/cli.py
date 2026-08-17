@@ -10,8 +10,8 @@ free.
 import typer
 
 from qhld_engine.presentation.cli import (
-    debug, embeddings, evaluation, extractor, search, speeches, subtitles, tagger,
-    untagger,
+    debug, diagnostics, embeddings, evaluation, extractor, search, speeches, subtitles,
+    tagger, untagger,
 )
 
 app = typer.Typer(
@@ -28,6 +28,7 @@ app.add_typer(speeches.app, name="speeches")
 app.add_typer(subtitles.app, name="subtitles")
 app.add_typer(search.app, name="search")
 app.add_typer(evaluation.app, name="eval")
+app.add_typer(diagnostics.app, name="diagnostics")
 app.add_typer(debug.app, name="debug")
 
 
