@@ -116,7 +116,7 @@ class FootprintSumFourManager(FootprintSumManager):
                 'Otras solicitudes de informe (art. 44)',
 
                 ]
-    def __multiply(self):
+    def multiply(self):
         return 4
 
 
