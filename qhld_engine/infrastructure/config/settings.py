@@ -16,9 +16,14 @@ class Settings(BaseSettings):
     amendments_feature: bool = False
     # Initiative types whose debates the daily speech extraction sweeps
     # (JSON list, e.g. '["172", "173", "210", "162"]'). Empty means the sweep
-    # does nothing: each environment opts in explicitly, since every listed
-    # type costs one API probe per reference on every run.
+    # does nothing: each environment opts in explicitly.
     speech_extraction_types: list[str] = []
+    # First day the daily speech sweep enumerates. It walks from here to today on
+    # every run rather than advancing a watermark: the Diario of a sitting is
+    # published days or weeks after it, so a run that moved a marker forward would
+    # strand every transcript that appeared after it passed. Enumerating by date is
+    # cheap enough to redo in full, which is what makes the sweep self-repairing.
+    speech_extraction_since: str = "2023-08-17"  # str: parsed with strptime()
 
     # Alerts
     use_alerts: bool = False

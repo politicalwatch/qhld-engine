@@ -602,6 +602,125 @@ def test_a_genuine_non_deputy_speaker_is_not_warned_about(monkeypatch):
     mod.ExtractSpeeches().execute(["161/000123"])
 
     assert not any("second spelling" in w for w in warnings)
+
+
+# --- discovery by date ------------------------------------------------------
+#
+# The daily sweep enumerates interventions by date instead of walking every
+# initiative reference. Extraction is deliberately untouched: the rows are grouped
+# back by reference and handed to the same code path, so these tests are about
+# grouping, filtering and the completeness comparison, not about segmentation.
+
+
+def _dated_row(video_id, reference, doc="1"):
+    """One row as the interventions search returns it for a date range.
+
+    The reference arrives with a trailing sequence the stored reference does not
+    carry, which is why ``_reference_of`` drops it."""
+    row = _page(video_id)["lista_intervenciones"]["k1"]
+    row = dict(row)
+    row["doc"] = doc
+    row["iniciativa"] = {
+        "enlace_expediente": {"id_iniciativa": f"{reference}/0000"}
+    }
+    return row
+
+
+def _date_page(rows):
+    return {
+        "intervenciones_encontradas": str(len(rows)),
+        "lista_intervenciones": {f"k{n}": r for n, r in enumerate(rows)},
+    }
+
+
+def ExtractSpeeches_reference_of(row):
+    return mod.ExtractSpeeches._reference_of(row)
+
+
+def _stub_by_date(monkeypatch, page, saved, saved_sessions, types,
+                  counts=None, pdf_fetches=None):
+    from types import SimpleNamespace
+
+    _stub_environment(monkeypatch, page, saved, saved_sessions,
+                      counts=counts, pdf_fetches=pdf_fetches)
+
+    class _FakeApi:
+        """Serves both queries, because discovery and extraction use different ones.
+
+        ``doc`` is deliberately different between them: the date listing numbers rows
+        across the whole range, the per-reference query numbers them within the
+        reference. That is what the source does, and the stored order must come from
+        the second."""
+
+        def get_interventions_by_date(self, since, until, page_number):
+            return _FakeResponse(page)
+
+        def get_video(self, reference, page_number):
+            rows = [
+                dict(r, doc=str(n))
+                for n, r in enumerate(
+                    (page.get("lista_intervenciones") or {}).values(), start=1)
+                if ExtractSpeeches_reference_of(r) == reference
+            ]
+            return _FakeResponse(_date_page(rows))
+
+    monkeypatch.setattr(mod, "CongressApi", lambda: _FakeApi())
+    monkeypatch.setattr(
+        mod, "get_settings",
+        lambda: SimpleNamespace(id_legislatura=15, speech_extraction_types=types))
+
+
+def test_by_date_groups_rows_under_the_reference_they_carry(monkeypatch):
+    saved, sessions = [], []
+    page = _date_page([_dated_row("776209", "161/000123")])
+    _stub_by_date(monkeypatch, page, saved, sessions, ["161"])
+
+    mod.ExtractSpeeches().execute_by_date("01/01/2024", "31/01/2024")
+
+    assert len(saved) == 1
+    # the trailing /0000 of the listed expediente is not part of the stored reference
+    assert saved[0].references == ["161/000123"]
+
+
+def test_by_date_ignores_types_that_are_not_configured(monkeypatch):
+    saved, sessions, pdfs = [], [], []
+    page = _date_page([_dated_row("776209", "184/000001")])
+    _stub_by_date(monkeypatch, page, saved, sessions, ["161"], pdf_fetches=pdfs)
+
+    mod.ExtractSpeeches().execute_by_date("01/01/2024", "31/01/2024")
+
+    # one date query serves every type, so the scope is applied to the rows; a
+    # reference outside it must not even reach the PDF
+    assert saved == []
+    assert pdfs == []
+
+
+def test_by_date_skips_a_reference_whose_speeches_are_all_stored(monkeypatch):
+    saved, sessions, pdfs = [], [], []
+    page = _date_page([_dated_row("776209", "161/000123")])
+    _stub_by_date(monkeypatch, page, saved, sessions, ["161"],
+                  counts={"161/000123": 1}, pdf_fetches=pdfs)
+
+    mod.ExtractSpeeches().execute_by_date("01/01/2024", "31/01/2024")
+
+    assert saved == []
+    assert pdfs == []
+
+
+def test_by_date_excludes_vote_entries(monkeypatch):
+    saved, sessions = [], []
+    vote = _dated_row("776300", "161/000123", doc="2")
+    vote["tipo_intervencion"] = "Votación"
+    page = _date_page([_dated_row("776209", "161/000123"), vote])
+    _stub_by_date(monkeypatch, page, saved, sessions, ["161"],
+                  counts={"161/000123": 1})
+
+    mod.ExtractSpeeches().execute_by_date("01/01/2024", "31/01/2024")
+
+    # 2 rows listed, 1 of them a vote: the one stored speech means complete
+    assert saved == []
+
+
 def test_by_date_does_not_recount_an_intervention_listed_twice(monkeypatch):
     """The source lists some interventions more than once under the same reference.
 
@@ -621,3 +740,30 @@ def test_by_date_does_not_recount_an_intervention_listed_twice(monkeypatch):
     assert saved == []
     assert pdfs == []
 
+
+def test_by_date_does_nothing_when_no_types_are_configured(monkeypatch):
+    saved, sessions, pdfs = [], [], []
+    page = _date_page([_dated_row("776209", "161/000123")])
+    _stub_by_date(monkeypatch, page, saved, sessions, [], pdf_fetches=pdfs)
+
+    mod.ExtractSpeeches().execute_by_date("01/01/2024", "31/01/2024")
+
+    assert saved == []
+    assert pdfs == []
+
+
+def test_by_date_stores_the_order_of_the_reference_not_of_the_date_listing(monkeypatch):
+    """``doc`` is a position in the result set, not a property of the intervention.
+
+    The same speech is doc 1 of its reference and doc 134 of its sitting's date. It
+    is what becomes the stored order, so extraction has to read it from the
+    reference's own query or the corpus ends up with orders that depend on which
+    path happened to extract the speech."""
+    saved, sessions = [], []
+    row = _dated_row("776209", "161/000123", doc="134")
+    _stub_by_date(monkeypatch, _date_page([row]), saved, sessions, ["161"])
+
+    mod.ExtractSpeeches().execute_by_date("01/01/2024", "31/01/2024")
+
+    assert len(saved) == 1
+    assert saved[0].order == 1

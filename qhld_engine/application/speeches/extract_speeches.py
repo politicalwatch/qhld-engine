@@ -196,6 +196,119 @@ class ExtractSpeeches:
                 f"{reference}: {stored}/{len(interventions)} speeches stored, extracting")
             self._process_interventions(reference, interventions)
 
+    def execute_by_date(self, since, until):
+        """Extract everything debated between two dates, discovering by date.
+
+        The source can be enumerated either by initiative reference or by date, and
+        the two cost very different amounts. Walking the reference range asks one
+        question per reference in the whole numeric range of every configured type,
+        and on the types that produce oral debate 55% of those references have never
+        been debated and never will be. Enumerating by date asks only about sittings
+        that happened, and pays one request per 25 rows instead of one per reference.
+
+        What it does NOT change is extraction. A date row carries the same fields as
+        a reference row, so the rows are grouped back by reference and handed to the
+        same ``_process_interventions``: the debate is still located in the Diario by
+        its expediente, and completeness is still ``count_by_reference``. The daily
+        job keeps all three properties it was designed for — no state, no assumption
+        about when the Diario appears, and self-repair on the next run — because
+        enumerating the whole range stays cheap enough to redo nightly, so nothing is
+        ever passed over and a transcript published late cannot be stranded.
+
+        Dates are ``dd/mm/yyyy``."""
+        types = get_settings().speech_extraction_types
+        if not types:
+            log.warning(
+                "No speech extraction types configured "
+                "(SPEECH_EXTRACTION_TYPES); nothing to do")
+            return 0
+        rows = self._retrieve_interventions_by_date(since, until)
+        by_reference = self._group_by_reference(rows, set(types))
+        log.info(
+            f"{len(rows)} interventions listed between {since} and {until}, "
+            f"in {len(by_reference)} references of the configured types")
+        saved = 0
+        for reference, interventions in tqdm(
+                by_reference.items(), desc="Checking speeches", unit="ref"):
+            stored = Speeches.count_by_reference(reference)
+            if stored >= len(interventions):
+                continue
+            log.info(
+                f"{reference}: {stored}/{len(interventions)} speeches stored, extracting")
+            # Discovery is by date; extraction is not. ``doc`` is the row's position
+            # in the RESULT SET, not a property of the intervention — the same speech
+            # is doc 1 of its reference and doc 134 of its sitting's date — and it is
+            # what becomes the stored order. So the reference's own rows are fetched
+            # for the extraction itself, which also keeps this path feeding
+            # ``_process_interventions`` exactly what the per-reference path fed it.
+            # One request, and only for a reference that really has work to do.
+            rows = self._retrieve_all_interventions(reference)
+            if not rows:
+                log.warning(
+                    f"{reference}: listed by date but its own query returned nothing")
+                continue
+            saved += self._process_interventions(reference, rows)
+        return saved
+
+    def _retrieve_interventions_by_date(self, since, until):
+        """Every intervention listed in a date range, vote entries excluded.
+
+        One request per page of 25. The range is asked for whole, not month by month:
+        callers that need to bound pagination depth should chunk the range
+        themselves."""
+        first = self._retrieve_json_by_date(since, until, 1)
+        if not first or "intervenciones_encontradas" not in first:
+            return []
+        declared = int(first["intervenciones_encontradas"])
+        pages = math.ceil(declared / INTERVENTIONS_PER_PAGE)
+        raw = dict(first.get("lista_intervenciones", {}))
+        for page in range(2, pages + 1):
+            page_json = self._retrieve_json_by_date(since, until, page)
+            if page_json:
+                raw.update(page_json.get("lista_intervenciones", {}))
+        if len(raw) != declared:
+            # Not fatal, but it means the enumeration is short and the run will
+            # under-report what is pending, so it must not pass unnoticed.
+            log.warning(
+                f"{since}-{until}: source declared {declared} interventions and "
+                f"{len(raw)} were collected")
+        return [v for v in raw.values() if "tipo_intervencion" not in v]
+
+    def _retrieve_json_by_date(self, since, until, page):
+        try:
+            response = self.api.get_interventions_by_date(since, until, page)
+            return response.json()
+        except json.JSONDecodeError:
+            log.error(f"Error decoding interventions for {since}-{until} p{page}")
+            return None
+
+    def _group_by_reference(self, rows, types):
+        """Group date-enumerated rows by the initiative reference each one carries.
+
+        The source stores one row per (intervention, initiative) pair, so an
+        intervention belonging to an accumulated debate arrives once per reference it
+        carries and every one of those rows is a real, separate unit of work for that
+        reference. Grouping by reference therefore reproduces exactly what a
+        per-reference query would have returned, which is what lets the stored count
+        be compared against it.
+
+        Rows whose type is not configured are dropped here rather than at the source,
+        because one date query serves every type at once.
+
+        Only used to decide WHAT needs extracting and HOW MANY interventions a
+        reference has. The rows themselves are not what gets extracted: ``doc`` is
+        scoped to the result set, so extraction re-fetches the reference."""
+        grouped = OrderedDict()
+        for row in rows:
+            reference = self._reference_of(row)
+            if not reference or reference.split("/")[0] not in types:
+                continue
+            grouped.setdefault(reference, []).append(row)
+        for reference, items in grouped.items():
+            grouped[reference] = self._distinct_interventions(
+                sorted(items, key=lambda v: int(v["doc"])))
+        return grouped
+
     @staticmethod
     def _distinct_interventions(rows):
         """One row per intervention, keeping document order.
@@ -222,6 +335,20 @@ class ExtractSpeeches:
             seen.add(video_id)
             distinct.append(row)
         return distinct
+
+    @staticmethod
+    def _reference_of(row):
+        """``210/000001`` from a row's ``210/000001/0000``.
+
+        The interventions search reports the expediente with a trailing sequence the
+        stored reference does not carry, so it has to be dropped or nothing matches
+        what is in the database."""
+        expediente = ((row.get("iniciativa") or {})
+                      .get("enlace_expediente", {}).get("id_iniciativa"))
+        if not expediente:
+            return None
+        parts = expediente.split("/")
+        return "/".join(parts[:2]) if len(parts) >= 2 else None
 
     def _extract_reference(self, reference, only=None):
         log.info(f"Getting speeches from {reference}")

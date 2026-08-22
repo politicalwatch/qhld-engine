@@ -1,3 +1,5 @@
+from calendar import monthrange
+from datetime import date, timedelta
 from importlib import import_module as im
 
 from qhld_engine.application.freshness import (
@@ -59,21 +61,49 @@ class ExtractorTask():
         self.initiatives_extractor.extract_references()
         self.initiatives_extractor.extract_videos()
 
-    def speeches(self):
-        """Daily speech extraction: sweep the full reference range of every
-        configured debate type and extract only what is missing. Speeches are
-        deliberately not driven by initiative freshness — the Diario PDF that
-        carries the text is published after the initiative reaches its final
-        status, so an initiative-based increment would never revisit them."""
-        types = get_settings().speech_extraction_types
-        if not types:
-            log.warning(
-                "No speech extraction types configured "
-                "(SPEECH_EXTRACTION_TYPES); nothing to do")
-            return
-        for type_code in types:
-            self.initiatives_extractor.extract_all_references_from_type(type_code)
-        self._extract_speeches_incremental(self.initiatives_extractor.all_references)
+    def speeches(self, since=None, until=None):
+        """Daily speech extraction: enumerate the interventions of a date range and
+        extract whatever is missing.
+
+        Discovery is by date rather than by initiative reference. Both are possible,
+        but walking the reference range asks one question per reference in the whole
+        numeric range of every configured type, and most of those references were
+        never debated; enumerating by date asks only about sittings that happened.
+        Extraction is unchanged — the rows are grouped back by reference, because the
+        debate is still located in the Diario by its expediente.
+
+        Speeches are deliberately not driven by initiative freshness either: the
+        Diario PDF that carries the text is published after the initiative reaches
+        its final status, so an initiative-based increment would never revisit them.
+        For the same reason the range is walked in full on every run instead of
+        advancing a watermark, which would strand any transcript published after the
+        marker passed."""
+        settings = get_settings()
+        since = since or settings.speech_extraction_since
+        until = until or date.today().isoformat()
+        saved = 0
+        for chunk_since, chunk_until in self._month_chunks(since, until):
+            saved += self._extract_speeches_by_date(chunk_since, chunk_until)
+        log.info(f"Speech sweep {since}..{until} saved {saved} speeches")
+        return saved
+
+    @staticmethod
+    def _month_chunks(since, until):
+        """The range split calendar month by calendar month, as ``dd/mm/yyyy`` pairs.
+
+        Chunking is about pagination depth, not politeness: the whole legislature is
+        one query of some 1600 pages, and a request for a page that deep is where
+        this kind of search backend stops being reliable. A month is around fifty."""
+        start = date.fromisoformat(since)
+        end = date.fromisoformat(until)
+        cursor = start.replace(day=1)
+        while cursor <= end:
+            last_day = monthrange(cursor.year, cursor.month)[1]
+            chunk_start = max(cursor, start)
+            chunk_end = min(cursor.replace(day=last_day), end)
+            yield (chunk_start.strftime("%d/%m/%Y"),
+                   chunk_end.strftime("%d/%m/%Y"))
+            cursor = (cursor.replace(day=last_day) + timedelta(days=1))
 
     def references(self):
         self.initiatives_extractor.extract_references()
@@ -206,6 +236,10 @@ class ExtractorTask():
     def _extract_speeches_incremental(self, references):
         from qhld_engine.application.speeches.extract_speeches import ExtractSpeeches
         ExtractSpeeches().execute_incremental(references)
+
+    def _extract_speeches_by_date(self, since, until):
+        from qhld_engine.application.speeches.extract_speeches import ExtractSpeeches
+        return ExtractSpeeches().execute_by_date(since, until)
 
     def type_all_votes(self, type_code):
         self.initiatives_extractor.extract_all_references_from_type(type_code)

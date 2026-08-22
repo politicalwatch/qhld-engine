@@ -77,8 +77,22 @@ def interventions():
 
 
 @app.command("speeches")
-def speeches():
-    _task().speeches()
+def speeches(
+    since: str | None = typer.Option(
+        None, "--since", help="First day to enumerate, YYYY-MM-DD. Defaults to "
+                              "SPEECH_EXTRACTION_SINCE."),
+    until: str | None = typer.Option(
+        None, "--until", help="Last day to enumerate, YYYY-MM-DD. Defaults to today."),
+):
+    """Daily speech extraction: enumerate a date range and extract what is missing.
+
+    The whole range is walked on every run, deliberately. The Diario that carries a
+    speech's text is published days or weeks after the sitting, so a run that
+    advanced a watermark would strand every transcript that appeared behind it;
+    re-reading the range costs little enough to make the sweep self-repairing
+    instead. Narrow it with --since/--until only for backfills and debugging.
+    """
+    _task().speeches(since, until)
 
 
 @app.command("all-initiatives")

@@ -100,6 +100,16 @@ class CongressUrlBuilder:
         return (f'{self._for_interventions(page)}'
                 f'&_intervenciones_id_iniciativa={reference}')
 
+    def for_interventions_by_date(self, since, until, page=1):
+        """Every intervention of a date range, whatever initiative it belongs to.
+
+        Dates are ``dd/mm/yyyy``. The source answers with one row per
+        (intervention, initiative) pair, so an intervention belonging to an
+        accumulated debate arrives once per reference it carries."""
+        return (f'{self._for_interventions(page)}'
+                f'&_intervenciones_fechaDesde={since}'
+                f'&_intervenciones_fechaHasta={until}')
+
     def for_url(self, link):
         if link.startswith('http'):
             return link
@@ -188,6 +198,9 @@ class CongressApi(object):
             '_intervenciones_paginaActual': page
         }
         return self.post(url, headers, data)
+
+    def get_interventions_by_date(self, since, until, page):
+        url = self.url_builder.for_interventions_by_date(since, until, page)
         headers = CongressHeadersBuilder().for_api()
         data = {
             '_intervenciones_paginaActual': page

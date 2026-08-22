@@ -46,3 +46,19 @@ def test_each_page_of_an_initiative_gets_a_distinct_url():
     assert len(pages) == 3
 
 
+def test_date_range_url_carries_both_bounds_and_the_page():
+    url = _builder().for_interventions_by_date("01/07/2025", "31/07/2025", 4)
+
+    assert "_intervenciones_fechaDesde=01/07/2025" in url
+    assert "_intervenciones_fechaHasta=31/07/2025" in url
+    assert "_intervenciones_paginaActual=4" in url
+    # a date sweep is not scoped to one initiative
+    assert "_intervenciones_id_iniciativa" not in url
+
+
+def test_both_searches_stay_scoped_to_the_configured_legislature():
+    builder = _builder()
+
+    for url in (builder.for_video("172/000001"),
+                builder.for_interventions_by_date("01/01/2024", "31/01/2024")):
+        assert "_intervenciones_legislatura=XV" in url
