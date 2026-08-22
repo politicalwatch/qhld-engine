@@ -196,6 +196,33 @@ class ExtractSpeeches:
                 f"{reference}: {stored}/{len(interventions)} speeches stored, extracting")
             self._process_interventions(reference, interventions)
 
+    @staticmethod
+    def _distinct_interventions(rows):
+        """One row per intervention, keeping document order.
+
+        The source sometimes lists the same intervention more than once under the
+        same reference — measured on the whole legislature, 5 references of 6052 do
+        this, the worst reporting 25 rows for 13 interventions. Left in, the extra
+        rows break two things at once: the stored count can never catch up with the
+        listed count, so the reference is re-extracted every night forever, and the
+        segmenter is asked to place the same speech twice, advancing its cursor past
+        the text the second attempt needs.
+
+        A row whose video is not published yet has no id to compare, and those are
+        kept as they come: they are a real pending intervention, not a duplicate."""
+        seen = set()
+        distinct = []
+        for row in rows:
+            video_id = (row.get("video_intervencion") or {}).get("id01")
+            if video_id is None:
+                distinct.append(row)
+                continue
+            if video_id in seen:
+                continue
+            seen.add(video_id)
+            distinct.append(row)
+        return distinct
+
     def _extract_reference(self, reference, only=None):
         log.info(f"Getting speeches from {reference}")
         interventions = self._retrieve_all_interventions(reference)
@@ -471,7 +498,8 @@ class ExtractSpeeches:
         interventions = [
             value for value in raw.values() if "tipo_intervencion" not in value
         ]
-        return sorted(interventions, key=lambda v: int(v["doc"]))
+        return self._distinct_interventions(
+            sorted(interventions, key=lambda v: int(v["doc"])))
 
     def _retrieve_json(self, reference, page):
         try:

@@ -602,3 +602,22 @@ def test_a_genuine_non_deputy_speaker_is_not_warned_about(monkeypatch):
     mod.ExtractSpeeches().execute(["161/000123"])
 
     assert not any("second spelling" in w for w in warnings)
+def test_by_date_does_not_recount_an_intervention_listed_twice(monkeypatch):
+    """The source lists some interventions more than once under the same reference.
+
+    Measured over the legislature: 5 references of 6052, the worst reporting 25 rows
+    for 13 interventions. Counted naively the stored count can never catch up, so the
+    reference would be re-extracted on every run for ever."""
+    saved, sessions, pdfs = [], [], []
+    page = _date_page([
+        _dated_row("776209", "161/000123", doc="1"),
+        _dated_row("776209", "161/000123", doc="1"),
+    ])
+    _stub_by_date(monkeypatch, page, saved, sessions, ["161"],
+                  counts={"161/000123": 1}, pdf_fetches=pdfs)
+
+    mod.ExtractSpeeches().execute_by_date("01/01/2024", "31/01/2024")
+
+    assert saved == []
+    assert pdfs == []
+
