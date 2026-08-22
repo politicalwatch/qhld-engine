@@ -80,8 +80,25 @@ class CongressUrlBuilder:
     def for_initiative(self, reference):
         return f"{self.url}busqueda-de-iniciativas?p_p_id=iniciativas&p_p_lifecycle=0&p_p_state=normal&p_p_mode=view&_iniciativas_mode=mostrarDetalle&_iniciativas_legislatura={int_to_roman(get_settings().id_legislatura)}&_iniciativas_id={reference.replace('/', '%2F')}"
 
-    def for_video(self, reference):
-        return f'https://www.congreso.es/web/guest/busqueda-de-intervenciones?p_p_id=intervenciones&p_p_lifecycle=2&p_p_state=normal&p_p_mode=view&p_p_resource_id=filtrarListado&p_p_cacheability=cacheLevelPage&_intervenciones_mode=view&_intervenciones_legislatura={int_to_roman(get_settings().id_legislatura)}&_intervenciones_id_iniciativa={reference}'
+    def _for_interventions(self, page):
+        """The interventions search, scoped to the configured legislature.
+
+        Every filter this endpoint honours has to travel in the QUERY STRING. Sent in
+        the POST body they are accepted and silently ignored, and page 1 is served
+        again — which is why the page number lives here and not in the form data."""
+        return (
+            'https://www.congreso.es/web/guest/busqueda-de-intervenciones'
+            '?p_p_id=intervenciones&p_p_lifecycle=2&p_p_state=normal&p_p_mode=view'
+            '&p_p_resource_id=filtrarListado&p_p_cacheability=cacheLevelPage'
+            '&_intervenciones_mode=view'
+            f'&_intervenciones_legislatura={int_to_roman(get_settings().id_legislatura)}'
+            f'&_intervenciones_paginaActual={page}'
+        )
+
+    def for_video(self, reference, page=1):
+        """One initiative's interventions."""
+        return (f'{self._for_interventions(page)}'
+                f'&_intervenciones_id_iniciativa={reference}')
 
     def for_url(self, link):
         if link.startswith('http'):
@@ -165,7 +182,12 @@ class CongressApi(object):
         return self.get(url, headers)
 
     def get_video(self, reference, page):
-        url = self.url_builder.for_video(reference)
+        url = self.url_builder.for_video(reference, page)
+        headers = CongressHeadersBuilder().for_api()
+        data = {
+            '_intervenciones_paginaActual': page
+        }
+        return self.post(url, headers, data)
         headers = CongressHeadersBuilder().for_api()
         data = {
             '_intervenciones_paginaActual': page
