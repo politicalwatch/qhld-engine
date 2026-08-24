@@ -7,9 +7,11 @@ Same root cause as the extractor ``_id`` write-paths: ``FootprintByTopic`` is a
 must build it with ``id`` set at construction.
 
 The earlier write-path sweep missed ``compute_footprint.py``; this test drives the
-real ``compute()`` loop body (heavy deps stubbed) so a revert to the empty construct
+real ``compute()`` loop body (aggregations stubbed) so a revert to the empty construct
 is caught, not just a model-level smoke test.
 """
+
+from datetime import datetime
 
 import pytest
 
@@ -24,20 +26,19 @@ pytestmark = pytest.mark.unit
 def test_compute_builds_saveable_topic_footprint(monkeypatch):
     # Bypass the DB-touching __init__ and feed one topic through compute().
     cf = ComputeFootprint.__new__(ComputeFootprint)
+    cf.today = datetime.today()
     cf.topics = [{"id": "topic-1", "name": "AUTISMO"}]
     cf.deputies = []
     cf.parliamentarygroups = []
-    cf.footprint_by_deputies = []
-    cf.footprint_by_parliamentarygroups = []
 
-    # The per-entity computation hits the DB/threads; not under test here.
-    monkeypatch.setattr(
-        cf, "_ComputeFootprint__compute_topic_by_entity",
-        lambda *a, **k: None,
-    )
+    # The aggregation passes hit the DB; not under test here.
+    monkeypatch.setattr(cf_module.Initiatives, "aggregate", lambda pipeline: [])
 
     saved = []
     monkeypatch.setattr(cf_module.Footprints, "save_topic", lambda fp: saved.append(fp))
+    monkeypatch.setattr(cf_module.Footprints, "save_deputy", lambda fp: None)
+    monkeypatch.setattr(
+        cf_module.Footprints, "save_parliamentarygroup", lambda fp: None)
 
     cf.compute()  # pre-fix: raises _id-required at FootprintByTopic()
 

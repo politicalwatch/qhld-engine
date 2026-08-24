@@ -1,232 +1,231 @@
-from datetime import datetime
 from datetime import timedelta
 
-from tipi_data.repositories.initiatives import Initiatives
+# --- Status ----------------------------------------------------------------
+
+EXCLUDED_STATUS = ['No admitida a trámite', 'Retirada']
+APPROVED_STATUS = 'Aprobada'
+
+# --- Initiative-type weights ----------------------------------------------
+
+TYPES_FOUR = [
+    'Comparecencia del Gobierno en Comisión (art. 44)',
+    'Comparecencia del Gobierno en Comisión (arts. 202 y 203)',
+    'Comparecencia de autoridades y funcionarios en Comisión',
+    'Comparec. autoridades y funcionarios en Com. Mx. solicitada en Senado',
+    'Otras comparecencias en Comisión',
+    'Interpelación urgente',
+    'Interpelación ordinaria',
+    'Solicitud de informe a la Administración del Estado (art. 7)',
+    'Solicitud de informe a otra Entidad Pública (art. 7)',
+    'Solicitud de informe a la Administración del Estado (art. 44)',
+    'Solicitud de informe a otra Entidad Pública (art. 44)',
+    'Otras solicitudes de informe (art. 44)',
+]
+
+TYPES_TEN = [
+    'Pregunta oral en Pleno',
+    'Pregunta oral al Gobierno en Comisión',
+    'Moción de censura',
+    'Pregunta oral a la Corporación RTVE',
+]
+
+TYPES_FOURTY = [
+    'Proposición no de Ley ante el Pleno',
+    'Proposición no de Ley en Comisión',
+    'Moción consecuencia de interpelación ordinaria',
+    'Moción consecuencia de interpelación urgente',
+]
+
+TYPES_EIGHTY = [
+    'Proposición de ley de Grupos Parlamentarios del Congreso',
+    'Proposición de ley de Diputados',
+    'Proyecto de reforma Constitucional',
+    'Proposición de reforma Constitucional de Grupos Parlamentarios',
+    'Proposición de reforma constitucional de Comunidades Autónomas',
+]
+
+# ``(weight, types)`` pairs, ordered high-to-low (order is irrelevant to the sum but
+# keeps the $switch readable).
+BASE_WEIGHTS = [
+    (80, TYPES_EIGHTY),
+    (40, TYPES_FOURTY),
+    (10, TYPES_TEN),
+    (4, TYPES_FOUR),
+]
+
+# Extra weight granted only when the initiative was approved.
+TYPES_APPROVED_SIXTY = [
+    'Proposición de ley de Grupos Parlamentarios del Congreso',
+    'Proposición de ley de Diputados',
+]
+TYPES_APPROVED_TWENTY = [
+    'Proposición no de Ley ante el Pleno',
+    'Proposición no de Ley en Comisión',
+]
+APPROVED_BONUS = [
+    (60, TYPES_APPROVED_SIXTY),
+    (20, TYPES_APPROVED_TWENTY),
+]
+
+AUTHOR_FIELD = {
+    'deputy': 'author_deputies',
+    'parliamentarygroup': 'author_parliamentarygroups',
+}
 
 
-class FootprintQueryManager:
+def weight_of(initiative_type_alt, status):
+    """Pure-Python weight of a single initiative, used by tests and as the reference
+    for the Mongo expression below."""
+    weight = 0
+    for value, types in BASE_WEIGHTS:
+        if initiative_type_alt in types:
+            weight += value
+            break
+    if status == APPROVED_STATUS:
+        for value, types in APPROVED_BONUS:
+            if initiative_type_alt in types:
+                weight += value
+    return weight
 
-    def parse_query(self, types, topic, entity, typeof, status):
-        query = {
-                'initiative_type_alt': {'$in': types},
-                'status': status,
+
+def _weight_expr():
+    """Mongo expression mirroring :func:`weight_of` for use inside a pipeline."""
+    base = {
+        '$switch': {
+            'branches': [
+                {'case': {'$in': ['$initiative_type_alt', types]}, 'then': value}
+                for value, types in BASE_WEIGHTS
+            ],
+            'default': 0,
+        }
+    }
+    bonus = {
+        '$cond': {
+            'if': {'$eq': ['$status', APPROVED_STATUS]},
+            'then': {
+                '$switch': {
+                    'branches': [
+                        {'case': {'$in': ['$initiative_type_alt', types]}, 'then': value}
+                        for value, types in APPROVED_BONUS
+                    ],
+                    'default': 0,
                 }
-        if topic:
-            query['tagged.topics'] = topic
-        if typeof == 'deputy':
-            query['author_deputies'] = entity
-        if typeof == 'parliamentarygroup':
-            query['author_parliamentarygroups'] = entity
-        return query
+            },
+            'else': 0,
+        }
+    }
+    return {'$add': [base, bonus]}
 
 
-class FootprintSumManager(FootprintQueryManager):
+def _valid_status_match():
+    return {'status': {'$not': {'$in': EXCLUDED_STATUS}}}
 
-    def __init__(self, topic, entity, typeof):
-        self.topic = topic
-        self.entity = entity
-        self.typeof = typeof
 
-    def types(self):
-        return list()
+# --- Pipeline builders -----------------------------------------------------
 
-    def status(self):
-        return {'$not': {'$in': ['No admitida a trámite', 'Retirada']}}
+def topic_scores_pipeline(typeof):
+    """One row per (author, topic): the weighted, per-topic score.
 
-    def multiply(self):
-        return 1
-
-    def compute(self):
-        query = self.parse_query(self.types(), self.topic, self.entity, self.typeof, self.status())
-
-        if not self.topic:
-            return Initiatives.count_by_query(query) * self.multiply()
-
-        pipeline = []
-        pipeline.append({ "$match": query })
-        pipeline.append({ "$unwind": "$tagged" })
-        pipeline.append({ "$unwind": "$tagged.topic_alignment" })
-        pipeline.append({ "$match": {
-                "tagged.topic_alignment.topic": self.topic }
-            })
-        pipeline.append({"$addFields": {
-            "percentage_fraction": { "$divide": [ "$tagged.topic_alignment.percentage", 100 ] }
-            }
-        })
-
-        def number_of_deputies():
-            return { "$size": "$author_deputies" } if self.typeof == 'deputy' else 1
-
-        pipeline.append({ "$addFields": {
-            "count_deputies": number_of_deputies()
-            }
-        })
-
-        pipeline.append({"$addFields": {
-            "weighted_percentage": {
-                "$cond": {
-                    "if": { "$gt": [ "$count_deputies", 0 ] },
-                    "then": { "$divide": [ "$percentage_fraction", "$count_deputies" ] },
-                    "else": 0
-                    }
+    ``score = Σ weight * (topic_alignment.percentage / 100) / num_deputies`` over the
+    entity's valid initiatives. For groups there is no per-coauthor division
+    (``num_deputies`` is fixed to 1, as in the original algorithm)."""
+    author = AUTHOR_FIELD[typeof]
+    num_deputies = {'$size': {'$ifNull': ['$author_deputies', []]}} \
+        if typeof == 'deputy' else 1
+    return [
+        {'$match': _valid_status_match()},
+        {'$addFields': {'_w': _weight_expr()}},
+        {'$match': {'_w': {'$gt': 0}}},
+        {'$addFields': {'_nd': num_deputies}},
+        {'$unwind': '$tagged'},
+        {'$unwind': '$tagged.topic_alignment'},
+        {'$unwind': f'${author}'},
+        {'$addFields': {
+            '_contrib': {
+                '$cond': {
+                    'if': {'$gt': ['$_nd', 0]},
+                    'then': {
+                        '$divide': [
+                            {'$multiply': [
+                                '$_w',
+                                {'$divide': ['$tagged.topic_alignment.percentage', 100]},
+                            ]},
+                            '$_nd',
+                        ]
+                    },
+                    'else': 0,
                 }
             }
-        })
-
-        pipeline.append({ "$group": {
-                "_id": None,
-                "output": { "$sum": "$weighted_percentage" }
-                }
-        })
-        pipeline.append({ "$project": { "_id": 0, "output": 1} })
-
-        result = Initiatives.aggregate(pipeline)
-        if not result:
-            return 0
-        return result[0]['output'] * self.multiply()
+        }},
+        {'$group': {
+            '_id': {'e': f'${author}', 't': '$tagged.topic_alignment.topic'},
+            'score': {'$sum': '$_contrib'},
+        }},
+    ]
 
 
+def global_scores_pipeline(typeof):
+    """One row per author: the global (topic-agnostic) score and the last valid
+    creation date (for the inactivity penalty).
 
-class FootprintSumPointOneManager(FootprintSumManager):
-    def types(self):
-        return [
-                'Pregunta al Gobierno con respuesta escrita',
-                'Pregunta a la Corporación RTVE con respuesta escrita',
-                ]
-
-    def multiply(self):
-        return 0.1
-
-
-
-class FootprintSumFourManager(FootprintSumManager):
-    def types(self):
-        return [
-                'Comparecencia del Gobierno en Comisión (art. 44)',
-                'Comparecencia del Gobierno en Comisión (arts. 202 y 203)',
-                'Comparecencia de autoridades y funcionarios en Comisión',
-                'Comparec. autoridades y funcionarios en Com. Mx. solicitada en Senado',
-                'Otras comparecencias en Comisión',
-                'Interpelación urgente',
-                'Interpelación ordinaria',
-                'Solicitud de informe a la Administración del Estado (art. 7)',
-                'Solicitud de informe a otra Entidad Pública (art. 7)',
-                'Solicitud de informe a la Administración del Estado (art. 44)',
-                'Solicitud de informe a otra Entidad Pública (art. 44)',
-                'Otras solicitudes de informe (art. 44)',
-
-                ]
-    def multiply(self):
-        return 4
+    The global score counts each initiative once per matching weight tier, without
+    the topic-alignment or per-coauthor factors — i.e. ``Σ weight``. Only scorable
+    initiatives (weight > 0) are considered: they define the score *and* ``last``, so
+    the inactivity penalty measures staleness of *scorable* activity only. Filtering
+    weight-0 documents leaves the ``score`` sum unchanged (they add 0)."""
+    author = AUTHOR_FIELD[typeof]
+    return [
+        {'$match': _valid_status_match()},
+        {'$addFields': {'_w': _weight_expr()}},
+        {'$match': {'_w': {'$gt': 0}}},
+        {'$unwind': f'${author}'},
+        {'$group': {
+            '_id': f'${author}',
+            'score': {'$sum': '$_w'},
+            'last': {'$max': '$created'},
+        }},
+    ]
 
 
-class FootprintSumTenManager(FootprintSumManager):
-    def types(self):
-        return [
-                'Pregunta oral en Pleno',
-                'Pregunta oral al Gobierno en Comisión',
-                'Moción de censura',
-                'Pregunta oral a la Corporación RTVE',
-                ]
-
-    def multiply(self):
-        return 10
-
-
-class FootprintSumFourtyManager(FootprintSumManager):
-    def types(self):
-        return [
-                'Proposición no de Ley ante el Pleno',
-                'Proposición no de Ley en Comisión',
-                'Moción consecuencia de interpelación ordinaria',
-                'Moción consecuencia de interpelación urgente',
-                ]
-
-    def multiply(self):
-        return 40
+def topic_last_dates_pipeline(typeof):
+    """One row per (author, topic): the last valid creation date, restricted to
+    scorable initiatives (weight > 0), for the per-topic inactivity penalty."""
+    author = AUTHOR_FIELD[typeof]
+    return [
+        {'$match': _valid_status_match()},
+        {'$addFields': {'_w': _weight_expr()}},
+        {'$match': {'_w': {'$gt': 0}}},
+        {'$unwind': f'${author}'},
+        {'$unwind': '$tagged'},
+        {'$unwind': '$tagged.topics'},
+        {'$group': {
+            '_id': {'e': f'${author}', 't': '$tagged.topics'},
+            'last': {'$max': '$created'},
+        }},
+    ]
 
 
-class FootprintSumEightyManager(FootprintSumManager):
-    def types(self):
+# --- Inactivity penalty ----------------------------------------------------
 
-        return [
-                'Proposición de ley de Grupos Parlamentarios del Congreso',
-                'Proposición de ley de Diputados',
-                'Proyecto de reforma Constitucional',
-                'Proposición de reforma Constitucional de Grupos Parlamentarios',
-                'Proposición de reforma constitucional de Comunidades Autónomas',
-                ]
-
-    def multiply(self):
-        return 80
+DAYS_IN_MONTH = 30
 
 
-class FootprintAdditionalTwentyManager(FootprintSumManager):
-    def types(self):
-        return [
-                'Proposición no de Ley ante el Pleno',
-                'Proposición no de Ley en Comisión',
-                ]
-
-    def status(self):
-        return 'Aprobada'
-
-    def multiply(self):
-        return 20
-
-
-class FootprintAdditionalSixtyManager(FootprintSumManager):
-    def types(self):
-        return [
-                'Proposición de ley de Grupos Parlamentarios del Congreso',
-                'Proposición de ley de Diputados',
-                ]
-
-    def status(self):
-        return 'Aprobada'
-
-    def multiply(self):
-        return 60
-
-
-class FootprintInactivityPenalty():
-    def __init__(self, topic, entity, typeof):
-        self.topic = topic
-        self.entity = entity
-        self.typeof = typeof
-        self.today = datetime.today()
-        self.DAYS_IN_MONTH = 30
-
-    def __months(self, months):
-        return timedelta(days=self.DAYS_IN_MONTH*months)
-
-    def more_than_twelve(self, date):
-        return date <= (self.today - self.__months(12))
-
-    def less_than_twelve(self, date):
-        return date >= (self.today - self.__months(12))
-
-    def less_than_six(self, date):
-        return date >= (self.today - self.__months(6))
-
-    def less_than_three(self, date):
-        return date >= (self.today - self.__months(3))
-
-    def compute(self):
-        last_date = Initiatives.get_last_valid_creation_date(
-                entity=self.entity,
-                topic=self.topic,
-                typeof=self.typeof)
-        if not last_date:
-            return 0
-        if self.more_than_twelve(last_date) > 0 and self.less_than_twelve(last_date) == 0:
-            return 0.50
-        if self.less_than_twelve(last_date) > 0 and self.less_than_six(last_date) == 0:
-            return 0.25
-        if self.less_than_six(last_date) > 0 and self.less_than_three(last_date) == 0:
-            return 0.10
+def inactivity_penalty(last_date, today):
+    """Fraction (0..0.5) to subtract from a score based on how stale the entity's last
+    *scorable* initiative is (``last_date`` is fed only from weight > 0 initiatives).
+    Months approximated as 30 days, as in the original."""
+    if not last_date:
         return 0
+    if last_date <= today - timedelta(days=DAYS_IN_MONTH * 12):
+        return 0.50
+    if last_date <= today - timedelta(days=DAYS_IN_MONTH * 6):
+        return 0.25
+    if last_date <= today - timedelta(days=DAYS_IN_MONTH * 3):
+        return 0.10
+    return 0
 
+
+# --- Deputy contact bonus --------------------------------------------------
 
 class FootprintDeputyManager:
     def __init__(self, deputy):
