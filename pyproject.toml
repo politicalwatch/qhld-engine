@@ -7,17 +7,17 @@ requires-python = ">=3.12"
 
 dependencies = [
     "beautifulsoup4==4.15.0",
-    "cssselect==1.4.0",
+    "cssselect==1.5.0",
     "pdf2image==1.17.0",
     "pdfminer.six==20260107",
-    "pydantic-settings==2.14.2",
+    "pydantic-settings==2.15.0",
     "pytesseract==0.3.13",
     "python-docx==1.2.0",
     "python-pptx==1.0.2",
     "redis==6.4.0",
     "requests-futures==1.0.2",
     "thefuzz==0.22.1",
-    "tqdm==4.67.1",
+    "tqdm==4.70.0",
     "typer>=0.16.0",
     # Engine indexes + tags: same served providers as the backend (langchain-
     # openai + fastembed) PLUS spaCy for speaker/mention/entity tagging. The
@@ -41,7 +41,7 @@ packages = ["qhld_engine"]
 dev = [
     "ipdb==0.13.13",
     "pytest==9.1.1",
-    "testcontainers[mongodb]==4.14.2",
+    "testcontainers[mongodb]==4.15.0",
     # Ollama embeddings for local dev only; the prod image runs with --no-dev
     # and stays on the lean [engine] set above. Other providers install ad-hoc.
     "qhld-ai[ollama]",
