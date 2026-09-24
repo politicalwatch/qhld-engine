@@ -15,9 +15,9 @@ dependencies = [
     "python-docx==1.2.0",
     "python-pptx==1.0.2",
     "redis==6.4.0",
-    "requests-futures==1.0.2",
+    "requests-futures==1.1.0",
     "thefuzz==0.22.1",
-    "tqdm==4.70.0",
+    "tqdm==4.70.1",
     "typer>=0.16.0",
     # Engine indexes + tags: same served providers as the backend (langchain-
     # openai + fastembed) PLUS spaCy for speaker/mention/entity tagging. The
