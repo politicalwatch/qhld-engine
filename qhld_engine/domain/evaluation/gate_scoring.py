@@ -102,6 +102,12 @@ def score_run(rows: list[dict]) -> dict:
         if r.get("expected_reason")
         and r["outcome"] not in REASON_OUTCOMES.get(r["expected_reason"], ())
     ]
+    # Which layer refused: the decision-model gate in front of the parser, or the
+    # parser's own verdict. A refusal by the gate never paid for a parse, so this is
+    # the split that says what refusals cost. Rows from before the gate existed carry
+    # no layer and count as the parser's.
+    by_layer = {layer: sum(1 for r in refused if (r.get("refused_by") or "parser") == layer)
+                for layer in ("intent_gate", "parser")}
     by_class = defaultdict(lambda: {"n": 0, "refused": 0})
     for row in rows:
         bucket = by_class[row.get("class", "?")]
@@ -115,6 +121,7 @@ def score_run(rows: list[dict]) -> dict:
         "rate": _rate(len(refused), total),
         "by_site": by_site,
         "by_site_rate": {site: _rate(count, total) for site, count in by_site.items()},
+        "by_layer": by_layer,
         "by_class": dict(by_class),
         "wrong_reason": len(wrong_reason),
         "wrong_reason_ids": sorted(r["id"] for r in wrong_reason),

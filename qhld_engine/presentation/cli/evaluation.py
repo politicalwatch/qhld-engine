@@ -528,7 +528,8 @@ def gate(
         f"unsupported-language={len(runner.unsupported_language)} "
         f"junk={len(runner.junk)} "
         f"· repeats={repeats} · today={runner.today.isoformat()}\n"
-        f"  collection={collection} ({vocabulary} distinct speakers) · arms={wanted}")
+        f"  collection={collection} ({vocabulary} distinct speakers) · arms={wanted}\n"
+        f"  intent gate={runner.gate_label()}")
 
     for provider, model, label in specs:
         for effort in efforts:
@@ -578,6 +579,10 @@ def _print_gate_arm(cell, arm, report, verbose):
     typer.echo(
         f"  by site       flag={sites[REFUSED_FLAG]}  empty-parse={sites[REFUSED_EMPTY]}"
         f"  language={sites[REFUSED_LANGUAGE]}   (first pass)")
+    layers = first["by_layer"]
+    typer.echo(
+        f"  by layer      intent-gate={layers['intent_gate']}  parser={layers['parser']}"
+        f"   (first pass)")
     if first["wrong_reason"]:
         typer.echo(
             f"  WRONG REASON  {first['wrong_reason']} refused, but not the way the probe "

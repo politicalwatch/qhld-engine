@@ -220,10 +220,37 @@ class RunGateBenchmark:
 
         service = self.service()
         parser = self._parser(llm_provider, llm_model, reasoning_effort)
+        # The decision-model gate in front of the parser, when the settings enable
+        # it. Run here exactly as ``NaturalSearchSpeeches.parse`` runs it, so the
+        # arms measure what the product refuses, and each refusal says which layer
+        # made it. ``getattr`` for the same reason as ``PromptInjection`` above: a
+        # baseline pass runs against a qhld_ai that has no gate.
+        intent_gate = getattr(service, "intent_gate", None)
         entries = self.entries(arm)
         rows = []
         for entry in entries:
             start = time.perf_counter()
+            if intent_gate is not None:
+                try:
+                    intent_gate.check(entry["query"])
+                except (*injection_errors, NotASpeechQuery) as refusal:
+                    # Filed under the same outcome the parser's verdict would have
+                    # produced, so the reason checks and the bands are unchanged;
+                    # ``refused_by`` is what tells the two layers apart.
+                    rows.append({
+                        **entry,
+                        "outcome": (REFUSED_INJECTION
+                                    if isinstance(refusal, injection_errors)
+                                    else REFUSED_FLAG),
+                        "refused_by": "intent_gate",
+                        "route": None,
+                        "latency": time.perf_counter() - start,
+                        "parse_error": None,
+                        "pred_topic": None,
+                        "pred_filters": None,
+                        "is_speech_search": None,
+                    })
+                    continue
             try:
                 parsed = parser.parse(entry["query"], self.today)
                 parse_error = None
@@ -268,6 +295,7 @@ class RunGateBenchmark:
             rows.append({
                 **entry,
                 "outcome": outcome,
+                "refused_by": None if outcome == PASS else "parser",
                 "route": route,
                 "latency": time.perf_counter() - start,
                 "parse_error": parse_error,
@@ -289,6 +317,15 @@ class RunGateBenchmark:
             update["query_parser_llm_reasoning_effort"] = reasoning_effort
         return create_query_parser_from_env(
             self.settings.model_copy(update=update) if update else self.settings)
+
+    def gate_label(self) -> str:
+        """Which decision model guards the parser, or "off"."""
+        gate = getattr(self.service(), "intent_gate", None)
+        if gate is None:
+            return "off"
+        provider = (self.settings.intent_gate_decision_provider
+                    or self.settings.decision_provider)
+        return f"{provider}:{gate.model}"
 
     def model_label(self) -> str:
         return (f"{self.settings.query_parser_llm_provider}:"

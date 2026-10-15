@@ -217,6 +217,68 @@ def test_a_parser_that_cannot_emit_valid_output_is_scored_as_the_product_would_b
     assert row["outcome"] == gate_benchmark.REFUSED_EMPTY
 
 
+class _Gate:
+    """Stands in for the decision-model gate in front of the parser."""
+
+    def __init__(self, refusal=None):
+        self.refusal = refusal
+
+    def check(self, query):
+        if self.refusal is not None:
+            raise self.refusal
+
+
+class _CountingParser(_StubParser):
+    calls = 0
+
+    def parse(self, query, today):
+        self.calls += 1
+        return super().parse(query, today)
+
+
+def _gated_runner(monkeypatch, gate, parsed, behaviour):
+    runner = _runner(monkeypatch, parsed, behaviour)
+    runner._service.intent_gate = gate
+    parser = _CountingParser(parsed)
+    monkeypatch.setattr(runner, "_parser", lambda *a, **k: parser)
+    return runner, parser
+
+
+def test_a_query_the_intent_gate_refuses_is_never_parsed(monkeypatch):
+    runner, parser = _gated_runner(
+        monkeypatch, _Gate(NotASpeechQuery("x", refused_by="intent_gate")),
+        ParsedQuery(semantic_query="vivienda"), "vivienda")
+    row = runner.run()[0]
+    # Same outcome as the parser's own verdict, so the reason checks do not move.
+    assert (row["outcome"], row["refused_by"]) == (gate_benchmark.REFUSED_FLAG,
+                                                   "intent_gate")
+    assert parser.calls == 0
+
+
+def test_an_attack_the_intent_gate_refuses_is_scored_as_an_injection(monkeypatch):
+    from qhld_ai.domain.errors import PromptInjection
+
+    runner, _ = _gated_runner(
+        monkeypatch, _Gate(PromptInjection("x", refused_by="intent_gate")),
+        ParsedQuery(semantic_query="vivienda"), "vivienda")
+    assert runner.run()[0]["outcome"] == gate_benchmark.REFUSED_INJECTION
+
+
+def test_what_the_intent_gate_passes_meets_the_parser(monkeypatch):
+    runner, parser = _gated_runner(
+        monkeypatch, _Gate(), ParsedQuery(semantic_query="", is_speech_search=False),
+        "refuse")
+    row = runner.run()[0]
+    assert (row["outcome"], row["refused_by"]) == (gate_benchmark.REFUSED_FLAG, "parser")
+    assert parser.calls == 1
+
+
+def test_a_passing_query_has_no_refusing_layer(monkeypatch):
+    runner, _ = _gated_runner(monkeypatch, _Gate(), ParsedQuery(semantic_query="vivienda"),
+                              "vivienda")
+    assert runner.run()[0]["refused_by"] is None
+
+
 def test_load_junk_ignores_every_other_dimension(tmp_path):
     path = tmp_path / "queryset.json"
     path.write_text(json.dumps([

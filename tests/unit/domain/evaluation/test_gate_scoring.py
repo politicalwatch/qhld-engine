@@ -31,6 +31,16 @@ def test_score_run_keeps_the_two_sites_apart():
     assert report["by_site_rate"][REFUSED_FLAG] == 0.5
 
 
+def test_score_run_counts_refusals_by_the_layer_that_made_them():
+    rows = [{**_row("L1", REFUSED_FLAG), "refused_by": "intent_gate"},
+            {**_row("L2", REFUSED_FLAG), "refused_by": "intent_gate"},
+            {**_row("L3", REFUSED_EMPTY), "refused_by": "parser"},
+            _row("L4", REFUSED_FLAG),          # a row from before the gate existed
+            _row("L5")]
+    report = gate_scoring.score_run(rows)
+    assert report["by_layer"] == {"intent_gate": 2, "parser": 2}
+
+
 def test_score_run_reports_a_rate_per_hazard_class():
     rows = [_row("L1", REFUSED_FLAG, cls="language"), _row("L2", PASS, cls="language"),
             _row("L3", PASS, cls="route")]
